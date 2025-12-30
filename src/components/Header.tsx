@@ -16,27 +16,12 @@ export const Header = () => {
             transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
           />
           <span className="font-display text-xl font-semibold tracking-tight text-foreground">
-            ShaderGradient
+            Gradient Studio
           </span>
         </div>
-        <nav className="hidden md:flex items-center gap-8">
-          <a
-            href="https://github.com/ruucm/shadergradient"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            GitHub
-          </a>
-          <a
-            href="https://www.npmjs.com/package/shadergradient"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            npm
-          </a>
-        </nav>
+        <p className="hidden md:block text-sm text-muted-foreground">
+          Create • Customize • Export
+        </p>
       </div>
     </motion.header>
   );

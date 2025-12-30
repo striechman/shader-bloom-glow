@@ -3,9 +3,7 @@ import { GradientCanvas } from '@/components/GradientCanvas';
 import { ControlPanel } from '@/components/ControlPanel';
 import { Header } from '@/components/Header';
 import { HeroContent } from '@/components/HeroContent';
-import { FeaturesSection } from '@/components/FeaturesSection';
-import { CodeSection } from '@/components/CodeSection';
-import { Footer } from '@/components/Footer';
+import { ExportModal } from '@/components/ExportModal';
 
 interface GradientConfig {
   type: 'sphere' | 'plane' | 'waterPlane';
@@ -36,6 +34,7 @@ const defaultConfig: GradientConfig = {
 const Index = () => {
   const [config, setConfig] = useState<GradientConfig>(defaultConfig);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [isExportOpen, setIsExportOpen] = useState(false);
 
   const handleConfigChange = (updates: Partial<GradientConfig>) => {
     setConfig((prev) => ({ ...prev, ...updates }));
@@ -68,12 +67,18 @@ const Index = () => {
         onToggle={() => setIsPanelOpen(!isPanelOpen)}
       />
 
+      {/* Export Modal */}
+      <ExportModal
+        isOpen={isExportOpen}
+        onClose={() => setIsExportOpen(false)}
+      />
+
       {/* Main Content */}
       <main className="relative z-10">
-        <HeroContent onOpenPanel={() => setIsPanelOpen(true)} />
-        <FeaturesSection />
-        <CodeSection />
-        <Footer />
+        <HeroContent 
+          onOpenPanel={() => setIsPanelOpen(true)} 
+          onExport={() => setIsExportOpen(true)}
+        />
       </main>
     </div>
   );

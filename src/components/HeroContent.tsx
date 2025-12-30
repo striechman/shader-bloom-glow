@@ -1,10 +1,12 @@
 import { motion } from 'framer-motion';
+import { Download, Settings } from 'lucide-react';
 
 interface HeroContentProps {
   onOpenPanel: () => void;
+  onExport: () => void;
 }
 
-export const HeroContent = ({ onOpenPanel }: HeroContentProps) => {
+export const HeroContent = ({ onOpenPanel, onExport }: HeroContentProps) => {
   return (
     <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-6 text-center">
       <motion.div
@@ -19,13 +21,13 @@ export const HeroContent = ({ onOpenPanel }: HeroContentProps) => {
           transition={{ duration: 0.6, delay: 0.6 }}
           className="text-sm uppercase letter-spacing-wide text-muted-foreground mb-6"
         >
-          Create Beautiful Moving Gradients
+          Gradient Generator for Print & Web
         </motion.p>
         
         <h1 className="font-display text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight mb-6">
-          <span className="text-gradient">Shader</span>
+          <span className="text-gradient">Create</span>
           <br />
-          <span className="text-foreground">Gradient</span>
+          <span className="text-foreground">Gradients</span>
         </h1>
 
         <motion.p
@@ -34,8 +36,8 @@ export const HeroContent = ({ onOpenPanel }: HeroContentProps) => {
           transition={{ duration: 0.6, delay: 0.8 }}
           className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10"
         >
-          Create stunning, animated 3D gradients for your web projects. 
-          Customize colors, shapes, and motion with an intuitive interface.
+          Design stunning 3D animated gradients for your projects. 
+          Export in high resolution for print or web use.
         </motion.p>
 
         <motion.div
@@ -46,23 +48,23 @@ export const HeroContent = ({ onOpenPanel }: HeroContentProps) => {
         >
           <motion.button
             onClick={onOpenPanel}
-            className="px-8 py-4 rounded-full bg-gradient-to-r from-primary via-accent to-gradient-3 text-primary-foreground font-medium text-lg hover:opacity-90 transition-opacity"
+            className="px-8 py-4 rounded-full bg-gradient-to-r from-primary via-accent to-gradient-3 text-primary-foreground font-medium text-lg hover:opacity-90 transition-opacity flex items-center gap-2"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
-            Customize →
+            <Settings className="w-5 h-5" />
+            Customize
           </motion.button>
           
-          <motion.a
-            href="https://github.com/ruucm/shadergradient"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-8 py-4 rounded-full glass text-foreground font-medium text-lg hover:bg-secondary/50 transition-colors"
+          <motion.button
+            onClick={onExport}
+            className="px-8 py-4 rounded-full glass text-foreground font-medium text-lg hover:bg-secondary/50 transition-colors flex items-center gap-2"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
-            View on GitHub
-          </motion.a>
+            <Download className="w-5 h-5" />
+            Export
+          </motion.button>
         </motion.div>
       </motion.div>
 
@@ -77,17 +79,7 @@ export const HeroContent = ({ onOpenPanel }: HeroContentProps) => {
           transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
           className="flex flex-col items-center gap-2 text-muted-foreground"
         >
-          <span className="text-xs uppercase letter-spacing-wide">Scroll</span>
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <path d="M12 5v14M19 12l-7 7-7-7" />
-          </svg>
+          <span className="text-xs uppercase letter-spacing-wide">Click customize to start</span>
         </motion.div>
       </motion.div>
     </div>
