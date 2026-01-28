@@ -28,7 +28,7 @@ const shapeOptions: { value: GradientConfig['type']; wireframe: boolean; label: 
   { value: 'sphere', wireframe: false, label: 'Sphere' },
   { value: 'plane', wireframe: false, label: 'Plane' },
   { value: 'waterPlane', wireframe: false, label: 'Water' },
-  { value: 'sphere', wireframe: true, label: 'Mesh' },
+  { value: 'plane', wireframe: true, label: 'Mesh' },
 ];
 
 // Brand color palette
