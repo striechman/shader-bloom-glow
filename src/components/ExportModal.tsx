@@ -33,7 +33,7 @@ const videoResolutions = [
   { label: '4K', width: 3840, height: 2160 },
 ];
 
-// Simplex noise for high-quality mesh gradient export
+// Simplex noise for high-quality gradient export
 function simplexNoise2D(x: number, y: number): number {
   const F2 = 0.5 * (Math.sqrt(3) - 1);
   const G2 = (3 - Math.sqrt(3)) / 6;
@@ -94,8 +94,24 @@ function simplexNoise2D(x: number, y: number): number {
   return 70 * (n0 + n1 + n2);
 }
 
-// Render mesh gradient at full resolution for export
-async function renderMeshGradientToCanvas(
+// Parse hex color to RGB
+function parseColor(hex: string) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return { r, g, b };
+}
+
+// Helper functions
+const smoothstep = (edge0: number, edge1: number, x: number) => {
+  const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+  return t * t * (3 - 2 * t);
+};
+
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+
+// Render gradient based on type - pixel-perfect export
+async function renderGradientToCanvas(
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number,
@@ -104,49 +120,77 @@ async function renderMeshGradientToCanvas(
   const imageData = ctx.createImageData(width, height);
   const data = imageData.data;
   
-  const noiseScale = config.meshNoiseScale ?? 3.0;
-  const blur = (config.meshBlur ?? 50) / 100;
-  const blurFactor = blur * 0.5;
+  const color1 = parseColor(config.color1);
+  const color2 = parseColor(config.color2);
+  const color3 = parseColor(config.color3);
   
   const w1 = config.colorWeight1 / 100;
   const w2 = config.colorWeight2 / 100;
   const threshold1 = w1;
   const threshold2 = w1 + w2;
   
-  const parseColor = (hex: string) => {
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    return { r, g, b };
-  };
-  
-  const color1 = parseColor(config.color1);
-  const color2 = parseColor(config.color2);
-  const color3 = parseColor(config.color3);
-  
-  const smoothstep = (edge0: number, edge1: number, x: number) => {
-    const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
-    return t * t * (3 - 2 * t);
-  };
-  
-  const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
   const time = config.frozenTime ?? 0;
+  const isMeshMode = config.wireframe === true;
+  
+  const centerX = width / 2;
+  const centerY = height / 2;
+  const maxDist = Math.sqrt(centerX * centerX + centerY * centerY);
   
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const u = x / width;
       const v = y / height;
       
-      const n1 = simplexNoise2D(u * noiseScale, v * noiseScale + time * 0.1) * 0.5 + 0.5;
-      const n2 = simplexNoise2D(u * noiseScale * 2 + 100, v * noiseScale * 2 + 100) * 0.25;
-      const n3 = simplexNoise2D(u * noiseScale * 4 + 200, v * noiseScale * 4 + 200) * 0.125;
+      let blendValue: number;
       
-      let noise = (n1 + n2 + n3) / 1.375;
-      noise = Math.max(0, Math.min(1, noise));
+      if (isMeshMode) {
+        // Mesh mode: noise-based blending
+        const noiseScale = config.meshNoiseScale ?? 3.0;
+        const n1 = simplexNoise2D(u * noiseScale, v * noiseScale + time * 0.1) * 0.5 + 0.5;
+        const n2 = simplexNoise2D(u * noiseScale * 2 + 100, v * noiseScale * 2 + 100) * 0.25;
+        const n3 = simplexNoise2D(u * noiseScale * 4 + 200, v * noiseScale * 4 + 200) * 0.125;
+        blendValue = (n1 + n2 + n3) / 1.375;
+      } else if (config.type === 'sphere') {
+        // Sphere mode: radial gradient with 3D-like depth + noise for organic look
+        const dx = x - centerX;
+        const dy = y - centerY;
+        const dist = Math.sqrt(dx * dx + dy * dy) / maxDist;
+        
+        // Add subtle noise for organic feel
+        const noise = simplexNoise2D(u * 3 + time * 0.05, v * 3) * 0.15;
+        
+        // Create sphere-like falloff with angle variation
+        const angle = Math.atan2(dy, dx);
+        const angleVar = Math.sin(angle * 2 + time * 0.1) * 0.1;
+        
+        // Combine distance, angle variation, and noise
+        blendValue = dist * 0.7 + angleVar + noise + 0.15;
+        blendValue = Math.max(0, Math.min(1, blendValue));
+      } else if (config.type === 'plane') {
+        // Plane mode: diagonal gradient with subtle noise
+        const diagonal = (u + v) / 2;
+        const noise = simplexNoise2D(u * 2, v * 2 + time * 0.05) * 0.1;
+        blendValue = diagonal + noise;
+      } else if (config.type === 'waterPlane') {
+        // Water mode: wavy gradient
+        const wave1 = Math.sin(u * 4 + time * 0.2) * 0.1;
+        const wave2 = Math.sin(v * 6 + time * 0.15) * 0.08;
+        const noise = simplexNoise2D(u * 3, v * 3 + time * 0.1) * 0.15;
+        blendValue = (u + v) / 2 + wave1 + wave2 + noise;
+      } else {
+        // Fallback: simple diagonal
+        blendValue = (u + v) / 2;
+      }
       
-      const edge1 = smoothstep(threshold1 - blurFactor, threshold1 + blurFactor, noise);
-      const edge2 = smoothstep(threshold2 - blurFactor, threshold2 + blurFactor, noise);
+      blendValue = Math.max(0, Math.min(1, blendValue));
       
+      // Apply color weights with soft transitions
+      const blur = isMeshMode ? ((config.meshBlur ?? 50) / 100) * 0.5 : 0.15;
+      
+      const edge1 = smoothstep(threshold1 - blur, threshold1 + blur, blendValue);
+      const edge2 = smoothstep(threshold2 - blur, threshold2 + blur, blendValue);
+      
+      // Mix colors based on edges
       let r = lerp(color1.r, color2.r, edge1);
       let g = lerp(color1.g, color2.g, edge1);
       let b = lerp(color1.b, color2.b, edge1);
@@ -389,106 +433,10 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
         return;
       }
 
-      // Check if we're in Mesh mode (wireframe) - need to render gradient directly
-      const isMeshMode = config?.wireframe === true;
-      
-      if (isMeshMode && config) {
-        // For Mesh mode: render the noise-based gradient directly to canvas at full resolution
-        await renderMeshGradientToCanvas(ctx, targetWidth, targetHeight, config);
-      } else {
-        // For ShaderGradient modes: capture the visible canvas
-        // Find the gradient stage container
-        const gradientStage = document.querySelector('#gradient-stage');
-        
-        if (gradientStage) {
-          // Find ALL canvases within the gradient stage
-          const canvases = gradientStage.querySelectorAll('canvas');
-          
-          // Wait for render to complete
-          await new Promise<void>((resolve) => {
-            requestAnimationFrame(() => {
-              requestAnimationFrame(() => {
-                requestAnimationFrame(() => resolve());
-              });
-            });
-          });
-          
-          // Get the actual visible area dimensions
-          const stageRect = gradientStage.getBoundingClientRect();
-          
-          // Find the aspect ratio container if it exists
-          const aspectContainer = gradientStage.querySelector('[style*="aspectRatio"]') as HTMLElement | null;
-          let sourceRect = stageRect;
-          
-          if (aspectContainer) {
-            sourceRect = aspectContainer.getBoundingClientRect();
-          }
-          
-          // Create a temporary canvas to composite all visible canvases
-          const compositeCanvas = document.createElement('canvas');
-          compositeCanvas.width = sourceRect.width * window.devicePixelRatio;
-          compositeCanvas.height = sourceRect.height * window.devicePixelRatio;
-          const compositeCtx = compositeCanvas.getContext('2d');
-          
-          if (compositeCtx) {
-            compositeCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
-            
-            // Draw each canvas at its correct position relative to the stage
-            canvases.forEach((canvas) => {
-              const canvasRect = canvas.getBoundingClientRect();
-              const x = canvasRect.left - sourceRect.left;
-              const y = canvasRect.top - sourceRect.top;
-              
-              try {
-                compositeCtx.drawImage(
-                  canvas,
-                  x, y,
-                  canvasRect.width,
-                  canvasRect.height
-                );
-              } catch (e) {
-                console.warn('Could not draw canvas:', e);
-              }
-            });
-            
-            // Now draw the composite to our target canvas at the correct resolution
-            ctx.drawImage(compositeCanvas, 0, 0, targetWidth, targetHeight);
-          }
-        }
-
-        // Add weight overlay for static mode (only for non-mesh modes)
-        if (config) {
-          const isFrozen = config.frozenTime !== null;
-          const isStaticMode = !config.animate || isFrozen;
-
-          if (isStaticMode) {
-            const w1 = config.colorWeight1;
-            const w2 = w1 + config.colorWeight2;
-            const feather = 6;
-            const f1 = Math.max(0, w1 - feather) / 100;
-            const f2 = Math.min(100, w1 + feather) / 100;
-            const f3 = Math.max(0, w2 - feather) / 100;
-            const f4 = Math.min(100, w2 + feather) / 100;
-
-            const g = ctx.createLinearGradient(0, 0, targetWidth, targetHeight);
-            g.addColorStop(0, config.color1);
-            g.addColorStop(f1, config.color1);
-            g.addColorStop(f2, config.color2);
-            g.addColorStop(f3, config.color2);
-            g.addColorStop(f4, config.color3);
-            g.addColorStop(1, config.color3);
-
-            ctx.save();
-            ctx.globalAlpha = 0.4;
-            ctx.globalCompositeOperation = 'soft-light';
-            ctx.filter = 'blur(48px)';
-            ctx.fillStyle = g;
-            const padX = targetWidth * 0.08;
-            const padY = targetHeight * 0.08;
-            ctx.fillRect(-padX, -padY, targetWidth + padX * 2, targetHeight + padY * 2);
-            ctx.restore();
-          }
-        }
+      if (config) {
+        // Render gradient directly at target resolution for all types
+        // This ensures pixel-perfect export matching what's on screen
+        await renderGradientToCanvas(ctx, targetWidth, targetHeight, config);
       }
 
       // Export
