@@ -33,6 +33,139 @@ const videoResolutions = [
   { label: '4K', width: 3840, height: 2160 },
 ];
 
+// Simplex noise for high-quality mesh gradient export
+function simplexNoise2D(x: number, y: number): number {
+  const F2 = 0.5 * (Math.sqrt(3) - 1);
+  const G2 = (3 - Math.sqrt(3)) / 6;
+  
+  const s = (x + y) * F2;
+  const i = Math.floor(x + s);
+  const j = Math.floor(y + s);
+  
+  const t = (i + j) * G2;
+  const X0 = i - t;
+  const Y0 = j - t;
+  const x0 = x - X0;
+  const y0 = y - Y0;
+  
+  const i1 = x0 > y0 ? 1 : 0;
+  const j1 = x0 > y0 ? 0 : 1;
+  
+  const x1 = x0 - i1 + G2;
+  const y1 = y0 - j1 + G2;
+  const x2 = x0 - 1 + 2 * G2;
+  const y2 = y0 - 1 + 2 * G2;
+  
+  const grad = (hash: number, dx: number, dy: number): number => {
+    const h = hash & 7;
+    const u = h < 4 ? dx : dy;
+    const v = h < 4 ? dy : dx;
+    return ((h & 1) ? -u : u) + ((h & 2) ? -2 * v : 2 * v);
+  };
+  
+  const perm = (n: number): number => {
+    const p = [151, 160, 137, 91, 90, 15, 131, 13, 201, 95, 96, 53, 194, 233, 7, 225];
+    return p[n & 15];
+  };
+  
+  const ii = i & 255;
+  const jj = j & 255;
+  
+  let n0 = 0, n1 = 0, n2 = 0;
+  
+  let t0 = 0.5 - x0 * x0 - y0 * y0;
+  if (t0 >= 0) {
+    t0 *= t0;
+    n0 = t0 * t0 * grad(perm(ii + perm(jj)), x0, y0);
+  }
+  
+  let t1 = 0.5 - x1 * x1 - y1 * y1;
+  if (t1 >= 0) {
+    t1 *= t1;
+    n1 = t1 * t1 * grad(perm(ii + i1 + perm(jj + j1)), x1, y1);
+  }
+  
+  let t2 = 0.5 - x2 * x2 - y2 * y2;
+  if (t2 >= 0) {
+    t2 *= t2;
+    n2 = t2 * t2 * grad(perm(ii + 1 + perm(jj + 1)), x2, y2);
+  }
+  
+  return 70 * (n0 + n1 + n2);
+}
+
+// Render mesh gradient at full resolution for export
+async function renderMeshGradientToCanvas(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  config: GradientConfig
+): Promise<void> {
+  const imageData = ctx.createImageData(width, height);
+  const data = imageData.data;
+  
+  const noiseScale = config.meshNoiseScale ?? 3.0;
+  const blur = (config.meshBlur ?? 50) / 100;
+  const blurFactor = blur * 0.5;
+  
+  const w1 = config.colorWeight1 / 100;
+  const w2 = config.colorWeight2 / 100;
+  const threshold1 = w1;
+  const threshold2 = w1 + w2;
+  
+  const parseColor = (hex: string) => {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return { r, g, b };
+  };
+  
+  const color1 = parseColor(config.color1);
+  const color2 = parseColor(config.color2);
+  const color3 = parseColor(config.color3);
+  
+  const smoothstep = (edge0: number, edge1: number, x: number) => {
+    const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+    return t * t * (3 - 2 * t);
+  };
+  
+  const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+  const time = config.frozenTime ?? 0;
+  
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const u = x / width;
+      const v = y / height;
+      
+      const n1 = simplexNoise2D(u * noiseScale, v * noiseScale + time * 0.1) * 0.5 + 0.5;
+      const n2 = simplexNoise2D(u * noiseScale * 2 + 100, v * noiseScale * 2 + 100) * 0.25;
+      const n3 = simplexNoise2D(u * noiseScale * 4 + 200, v * noiseScale * 4 + 200) * 0.125;
+      
+      let noise = (n1 + n2 + n3) / 1.375;
+      noise = Math.max(0, Math.min(1, noise));
+      
+      const edge1 = smoothstep(threshold1 - blurFactor, threshold1 + blurFactor, noise);
+      const edge2 = smoothstep(threshold2 - blurFactor, threshold2 + blurFactor, noise);
+      
+      let r = lerp(color1.r, color2.r, edge1);
+      let g = lerp(color1.g, color2.g, edge1);
+      let b = lerp(color1.b, color2.b, edge1);
+      
+      r = lerp(r, color3.r, edge2);
+      g = lerp(g, color3.g, edge2);
+      b = lerp(b, color3.b, edge2);
+      
+      const idx = (y * width + x) * 4;
+      data[idx] = Math.round(r);
+      data[idx + 1] = Math.round(g);
+      data[idx + 2] = Math.round(b);
+      data[idx + 3] = 255;
+    }
+  }
+  
+  ctx.putImageData(imageData, 0, 0);
+}
+
 export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
   const constraintsRef = useRef<HTMLDivElement>(null);
   const dragControls = useDragControls();
@@ -160,28 +293,10 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
     setIsExporting(true);
 
     try {
-      const canvas = document.querySelector('#gradient-stage canvas') as HTMLCanvasElement | null;
-      if (!canvas) {
-        toast.error('Canvas not found');
-        setIsExporting(false);
-        return;
-      }
-
       const targetWidth = useCustomSize ? customWidth : selectedSize.width;
       const targetHeight = useCustomSize ? customHeight : selectedSize.height;
 
-      // Wait for render
-      await new Promise<void>((resolve) => {
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-              resolve();
-            });
-          });
-        });
-      });
-
-      // Create a temporary canvas at the target resolution
+      // Create high-resolution offscreen canvas
       const tempCanvas = document.createElement('canvas');
       tempCanvas.width = targetWidth;
       tempCanvas.height = targetHeight;
@@ -193,49 +308,68 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
         return;
       }
 
-      // Draw the source canvas scaled to the target size
-      ctx.drawImage(canvas, 0, 0, targetWidth, targetHeight);
+      // Check if we're in Mesh mode (wireframe) - need to render gradient directly
+      const isMeshMode = config?.wireframe === true;
+      
+      if (isMeshMode && config) {
+        // For Mesh mode: render the noise-based gradient directly to canvas at full resolution
+        await renderMeshGradientToCanvas(ctx, targetWidth, targetHeight, config);
+      } else {
+        // For ShaderGradient modes: try to capture from WebGL, then enhance
+        const sourceCanvas = document.querySelector('#gradient-stage canvas') as HTMLCanvasElement | null;
+        
+        if (sourceCanvas) {
+          // Wait for render
+          await new Promise<void>((resolve) => {
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                requestAnimationFrame(() => resolve());
+              });
+            });
+          });
+          
+          // Draw source at target resolution
+          ctx.drawImage(sourceCanvas, 0, 0, targetWidth, targetHeight);
+        }
 
-      // IMPORTANT: In static mode we show the weight distribution via a DOM overlay.
-      // The export previously grabbed only the WebGL canvas, so dark weights (e.g. 90% black)
-      // could disappear from the exported image.
-      if (config) {
-        const isFrozen = config.frozenTime !== null;
-        const isStaticMode = !config.animate || isFrozen;
+        // Add weight overlay for static mode
+        if (config) {
+          const isFrozen = config.frozenTime !== null;
+          const isStaticMode = !config.animate || isFrozen;
 
-        if (isStaticMode && !config.wireframe) {
-          const w1 = config.colorWeight1;
-          const w2 = w1 + config.colorWeight2;
-          const feather = 6;
-          const f1 = Math.max(0, w1 - feather) / 100;
-          const f2 = Math.min(100, w1 + feather) / 100;
-          const f3 = Math.max(0, w2 - feather) / 100;
-          const f4 = Math.min(100, w2 + feather) / 100;
+          if (isStaticMode) {
+            const w1 = config.colorWeight1;
+            const w2 = w1 + config.colorWeight2;
+            const feather = 6;
+            const f1 = Math.max(0, w1 - feather) / 100;
+            const f2 = Math.min(100, w1 + feather) / 100;
+            const f3 = Math.max(0, w2 - feather) / 100;
+            const f4 = Math.min(100, w2 + feather) / 100;
 
-          const g = ctx.createLinearGradient(0, 0, targetWidth, targetHeight);
-          g.addColorStop(0, config.color1);
-          g.addColorStop(f1, config.color1);
-          g.addColorStop(f2, config.color2);
-          g.addColorStop(f3, config.color2);
-          g.addColorStop(f4, config.color3);
-          g.addColorStop(1, config.color3);
+            const g = ctx.createLinearGradient(0, 0, targetWidth, targetHeight);
+            g.addColorStop(0, config.color1);
+            g.addColorStop(f1, config.color1);
+            g.addColorStop(f2, config.color2);
+            g.addColorStop(f3, config.color2);
+            g.addColorStop(f4, config.color3);
+            g.addColorStop(1, config.color3);
 
-          ctx.save();
-          ctx.globalAlpha = 0.6;
-          ctx.globalCompositeOperation = 'source-over';
-          ctx.filter = 'blur(32px)';
-          ctx.fillStyle = g;
-          // Overscan a bit to mimic the on-screen overlay scale
-          const padX = targetWidth * 0.04;
-          const padY = targetHeight * 0.04;
-          ctx.fillRect(-padX, -padY, targetWidth + padX * 2, targetHeight + padY * 2);
-          ctx.restore();
+            ctx.save();
+            ctx.globalAlpha = 0.5;
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.filter = 'blur(32px)';
+            ctx.fillStyle = g;
+            const padX = targetWidth * 0.04;
+            const padY = targetHeight * 0.04;
+            ctx.fillRect(-padX, -padY, targetWidth + padX * 2, targetHeight + padY * 2);
+            ctx.restore();
+          }
         }
       }
 
       // Export
       const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
-      const quality = format === 'jpg' ? 0.95 : undefined;
+      const quality = format === 'jpg' ? 0.98 : undefined;
 
       tempCanvas.toBlob((blob) => {
         if (!blob) {
