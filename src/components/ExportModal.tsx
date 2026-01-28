@@ -1,9 +1,7 @@
 import { motion, AnimatePresence, useDragControls } from 'framer-motion';
 import { X, Download, Image, FileImage, Code, Copy, Check, Monitor, Printer, LayoutGrid, Share2, Video, Play } from 'lucide-react';
-import { useRef, useState, useEffect, useCallback } from 'react';
-import { createPortal } from 'react-dom';
+import { useRef, useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { ShaderGradientCanvas, ShaderGradient } from '@shadergradient/react';
 import { GradientConfig, exportCategories, ExportCategory } from '@/types/gradient';
 import { Slider } from '@/components/ui/slider';
 
@@ -35,269 +33,12 @@ const videoResolutions = [
   { label: '4K', width: 3840, height: 2160 },
 ];
 
-// Offscreen renderer for high-quality exports
-interface OffscreenRendererProps {
-  config: GradientConfig;
-  width: number;
-  height: number;
-  onReady: (canvas: HTMLCanvasElement) => void;
-}
-
-const OffscreenRenderer = ({ config, width, height, onReady }: OffscreenRendererProps) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const isWireframe = config.wireframe === true;
-  const isFrozen = config.frozenTime !== null;
-
-  useEffect(() => {
-    // Wait for the canvas to render
-    const checkCanvas = () => {
-      const canvas = containerRef.current?.querySelector('canvas');
-      if (canvas) {
-        // Give WebGL time to render a frame
-        let frameCount = 0;
-        const waitForRender = () => {
-          frameCount++;
-          if (frameCount >= 5) {
-            onReady(canvas);
-          } else {
-            requestAnimationFrame(waitForRender);
-          }
-        };
-        requestAnimationFrame(waitForRender);
-      } else {
-        requestAnimationFrame(checkCanvas);
-      }
-    };
-    requestAnimationFrame(checkCanvas);
-  }, [onReady]);
-
-  return createPortal(
-    <div
-      ref={containerRef}
-      style={{
-        position: 'fixed',
-        left: '-99999px',
-        top: '-99999px',
-        width: `${width}px`,
-        height: `${height}px`,
-        pointerEvents: 'none',
-        visibility: 'hidden',
-      }}
-    >
-      <ShaderGradientCanvas
-        style={{
-          width: `${width}px`,
-          height: `${height}px`,
-        }}
-        pixelDensity={1}
-        pointerEvents="none"
-      >
-        <ShaderGradient
-          animate="off"
-          type={config.type}
-          wireframe={isWireframe}
-          shader="defaults"
-          uTime={isFrozen ? config.frozenTime ?? 0 : 0}
-          uSpeed={config.speed}
-          uStrength={isWireframe ? 1.5 : config.uStrength}
-          uDensity={isWireframe ? config.meshDensity : config.uDensity}
-          uFrequency={isWireframe ? 8 : config.uFrequency}
-          uAmplitude={isWireframe ? 1 : 0.5}
-          positionX={0}
-          positionY={0}
-          positionZ={0}
-          rotationX={isWireframe ? config.meshAngle : 0}
-          rotationY={isWireframe ? 0 : 10}
-          rotationZ={isWireframe ? 0 : 50}
-          color1={config.color1}
-          color2={config.color2}
-          color3={config.color3}
-          reflection={isWireframe ? 0.5 : 0.1}
-          cAzimuthAngle={180}
-          cPolarAngle={isWireframe ? 90 : 115}
-          cDistance={isWireframe ? 2.5 : 4.5}
-          cameraZoom={1}
-          lightType="3d"
-          brightness={isWireframe ? 2 : 1.4}
-          envPreset="city"
-          grain={config.grain ? 'on' : 'off'}
-          toggleAxis={false}
-          zoomOut={false}
-        />
-      </ShaderGradientCanvas>
-    </div>,
-    document.body
-  );
-};
-
-// Video renderer component
-interface VideoRendererProps {
-  config: GradientConfig;
-  width: number;
-  height: number;
-  duration: number;
-  onProgress: (progress: number) => void;
-  onComplete: (blob: Blob, extension: string) => void;
-  onError: (error: string) => void;
-}
-
-const VideoRenderer = ({ config, width, height, duration, onProgress, onComplete, onError }: VideoRendererProps) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const intervalRef = useRef<number | null>(null);
-  const timeoutRef = useRef<number | null>(null);
-  const isWireframe = config.wireframe === true;
-
-  useEffect(() => {
-    let chunks: Blob[] = [];
-    
-    const startRecording = (canvas: HTMLCanvasElement) => {
-      try {
-        const stream = canvas.captureStream(30);
-        
-        // Check for MP4 support
-        const mp4Supported = MediaRecorder.isTypeSupported('video/mp4;codecs=avc1');
-        const webmSupported = MediaRecorder.isTypeSupported('video/webm;codecs=vp9');
-        
-        let mimeType = 'video/webm';
-        let extension = 'webm';
-        
-        if (mp4Supported) {
-          mimeType = 'video/mp4;codecs=avc1';
-          extension = 'mp4';
-        } else if (webmSupported) {
-          mimeType = 'video/webm;codecs=vp9';
-          extension = 'webm';
-          toast.info('הדפדפן לא תומך MP4, הקובץ יישמר כ-WebM');
-        }
-        
-        const mediaRecorder = new MediaRecorder(stream, {
-          mimeType,
-          videoBitsPerSecond: 8000000,
-        });
-        mediaRecorderRef.current = mediaRecorder;
-        
-        mediaRecorder.ondataavailable = (e) => {
-          if (e.data.size > 0) {
-            chunks.push(e.data);
-          }
-        };
-        
-        mediaRecorder.onstop = () => {
-          const blob = new Blob(chunks, { type: mimeType });
-          onComplete(blob, extension);
-        };
-        
-        mediaRecorder.start();
-        
-        const startTime = Date.now();
-        intervalRef.current = window.setInterval(() => {
-          const elapsed = (Date.now() - startTime) / 1000;
-          const progress = Math.min((elapsed / duration) * 100, 100);
-          onProgress(progress);
-        }, 100);
-        
-        timeoutRef.current = window.setTimeout(() => {
-          if (intervalRef.current) clearInterval(intervalRef.current);
-          mediaRecorder.stop();
-        }, duration * 1000);
-        
-      } catch (error) {
-        console.error('Recording failed:', error);
-        onError('שגיאה בהקלטה');
-      }
-    };
-
-    const checkCanvas = () => {
-      const canvas = containerRef.current?.querySelector('canvas');
-      if (canvas) {
-        let frameCount = 0;
-        const waitForRender = () => {
-          frameCount++;
-          if (frameCount >= 5) {
-            startRecording(canvas);
-          } else {
-            requestAnimationFrame(waitForRender);
-          }
-        };
-        requestAnimationFrame(waitForRender);
-      } else {
-        requestAnimationFrame(checkCanvas);
-      }
-    };
-    requestAnimationFrame(checkCanvas);
-
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      if (mediaRecorderRef.current?.state === 'recording') {
-        mediaRecorderRef.current.stop();
-      }
-    };
-  }, [config, width, height, duration, onProgress, onComplete, onError]);
-
-  return createPortal(
-    <div
-      ref={containerRef}
-      style={{
-        position: 'fixed',
-        left: '-99999px',
-        top: '-99999px',
-        width: `${width}px`,
-        height: `${height}px`,
-        pointerEvents: 'none',
-        visibility: 'hidden',
-      }}
-    >
-      <ShaderGradientCanvas
-        style={{
-          width: `${width}px`,
-          height: `${height}px`,
-        }}
-        pixelDensity={1}
-        pointerEvents="none"
-      >
-        <ShaderGradient
-          animate="on"
-          type={config.type}
-          wireframe={isWireframe}
-          shader="defaults"
-          uTime={0}
-          uSpeed={config.speed}
-          uStrength={isWireframe ? 1.5 : config.uStrength}
-          uDensity={isWireframe ? config.meshDensity : config.uDensity}
-          uFrequency={isWireframe ? 8 : config.uFrequency}
-          uAmplitude={isWireframe ? 1 : 3.2}
-          positionX={0}
-          positionY={0}
-          positionZ={0}
-          rotationX={isWireframe ? config.meshAngle : 0}
-          rotationY={isWireframe ? 0 : 10}
-          rotationZ={isWireframe ? 0 : 50}
-          color1={config.color1}
-          color2={config.color2}
-          color3={config.color3}
-          reflection={isWireframe ? 0.5 : 0.1}
-          cAzimuthAngle={180}
-          cPolarAngle={isWireframe ? 90 : 115}
-          cDistance={isWireframe ? 2.5 : 3.6}
-          cameraZoom={1}
-          lightType="3d"
-          brightness={isWireframe ? 2 : 1.4}
-          envPreset="city"
-          grain={config.grain ? 'on' : 'off'}
-          toggleAxis={false}
-          zoomOut={false}
-        />
-      </ShaderGradientCanvas>
-    </div>,
-    document.body
-  );
-};
-
 export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
   const constraintsRef = useRef<HTMLDivElement>(null);
   const dragControls = useDragControls();
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordingIntervalRef = useRef<number | null>(null);
+  const recordingTimeoutRef = useRef<number | null>(null);
 
   const [selectedCategory, setSelectedCategory] = useState<ExportCategory>('social');
   const [selectedSize, setSelectedSize] = useState(exportCategories.social[0]);
@@ -313,17 +54,22 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
   const [videoDuration, setVideoDuration] = useState(5);
   const [videoResolution, setVideoResolution] = useState(videoResolutions[1]);
   const [videoProgress, setVideoProgress] = useState(0);
-  
-  // Offscreen rendering states
-  const [showOffscreenRenderer, setShowOffscreenRenderer] = useState(false);
-  const [showVideoRenderer, setShowVideoRenderer] = useState(false);
-  const [exportDimensions, setExportDimensions] = useState({ width: 1920, height: 1080 });
 
   // Cleanup on close
   useEffect(() => {
     if (!isOpen) {
-      setShowOffscreenRenderer(false);
-      setShowVideoRenderer(false);
+      // Cleanup any running recordings
+      if (recordingIntervalRef.current) {
+        clearInterval(recordingIntervalRef.current);
+        recordingIntervalRef.current = null;
+      }
+      if (recordingTimeoutRef.current) {
+        clearTimeout(recordingTimeoutRef.current);
+        recordingTimeoutRef.current = null;
+      }
+      if (mediaRecorderRef.current?.state === 'recording') {
+        mediaRecorderRef.current.stop();
+      }
       setIsExporting(false);
       setVideoProgress(0);
     }
@@ -410,113 +156,203 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
     }
   };
 
-  const handleExport = () => {
-    if (!config) return;
-    
+  const handleExport = async () => {
     setIsExporting(true);
-    const width = useCustomSize ? customWidth : selectedSize.width;
-    const height = useCustomSize ? customHeight : selectedSize.height;
-    setExportDimensions({ width, height });
-    setShowOffscreenRenderer(true);
-  };
 
-  const handleOffscreenReady = useCallback((canvas: HTMLCanvasElement) => {
     try {
+      const canvas = document.querySelector('canvas') as HTMLCanvasElement;
+      if (!canvas) {
+        toast.error('Canvas not found');
+        setIsExporting(false);
+        return;
+      }
+
+      const targetWidth = useCustomSize ? customWidth : selectedSize.width;
+      const targetHeight = useCustomSize ? customHeight : selectedSize.height;
+
+      // Wait for render
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              resolve();
+            });
+          });
+        });
+      });
+
+      // Create a temporary canvas at the target resolution
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = targetWidth;
+      tempCanvas.height = targetHeight;
+      const ctx = tempCanvas.getContext('2d');
+      
+      if (!ctx) {
+        toast.error('Failed to create export context');
+        setIsExporting(false);
+        return;
+      }
+
+      // Draw the source canvas scaled to the target size
+      ctx.drawImage(canvas, 0, 0, targetWidth, targetHeight);
+
+      // Add the color weights overlay if in static mode
+      if (config && (!config.animate || config.frozenTime !== null)) {
+        const w1 = config.colorWeight1;
+        const w2 = w1 + config.colorWeight2;
+        
+        // Create gradient overlay
+        const gradient = ctx.createLinearGradient(0, 0, targetWidth, targetHeight);
+        gradient.addColorStop(0, config.color1);
+        gradient.addColorStop(w1 / 100, config.color1);
+        gradient.addColorStop(w1 / 100, config.color2);
+        gradient.addColorStop(w2 / 100, config.color2);
+        gradient.addColorStop(w2 / 100, config.color3);
+        gradient.addColorStop(1, config.color3);
+        
+        ctx.globalAlpha = 0.4;
+        ctx.globalCompositeOperation = 'overlay';
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, targetWidth, targetHeight);
+        ctx.globalAlpha = 1;
+        ctx.globalCompositeOperation = 'source-over';
+      }
+
+      // Export
       const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
       const quality = format === 'jpg' ? 0.95 : undefined;
-      
-      canvas.toBlob((blob) => {
+
+      tempCanvas.toBlob((blob) => {
         if (!blob) {
-          toast.error('יצירת התמונה נכשלה');
+          toast.error('Failed to create image');
           setIsExporting(false);
-          setShowOffscreenRenderer(false);
           return;
         }
-        
+
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
-        link.download = `gradient-${exportDimensions.width}x${exportDimensions.height}.${format}`;
+        link.download = `gradient-${targetWidth}x${targetHeight}.${format}`;
         link.href = url;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
-        
-        toast.success(`ייצוא ${format.toUpperCase()} הצליח! (${exportDimensions.width}×${exportDimensions.height})`);
+
+        toast.success(`Exported ${format.toUpperCase()} (${targetWidth}×${targetHeight})`);
         setIsExporting(false);
-        setShowOffscreenRenderer(false);
         onClose();
       }, mimeType, quality);
+
     } catch (error) {
       console.error('Export failed:', error);
-      toast.error('ייצוא נכשל');
+      toast.error('Export failed');
       setIsExporting(false);
-      setShowOffscreenRenderer(false);
     }
-  }, [format, exportDimensions, onClose]);
-
-  const handleExportVideo = () => {
-    if (!config) return;
-    
-    setIsExporting(true);
-    setVideoProgress(0);
-    setExportDimensions({ width: videoResolution.width, height: videoResolution.height });
-    setShowVideoRenderer(true);
   };
 
-  const handleVideoProgress = useCallback((progress: number) => {
-    setVideoProgress(progress);
-  }, []);
-
-  const handleVideoComplete = useCallback((blob: Blob, extension: string) => {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `gradient-${videoResolution.label}-${videoDuration}s.${extension}`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  const handleExportVideo = async () => {
+    setIsExporting(true);
+    setVideoProgress(0);
     
-    toast.success(`וידאו יוצא: ${videoResolution.label}, ${videoDuration}s (${extension.toUpperCase()})`);
-    setIsExporting(false);
-    setVideoProgress(0);
-    setShowVideoRenderer(false);
-    onClose();
-  }, [videoResolution.label, videoDuration, onClose]);
+    try {
+      const canvas = document.querySelector('canvas') as HTMLCanvasElement;
+      if (!canvas) {
+        toast.error('Canvas not found');
+        setIsExporting(false);
+        return;
+      }
 
-  const handleVideoError = useCallback((error: string) => {
-    toast.error(error);
-    setIsExporting(false);
-    setVideoProgress(0);
-    setShowVideoRenderer(false);
-  }, []);
+      // Check for MP4 support
+      const mp4Supported = MediaRecorder.isTypeSupported('video/mp4;codecs=avc1');
+      const webmVp9Supported = MediaRecorder.isTypeSupported('video/webm;codecs=vp9');
+      const webmVp8Supported = MediaRecorder.isTypeSupported('video/webm;codecs=vp8');
+      
+      let mimeType = 'video/webm';
+      let extension = 'webm';
+      
+      if (mp4Supported) {
+        mimeType = 'video/mp4;codecs=avc1';
+        extension = 'mp4';
+      } else if (webmVp9Supported) {
+        mimeType = 'video/webm;codecs=vp9';
+        toast.info('Browser does not support MP4, exporting as WebM');
+      } else if (webmVp8Supported) {
+        mimeType = 'video/webm;codecs=vp8';
+        toast.info('Browser does not support MP4, exporting as WebM');
+      }
+
+      const stream = canvas.captureStream(30);
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType,
+        videoBitsPerSecond: 8000000,
+      });
+      mediaRecorderRef.current = mediaRecorder;
+
+      const chunks: Blob[] = [];
+      
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          chunks.push(e.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunks, { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `gradient-${videoResolution.label}-${videoDuration}s.${extension}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        toast.success(`Video exported: ${videoResolution.label}, ${videoDuration}s (${extension.toUpperCase()})`);
+        setIsExporting(false);
+        setVideoProgress(0);
+        onClose();
+      };
+
+      mediaRecorder.onerror = () => {
+        toast.error('Video recording failed');
+        setIsExporting(false);
+        setVideoProgress(0);
+      };
+
+      // Start recording
+      mediaRecorder.start();
+      
+      // Update progress
+      const startTime = Date.now();
+      recordingIntervalRef.current = window.setInterval(() => {
+        const elapsed = (Date.now() - startTime) / 1000;
+        const progress = Math.min((elapsed / videoDuration) * 100, 100);
+        setVideoProgress(progress);
+      }, 100);
+
+      // Stop after duration
+      recordingTimeoutRef.current = window.setTimeout(() => {
+        if (recordingIntervalRef.current) {
+          clearInterval(recordingIntervalRef.current);
+          recordingIntervalRef.current = null;
+        }
+        if (mediaRecorder.state === 'recording') {
+          mediaRecorder.stop();
+        }
+      }, videoDuration * 1000);
+
+    } catch (error) {
+      console.error('Video export failed:', error);
+      toast.error('Video export failed');
+      setIsExporting(false);
+      setVideoProgress(0);
+    }
+  };
 
   return (
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Offscreen renderers */}
-          {showOffscreenRenderer && config && (
-            <OffscreenRenderer
-              config={config}
-              width={exportDimensions.width}
-              height={exportDimensions.height}
-              onReady={handleOffscreenReady}
-            />
-          )}
-          {showVideoRenderer && config && (
-            <VideoRenderer
-              config={config}
-              width={exportDimensions.width}
-              height={exportDimensions.height}
-              duration={videoDuration}
-              onProgress={handleVideoProgress}
-              onComplete={handleVideoComplete}
-              onError={handleVideoError}
-            />
-          )}
-
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -760,10 +596,10 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
                       <div className="bg-secondary/50 rounded-lg p-4">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Video className="w-4 h-4" />
-                          <span className="lowercase">output: mp4 (or webm if not supported)</span>
+                          <span className="lowercase">output: mp4 or webm (depends on browser)</span>
                         </div>
                         <p className="text-xs text-muted-foreground mt-2 lowercase">
-                          הקלטה ברזולוציה שנבחרה ({videoResolution.width}×{videoResolution.height}) ב-30fps.
+                          records the live animation at 30fps. make sure animation is enabled for best results.
                         </p>
                       </div>
 

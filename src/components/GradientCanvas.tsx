@@ -8,6 +8,8 @@ interface GradientCanvasProps {
 export const GradientCanvas = ({ config }: GradientCanvasProps) => {
   const isWireframe = config.wireframe === true;
   const isFrozen = config.frozenTime !== null;
+  // Show overlay when animation is off OR frozen - this is "static mode"
+  const isStaticMode = !config.animate || isFrozen;
   
   // Create a key that changes when colors/weights change to force re-render
   const colorKey = `${config.color1}-${config.color2}-${config.color3}-${config.colorWeight1}-${config.colorWeight2}-${config.colorWeight3}`;
@@ -96,13 +98,13 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
           />
         </ShaderGradientCanvas>
         
-        {/* Color weights overlay - visible when animation is paused */}
-        {isFrozen && (
+        {/* Color weights overlay - visible in static mode (animation off or frozen) */}
+        {isStaticMode && (
           <div 
             className="absolute inset-0 pointer-events-none rounded-lg"
             style={{
               background: `linear-gradient(135deg, ${config.color1} 0%, ${config.color1} ${w1}%, ${config.color2} ${w1}%, ${config.color2} ${w2}%, ${config.color3} ${w2}%, ${config.color3} 100%)`,
-              opacity: 0.35,
+              opacity: 0.4,
               mixBlendMode: 'overlay',
             }}
           />
