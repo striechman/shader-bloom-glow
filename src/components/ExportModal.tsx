@@ -196,6 +196,43 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
       // Draw the source canvas scaled to the target size
       ctx.drawImage(canvas, 0, 0, targetWidth, targetHeight);
 
+      // IMPORTANT: In static mode we show the weight distribution via a DOM overlay.
+      // The export previously grabbed only the WebGL canvas, so dark weights (e.g. 90% black)
+      // could disappear from the exported image.
+      if (config) {
+        const isFrozen = config.frozenTime !== null;
+        const isStaticMode = !config.animate || isFrozen;
+
+        if (isStaticMode && !config.wireframe) {
+          const w1 = config.colorWeight1;
+          const w2 = w1 + config.colorWeight2;
+          const feather = 6;
+          const f1 = Math.max(0, w1 - feather) / 100;
+          const f2 = Math.min(100, w1 + feather) / 100;
+          const f3 = Math.max(0, w2 - feather) / 100;
+          const f4 = Math.min(100, w2 + feather) / 100;
+
+          const g = ctx.createLinearGradient(0, 0, targetWidth, targetHeight);
+          g.addColorStop(0, config.color1);
+          g.addColorStop(f1, config.color1);
+          g.addColorStop(f2, config.color2);
+          g.addColorStop(f3, config.color2);
+          g.addColorStop(f4, config.color3);
+          g.addColorStop(1, config.color3);
+
+          ctx.save();
+          ctx.globalAlpha = 0.6;
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.filter = 'blur(32px)';
+          ctx.fillStyle = g;
+          // Overscan a bit to mimic the on-screen overlay scale
+          const padX = targetWidth * 0.04;
+          const padY = targetHeight * 0.04;
+          ctx.fillRect(-padX, -padY, targetWidth + padX * 2, targetHeight + padY * 2);
+          ctx.restore();
+        }
+      }
+
       // Export
       const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
       const quality = format === 'jpg' ? 0.95 : undefined;

@@ -12,8 +12,7 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
   const isFrozen = config.frozenTime !== null;
   const isStaticMode = !config.animate || isFrozen;
   
-  // Create a key that changes when colors/weights change to force re-render
-  const colorKey = `${config.color1}-${config.color2}-${config.color3}-${config.colorWeight1}-${config.colorWeight2}-${config.colorWeight3}`;
+  // NOTE: Avoid forcing remounts on every slider move (can cause WebGL context loss).
   
   // Calculate aspect ratio container styles - properly constrained
   const getContainerStyle = (): React.CSSProperties => {
@@ -63,7 +62,6 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
         {/* Use custom mesh gradient for wireframe mode, ShaderGradient for others */}
         {isWireframe ? (
           <Canvas
-            key={colorKey}
             style={{
               width: '100%',
               height: '100%',
@@ -76,7 +74,6 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
           </Canvas>
         ) : (
           <ShaderGradientCanvas
-            key={colorKey}
             style={{
               width: '100%',
               height: '100%',
@@ -133,9 +130,10 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
                 ${config.color3} ${f4}%,
                 ${config.color3} 100%
               )`,
-              opacity: 0.22,
-              mixBlendMode: 'soft-light',
-              filter: 'blur(28px)',
+              // Make weights clearly visible in static mode (especially dark colors)
+              opacity: 0.48,
+              mixBlendMode: 'normal',
+              filter: 'blur(32px)',
               transform: 'scale(1.08)',
             }}
           />

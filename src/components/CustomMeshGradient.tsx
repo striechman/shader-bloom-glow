@@ -1,4 +1,4 @@
-import { useRef, useMemo } from 'react';
+import { forwardRef, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { GradientConfig } from '@/types/gradient';
@@ -136,28 +136,24 @@ void main() {
 }
 `;
 
-// Convert hex color to THREE.Color
-function hexToVec3(hex: string): THREE.Color {
-  return new THREE.Color(hex);
-}
-
-export const CustomMeshGradient = ({ config }: CustomMeshGradientProps) => {
+export const CustomMeshGradient = forwardRef<THREE.Mesh, CustomMeshGradientProps>(({ config }, forwardedRef) => {
+  const localMeshRef = useRef<THREE.Mesh>(null);
   const materialRef = useRef<THREE.ShaderMaterial>(null);
   
   const isFrozen = config.frozenTime !== null;
   const isAnimating = config.animate && !isFrozen;
   
-  // Create uniforms
+  // Create uniforms once (avoid allocations every render)
   const uniforms = useMemo(() => ({
-    uColor1: { value: hexToVec3(config.color1) },
-    uColor2: { value: hexToVec3(config.color2) },
-    uColor3: { value: hexToVec3(config.color3) },
-    uWeight1: { value: config.colorWeight1 },
-    uWeight2: { value: config.colorWeight2 },
-    uWeight3: { value: config.colorWeight3 },
-    uTime: { value: isFrozen ? config.frozenTime : 0 },
-    uNoiseScale: { value: config.meshNoiseScale ?? 3.0 },
-    uBlur: { value: (config.meshBlur ?? 50) / 100 },
+    uColor1: { value: new THREE.Color() },
+    uColor2: { value: new THREE.Color() },
+    uColor3: { value: new THREE.Color() },
+    uWeight1: { value: 33 },
+    uWeight2: { value: 34 },
+    uWeight3: { value: 33 },
+    uTime: { value: 0 },
+    uNoiseScale: { value: 3.0 },
+    uBlur: { value: 0.5 },
   }), []);
   
   // Update uniforms when config changes
@@ -165,9 +161,9 @@ export const CustomMeshGradient = ({ config }: CustomMeshGradientProps) => {
     if (!materialRef.current) return;
     
     const mat = materialRef.current;
-    mat.uniforms.uColor1.value = hexToVec3(config.color1);
-    mat.uniforms.uColor2.value = hexToVec3(config.color2);
-    mat.uniforms.uColor3.value = hexToVec3(config.color3);
+    mat.uniforms.uColor1.value.set(config.color1);
+    mat.uniforms.uColor2.value.set(config.color2);
+    mat.uniforms.uColor3.value.set(config.color3);
     mat.uniforms.uWeight1.value = config.colorWeight1;
     mat.uniforms.uWeight2.value = config.colorWeight2;
     mat.uniforms.uWeight3.value = config.colorWeight3;
@@ -183,7 +179,14 @@ export const CustomMeshGradient = ({ config }: CustomMeshGradientProps) => {
   });
   
   return (
-    <mesh>
+    <mesh
+      ref={(node) => {
+        // Support both local ref + forwarded ref (fixes "function components cannot be given refs" warning)
+        localMeshRef.current = node;
+        if (typeof forwardedRef === 'function') forwardedRef(node);
+        else if (forwardedRef) (forwardedRef as { current: THREE.Mesh | null }).current = node;
+      }}
+    >
       <planeGeometry args={[10, 10]} />
       <shaderMaterial
         ref={materialRef}
@@ -193,4 +196,6 @@ export const CustomMeshGradient = ({ config }: CustomMeshGradientProps) => {
       />
     </mesh>
   );
-};
+});
+
+CustomMeshGradient.displayName = 'CustomMeshGradient';
