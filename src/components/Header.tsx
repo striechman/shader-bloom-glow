@@ -10,11 +10,21 @@ export const Header = () => {
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
+          {/* Liquid Glass Logo */}
           <motion.div
-            className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary via-accent to-gradient-3"
+            className="relative w-10 h-10 rounded-xl overflow-hidden"
             animate={{ rotate: 360 }}
             transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
-          />
+          >
+            {/* Glass background */}
+            <div className="absolute inset-0 bg-white/10 backdrop-blur-xl" />
+            {/* Border glow */}
+            <div className="absolute inset-0 rounded-xl border border-white/20" />
+            {/* Inner highlight */}
+            <div className="absolute inset-[1px] rounded-xl bg-gradient-to-br from-white/15 via-transparent to-white/5" />
+            {/* Subtle shine */}
+            <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/10 to-transparent rounded-t-xl" />
+          </motion.div>
           <div className="font-display text-lg font-semibold tracking-tight text-foreground lowercase">
             amdocs ambiance studio
           </div>
