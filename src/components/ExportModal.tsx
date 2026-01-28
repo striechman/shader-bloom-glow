@@ -396,11 +396,15 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
         // For Mesh mode: render the noise-based gradient directly to canvas at full resolution
         await renderMeshGradientToCanvas(ctx, targetWidth, targetHeight, config);
       } else {
-        // For ShaderGradient modes: try to capture from WebGL, then enhance
-        const sourceCanvas = document.querySelector('#gradient-stage canvas') as HTMLCanvasElement | null;
+        // For ShaderGradient modes: capture the visible canvas
+        // Find the gradient stage container
+        const gradientStage = document.querySelector('#gradient-stage');
         
-        if (sourceCanvas) {
-          // Wait for render
+        if (gradientStage) {
+          // Find ALL canvases within the gradient stage
+          const canvases = gradientStage.querySelectorAll('canvas');
+          
+          // Wait for render to complete
           await new Promise<void>((resolve) => {
             requestAnimationFrame(() => {
               requestAnimationFrame(() => {
@@ -409,11 +413,50 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
             });
           });
           
-          // Draw source at target resolution
-          ctx.drawImage(sourceCanvas, 0, 0, targetWidth, targetHeight);
+          // Get the actual visible area dimensions
+          const stageRect = gradientStage.getBoundingClientRect();
+          
+          // Find the aspect ratio container if it exists
+          const aspectContainer = gradientStage.querySelector('[style*="aspectRatio"]') as HTMLElement | null;
+          let sourceRect = stageRect;
+          
+          if (aspectContainer) {
+            sourceRect = aspectContainer.getBoundingClientRect();
+          }
+          
+          // Create a temporary canvas to composite all visible canvases
+          const compositeCanvas = document.createElement('canvas');
+          compositeCanvas.width = sourceRect.width * window.devicePixelRatio;
+          compositeCanvas.height = sourceRect.height * window.devicePixelRatio;
+          const compositeCtx = compositeCanvas.getContext('2d');
+          
+          if (compositeCtx) {
+            compositeCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            
+            // Draw each canvas at its correct position relative to the stage
+            canvases.forEach((canvas) => {
+              const canvasRect = canvas.getBoundingClientRect();
+              const x = canvasRect.left - sourceRect.left;
+              const y = canvasRect.top - sourceRect.top;
+              
+              try {
+                compositeCtx.drawImage(
+                  canvas,
+                  x, y,
+                  canvasRect.width,
+                  canvasRect.height
+                );
+              } catch (e) {
+                console.warn('Could not draw canvas:', e);
+              }
+            });
+            
+            // Now draw the composite to our target canvas at the correct resolution
+            ctx.drawImage(compositeCanvas, 0, 0, targetWidth, targetHeight);
+          }
         }
 
-        // Add weight overlay for static mode
+        // Add weight overlay for static mode (only for non-mesh modes)
         if (config) {
           const isFrozen = config.frozenTime !== null;
           const isStaticMode = !config.animate || isFrozen;
@@ -436,12 +479,12 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
             g.addColorStop(1, config.color3);
 
             ctx.save();
-            ctx.globalAlpha = 0.5;
-            ctx.globalCompositeOperation = 'source-over';
-            ctx.filter = 'blur(32px)';
+            ctx.globalAlpha = 0.4;
+            ctx.globalCompositeOperation = 'soft-light';
+            ctx.filter = 'blur(48px)';
             ctx.fillStyle = g;
-            const padX = targetWidth * 0.04;
-            const padY = targetHeight * 0.04;
+            const padX = targetWidth * 0.08;
+            const padY = targetHeight * 0.08;
             ctx.fillRect(-padX, -padY, targetWidth + padX * 2, targetHeight + padY * 2);
             ctx.restore();
           }
@@ -466,7 +509,6 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
         link.rel = 'noopener';
 
         // Some browsers (notably iOS Safari) can ignore download on blob URLs.
-        // Try download first; if it fails, open in a new tab.
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
