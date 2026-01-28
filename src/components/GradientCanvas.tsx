@@ -32,9 +32,14 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
     };
   };
   
+  const showFrame = config.aspectRatio !== 'free';
+  
   return (
     <div className="absolute inset-0 z-0 flex items-center justify-center overflow-hidden">
-      <div style={getContainerStyle()} className="flex items-center justify-center">
+      <div 
+        style={getContainerStyle()} 
+        className={`flex items-center justify-center ${showFrame ? 'ring-2 ring-white/30 ring-offset-4 ring-offset-transparent rounded-lg' : ''}`}
+      >
         <ShaderGradientCanvas
           key={colorKey}
           style={{
