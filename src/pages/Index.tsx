@@ -32,7 +32,7 @@ const Index = () => {
       <div className="fixed inset-0 bg-gradient-to-b from-background/30 via-transparent to-background pointer-events-none z-[1]" />
 
       {/* Header */}
-      <Header />
+      <Header onMenuToggle={() => setIsPanelOpen(!isPanelOpen)} />
 
       {/* Control Panel */}
       <ControlPanel
