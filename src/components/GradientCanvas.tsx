@@ -26,7 +26,7 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
           height: '100%',
           position: 'absolute',
         }}
-        pixelDensity={1}
+        pixelDensity={2}
         pointerEvents="none"
       >
         <ShaderGradient
@@ -39,7 +39,7 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
           uStrength={config.uStrength}
           uDensity={config.uDensity}
           uFrequency={config.uFrequency}
-          uAmplitude={3.2}
+          uAmplitude={config.animate ? 3.2 : 0.5}
           positionX={0}
           positionY={0}
           positionZ={0}
@@ -52,10 +52,10 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
           reflection={0.1}
           cAzimuthAngle={180}
           cPolarAngle={115}
-          cDistance={3.6}
+          cDistance={config.animate ? 3.6 : 4.5}
           cameraZoom={1}
           lightType="3d"
-          brightness={1.2}
+          brightness={1.4}
           envPreset="city"
           grain={config.grain ? 'on' : 'off'}
           toggleAxis={false}
