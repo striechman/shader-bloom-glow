@@ -60,7 +60,7 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
         style={getContainerStyle()} 
         className="flex items-center justify-center"
       >
-        {/* Use custom mesh for wireframe mode, ShaderGradient for others */}
+        {/* Use custom mesh gradient for wireframe mode, ShaderGradient for others */}
         {isWireframe ? (
           <Canvas
             key={colorKey}
@@ -69,11 +69,9 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
               height: '100%',
               position: 'absolute',
             }}
-            camera={{ position: [0, 0, 4], fov: 50 }}
+            camera={{ position: [0, 0, 5], fov: 50 }}
             gl={{ preserveDrawingBuffer: true, alpha: true }}
           >
-            <ambientLight intensity={0.5} />
-            <directionalLight position={[5, 5, 5]} intensity={1} />
             <CustomMeshGradient config={config} />
           </Canvas>
         ) : (

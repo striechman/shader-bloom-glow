@@ -209,90 +209,40 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle }: Contr
           {/* Mesh Controls (only visible when Mesh is selected) */}
           {isWireframeMode && (
             <div>
-              <h3 className="font-display text-lg font-medium mb-4 text-foreground">Mesh Settings</h3>
+              <h3 className="font-display text-lg font-medium mb-4 text-foreground">Mesh Gradient</h3>
               <div className="space-y-4">
-                {/* Grid Density */}
+                {/* Noise Scale - controls blob size */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground">Grid Density</Label>
-                    <span className="text-xs text-muted-foreground">{config.meshDensity.toFixed(1)}</span>
+                    <Label className="text-muted-foreground">Blob Size</Label>
+                    <span className="text-xs text-muted-foreground">{(config.meshNoiseScale ?? 3).toFixed(1)}</span>
                   </div>
                   <Slider
-                    value={[config.meshDensity]}
-                    onValueChange={([value]) => onConfigChange({ meshDensity: value })}
-                    min={1}
-                    max={6}
+                    value={[config.meshNoiseScale ?? 3]}
+                    onValueChange={([value]) => onConfigChange({ meshNoiseScale: value })}
+                    min={0.5}
+                    max={8}
                     step={0.1}
                     className="w-full"
                   />
+                  <p className="text-xs text-muted-foreground/70">Lower = larger color areas, Higher = more detail</p>
                 </div>
                 
-                {/* Line Thickness */}
+                {/* Blur - controls softness between colors */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground">Line Thickness</Label>
-                    <span className="text-xs text-muted-foreground">{config.meshLineThickness.toFixed(3)}</span>
+                    <Label className="text-muted-foreground">Color Blur</Label>
+                    <span className="text-xs text-muted-foreground">{config.meshBlur ?? 50}%</span>
                   </div>
                   <Slider
-                    value={[config.meshLineThickness]}
-                    onValueChange={([value]) => onConfigChange({ meshLineThickness: value })}
-                    min={0.005}
-                    max={0.1}
-                    step={0.005}
-                    className="w-full"
-                  />
-                </div>
-                
-                {/* Line Color */}
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">Line Color</Label>
-                  <div className="flex gap-2">
-                    {(['black', 'white', 'accent'] as const).map((color) => (
-                      <button
-                        key={color}
-                        onClick={() => onConfigChange({ meshLineColor: color })}
-                        className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-all capitalize ${
-                          config.meshLineColor === color
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                        }`}
-                      >
-                        {color}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                
-                {/* Fill Opacity */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground">Fill Opacity</Label>
-                    <span className="text-xs text-muted-foreground">{(config.meshFillOpacity * 100).toFixed(0)}%</span>
-                  </div>
-                  <Slider
-                    value={[config.meshFillOpacity]}
-                    onValueChange={([value]) => onConfigChange({ meshFillOpacity: value })}
+                    value={[config.meshBlur ?? 50]}
+                    onValueChange={([value]) => onConfigChange({ meshBlur: value })}
                     min={0}
-                    max={1}
-                    step={0.05}
-                    className="w-full"
-                  />
-                </div>
-                
-                {/* View Angle */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground">View Angle</Label>
-                    <span className="text-xs text-muted-foreground">{config.meshAngle}°</span>
-                  </div>
-                  <Slider
-                    value={[config.meshAngle]}
-                    onValueChange={([value]) => onConfigChange({ meshAngle: value })}
-                    min={0}
-                    max={90}
+                    max={100}
                     step={1}
                     className="w-full"
                   />
+                  <p className="text-xs text-muted-foreground/70">Softness of transitions between colors</p>
                 </div>
               </div>
             </div>

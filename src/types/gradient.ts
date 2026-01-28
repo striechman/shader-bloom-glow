@@ -24,12 +24,9 @@ export interface GradientConfig {
   uDensity: number;
   uFrequency: number;
   
-  // Mesh-specific
-  meshDensity: number;
-  meshAngle: number;
-  meshLineThickness: number; // 0.01-0.1
-  meshLineColor: 'black' | 'white' | 'accent'; // Line color option
-  meshFillOpacity: number; // 0-1
+  // Mesh Gradient settings (noise-based color blending)
+  meshNoiseScale: number; // Size of color blobs (1-10, higher = smaller blobs)
+  meshBlur: number; // Softness between colors (0-100)
   
   // Aspect Ratio
   aspectRatio: '1:1' | '16:9' | '9:16' | '2:3' | '3:2' | '4:5' | '4:3' | '3:4' | 'free';
@@ -51,11 +48,8 @@ export const defaultGradientConfig: GradientConfig = {
   uDensity: 1.3,
   uFrequency: 5.5,
   frozenTime: null,
-  meshDensity: 3.5,
-  meshAngle: 45,
-  meshLineThickness: 0.02,
-  meshLineColor: 'black',
-  meshFillOpacity: 0.7,
+  meshNoiseScale: 3.0,
+  meshBlur: 50,
   aspectRatio: 'free',
 };
 
