@@ -15,11 +15,18 @@ export const HeroContent = ({ onOpenPanel, onExport }: HeroContentProps) => {
         transition={{ duration: 0.8, delay: 0.4 }}
         className="max-w-4xl"
       >
-        <h1 className="font-display text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight mb-6">
-          <span className="text-muted-foreground text-2xl md:text-3xl lg:text-4xl block mb-2">amdocs</span>
-          <span className="text-gradient">AMBIANCE</span>
-          <br />
-          <span className="text-foreground">studio</span>
+        <h1 className="tracking-tight mb-6">
+          <div className="flex items-baseline justify-center gap-3">
+            <span className="font-display text-2xl md:text-3xl lg:text-4xl font-semibold text-muted-foreground lowercase">
+              amdocs
+            </span>
+            <span className="font-display text-5xl md:text-7xl lg:text-8xl font-bold text-gradient uppercase">
+              AMBIANCE
+            </span>
+          </div>
+          <div className="font-display text-3xl md:text-4xl lg:text-5xl font-semibold text-foreground lowercase">
+            studio
+          </div>
         </h1>
 
         <motion.div

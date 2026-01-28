@@ -15,9 +15,13 @@ export const Header = () => {
             animate={{ rotate: 360 }}
             transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
           />
-          <span className="font-display text-xl font-semibold tracking-tight text-foreground">
-            Gradient Studio
-          </span>
+          <div className="leading-tight">
+            <div className="font-display text-base md:text-lg font-semibold tracking-tight text-foreground">
+              <span className="text-muted-foreground lowercase">amdocs</span>{' '}
+              <span className="uppercase">AMBIANCE</span>
+            </div>
+            <div className="text-xs text-muted-foreground lowercase">studio</div>
+          </div>
         </div>
         <p className="hidden md:block text-sm text-muted-foreground">
           Create • Customize • Export
