@@ -19,7 +19,6 @@ interface GradientCanvasProps {
 }
 
 export const GradientCanvas = ({ config }: GradientCanvasProps) => {
-  // When wireframe is on, use specific settings to keep the sphere shape visible
   const isWireframe = config.wireframe === true;
   
   return (
@@ -40,9 +39,9 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
           shader="defaults"
           uTime={0}
           uSpeed={config.speed}
-          uStrength={isWireframe ? 2 : config.uStrength}
-          uDensity={isWireframe ? 1 : config.uDensity}
-          uFrequency={isWireframe ? 3 : config.uFrequency}
+          uStrength={config.uStrength}
+          uDensity={config.uDensity}
+          uFrequency={config.uFrequency}
           uAmplitude={config.animate ? 3.2 : 0.5}
           positionX={0}
           positionY={0}
@@ -53,13 +52,13 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
           color1={config.color1}
           color2={config.color2}
           color3={config.color3}
-          reflection={isWireframe ? 0.3 : 0.1}
+          reflection={0.1}
           cAzimuthAngle={180}
           cPolarAngle={115}
-          cDistance={isWireframe ? 4 : (config.animate ? 3.6 : 4.5)}
+          cDistance={config.animate ? 3.6 : 4.5}
           cameraZoom={1}
           lightType="3d"
-          brightness={isWireframe ? 1.8 : 1.4}
+          brightness={1.4}
           envPreset="city"
           grain={config.grain ? 'on' : 'off'}
           toggleAxis={false}
