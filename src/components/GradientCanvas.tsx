@@ -13,36 +13,28 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
   const colorKey = `${config.color1}-${config.color2}-${config.color3}-${config.colorWeight1}-${config.colorWeight2}-${config.colorWeight3}`;
   
   // Calculate aspect ratio container styles
-  const getContainerStyle = () => {
+  const getContainerStyle = (): React.CSSProperties => {
     if (config.aspectRatio === 'free') {
-      return { width: '100%', height: '100%' };
+      return { width: '100%', height: '100%', position: 'relative' };
     }
     
     const ratio = aspectRatioValues[config.aspectRatio];
-    if (!ratio) return { width: '100%', height: '100%' };
+    if (!ratio) return { width: '100%', height: '100%', position: 'relative' };
     
-    // For landscape ratios, constrain by height
-    // For portrait ratios, constrain by width
-    if (ratio >= 1) {
-      return {
-        width: '100%',
-        height: '100%',
-        maxWidth: `calc(100vh * ${ratio})`,
-        margin: '0 auto',
-      };
-    } else {
-      return {
-        width: '100%',
-        height: '100%',
-        maxHeight: `calc(100vw / ${ratio})`,
-        margin: 'auto 0',
-      };
-    }
+    // Use aspect-ratio CSS property for proper scaling
+    return {
+      width: '100%',
+      height: '100%',
+      maxWidth: ratio >= 1 ? `min(100%, calc(100vh * ${ratio}))` : '100%',
+      maxHeight: ratio < 1 ? `min(100%, calc(100vw * ${1/ratio}))` : '100%',
+      aspectRatio: `${ratio}`,
+      position: 'relative',
+    };
   };
   
   return (
-    <div className="absolute inset-0 z-0 flex items-center justify-center">
-      <div style={getContainerStyle()}>
+    <div className="absolute inset-0 z-0 flex items-center justify-center overflow-hidden">
+      <div style={getContainerStyle()} className="flex items-center justify-center">
         <ShaderGradientCanvas
           key={colorKey}
           style={{
