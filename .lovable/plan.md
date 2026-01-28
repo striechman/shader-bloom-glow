@@ -1,124 +1,93 @@
 
+מטרות (לפי הבקשה שלך)
+1) Aspect Ratio “לא משפיע” → לתקן כך שהקנבס באמת יוצג בתוך יחס המסך הנבחר, ולא “ימתח” על כל המסך.
+2) להסיר את המסגרת (frame) – לא צריך.
+3) אחוזי הצבעים (weights) לא משפיעים כשאין אנימציה → לגרום לזה לעבוד ולהיראות בפועל גם כשהאנימציה עצורה.
+4) לבדוק ולתקן Export של תמונה + קוד + וידאו (כולל איכות ורזולוציה).
 
-## תיקון בעיות - ייצוא תמונה ומשקלי צבעים
+מה מצאתי בקוד (אבחון קצר)
+- ב־`GradientCanvas.tsx` מגדירים ל־container גם `width: '100%'` וגם `height: '100%'` יחד עם `aspectRatio`. בפועל, כששני הממדים “נעולים” על 100%, ה־`aspect-ratio` כמעט לא מצליח “להכריח” את היחס, ולכן זה מרגיש שאין השפעה.
+- משקלי צבעים לא מוזנים בכלל ל־`ShaderGradient` (הספרייה תומכת רק ב־color1/2/3 בלי stops). לכן גם אם ה־state משתנה, לא רואים שינוי “אמיתי” בגרדיינט התלת־ממדי, במיוחד כשעצור.
+- ייצוא תמונה/וידאו כיום מצלם את ה־canvas הקיים, אבל הוא בגודל המסך הנוכחי ולא בגודל שבחרת במודאל (1920×1080 וכו’). לכן האיכות לא תואמת את מה שמבקשים.
+- וידאו: כרגע זה יוצא WebM (לא MP4). MP4 ב־MediaRecorder נתמך חלקית בלבד בדפדפנים; צריך לעשות זיהוי תמיכה + fallback ברור.
 
-### בעיה 1: ייצוא תמונה לא עובד/לא באיכות טובה
+תכנית עבודה (מה נשנה)
+A) תיקון Aspect Ratio (וללא מסגרת)
+1) `src/components/GradientCanvas.tsx`
+   - להסיר את `showFrame` ואת ה־`ring-*` שנוספו.
+   - לשכתב את `getContainerStyle()` כך ש־aspect ratio ישפיע באמת:
+     - במקום `width: 100%` ו־`height: 100%` ביחד:
+       - נחשב “קופסה” שמרכזים במסך עם:
+         - `width: min(100vw, 100vh * ratio)`
+         - `height: calc(width / ratio)` (או להפך לפורטרט)
+       - או פתרון CSS נקי: לקבוע רק ממד אחד והשני `auto`, יחד עם `aspectRatio`.
+   - נשמור על `position: relative` כדי שה־canvas (absolute) יתאים נכון.
 
-**הבעיה הנוכחית:**
-הקוד הנוכחי ב-`ExportModal.tsx` מנסה פשוט להעתיק את ה-canvas הקיים ולהגדיל אותו. זה לא עובד טוב כי:
-1. ה-WebGL canvas של ShaderGradient לא שומר את התוכן שלו בין רנדרים (חסר `preserveDrawingBuffer: true`)
-2. הגדלה של תמונה קטנה לגדולה = טשטוש ואיכות נמוכה
-3. לפעמים ה-canvas ריק כשמנסים לצלם אותו
+B) לגרום ל־Color Weights לעבוד גם כשהאנימציה עצורה
+המטרה כאן היא “שיראו שינוי” כשמזיזים אחוזים גם בלי אנימציה.
+2) `src/components/GradientCanvas.tsx`
+   - להשאיר את ה־`key={colorKey}` (זה בסדר).
+   - להוסיף שכבת “Preview” ב־CSS (רק כשעצור / או לפי בחירה):
+     - כאשר `isFrozen === true`, נציג מעל ה־WebGL שכבה שקופה חלקית עם:
+       - `background: linear-gradient(135deg, color1 0..w1%, color2 w1..w2%, color3 w2..100%)`
+     - זה נותן חיווי ויזואלי אמיתי למשקלים, גם אם ShaderGradient לא תומך ב־stops.
+   - נשמור את האטימות נמוכה (למשל 0.25–0.45) כדי שלא “יהרוס” את המראה, אבל כן ייראה שינוי.
+   - (אופציונלי) אם תרצה שזה ישפיע תמיד, לא רק בפאוז—נאפשר מצב תמידי; כרגע נתחיל רק ב־paused כדי לפתור את הדרישה שלך.
 
-**הפתרון:**
-1. יצירת canvas נפרד לייצוא ברזולוציה הרצויה
-2. רינדור הגרדיינט מחדש ברזולוציה הגבוהה
-3. שימוש ב-`preserveDrawingBuffer: true` ב-ShaderGradientCanvas
-4. הוספת דיליי קטן לוודא שהרנדר הושלם
+C) ייצוא תמונה באיכות וברזולוציה שבוחרים
+3) `src/components/ExportModal.tsx`
+   - להפסיק להסתמך על `document.querySelector('canvas')` בלבד ובגודל המסך.
+   - להוסיף “רנדרר ייצוא” זמני (offscreen / hidden) שמרנדר את הגרדיינט בגודל היעד:
+     - ניצור בתוך המודאל container נסתר (למשל `position: fixed; left: -99999px`) בגודל שנבחר (width/height).
+     - נרנדר שם `ShaderGradientCanvas` חדש עם אותו `config` אך עם style בגודל המדויק.
+     - נמתין 2–3 `requestAnimationFrame` כדי לתת ל־WebGL לצייר פריים.
+     - נצלם `toBlob/toDataURL` מתוך הקנבס הזה.
+     - נפרק (unmount) את הרנדרר אחרי השמירה כדי לא להשאיר הקשר WebGL פתוח.
+   - נעדיף `canvas.toBlob()` על `toDataURL()` כדי לשפר יציבות וביצועים.
+   - נוסיף טיפול שגיאות ברור אם מתקבל “קנבס ריק”.
 
-**שינויים:**
+הערה חשובה: יצירת WebGL נוסף עלולה לגרום ל־“THREE.WebGLRenderer: Context Lost” במכשירים חלשים. לכן נעשה זאת קצר, ונשקול גם אופציה חלופית: “להקפיא, להגדיל זמנית את הקנבס הראשי, לצלם, ולהחזיר” אם נראה שהגישה הראשונה כבדה.
 
-```typescript
-// GradientCanvas.tsx - הוספת preserveDrawingBuffer
-<ShaderGradientCanvas
-  style={{...}}
-  pixelDensity={2}
-  pointerEvents="none"
-  gl={{ preserveDrawingBuffer: true }} // חדש!
->
-```
+D) בדיקה ותיקון Export וידאו + Export קוד
+4) `src/components/ExportModal.tsx`
+   - Video:
+     - כרגע הרזולוציה שבוחרים לא באמת מיושמת; הוידאו מצולם מהקנבס הקיים.
+     - ניישם אותו עיקרון של “רנדרר ייצוא” גם לוידאו:
+       - נרנדר קנבס ייעודי בגודל הוידאו (1080p וכו’),
+       - נצלם ממנו `captureStream(30)` ונקליט.
+     - MP4:
+       - נבדוק `MediaRecorder.isTypeSupported('video/mp4;codecs=avc1')`.
+       - אם אין תמיכה, נעשה fallback ל־WebM ונסביר בטוסט: “הדפדפן לא תומך MP4, ייצאנו WebM”.
+       - אם יש תמיכה, נשמור mp4 אמיתי.
+     - נוודא שה־duration Custom עובד (slider/number input) ושלא נשאר טיימר “רוח” אם סוגרים מודאל באמצע.
+   - Code (CSS export):
+     - נוודא שהקוד כבר מייצג weights (הוא כן), ונוסיף (אם צריך) גם הערה/variant נוסף לשימושים נפוצים.
+     - נבדוק שה־copy עובד בכל הדפדפנים (fallback אם clipboard נכשל).
 
-```typescript
-// ExportModal.tsx - שיפור הייצוא
-const handleExport = async () => {
-  setIsExporting(true);
-  
-  // Wait for any pending renders
-  await new Promise(resolve => setTimeout(resolve, 100));
-  
-  const canvas = document.querySelector('canvas') as HTMLCanvasElement;
-  if (!canvas) {
-    toast.error('Canvas not found');
-    setIsExporting(false);
-    return;
-  }
+קבצים שניגע בהם
+- `src/components/GradientCanvas.tsx`
+  - Fix aspect ratio sizing (באמת משפיע)
+  - Remove frame
+  - Add paused weights preview overlay
+- `src/components/ExportModal.tsx`
+  - Export image via hidden/offscreen re-render at target resolution
+  - Export video via hidden/offscreen re-render at target resolution
+  - MP4 support detection + fallback to WebM + הודעה
+  - (בדיקה) יצוא קוד/העתקה
 
-  // Get the WebGL context with preserveDrawingBuffer
-  const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
-  
-  // Create export at target resolution
-  const width = useCustomSize ? customWidth : selectedSize.width;
-  const height = useCustomSize ? customHeight : selectedSize.height;
-  
-  // Use toDataURL directly for better quality
-  try {
-    // For high quality, we capture at the current canvas resolution
-    // and let the browser handle the download
-    const dataUrl = canvas.toDataURL(
-      format === 'png' ? 'image/png' : 'image/jpeg',
-      format === 'jpg' ? 0.95 : undefined
-    );
-    
-    // Create download link
-    const link = document.createElement('a');
-    link.download = `gradient-${Date.now()}.${format}`;
-    link.href = dataUrl;
-    link.click();
-    
-    toast.success('Exported successfully!');
-  } catch (error) {
-    toast.error('Export failed - try pausing the animation first');
-  }
-  
-  setIsExporting(false);
-};
-```
+בדיקות קבלה (מה אתה אמור לראות בסוף)
+1) Aspect Ratio:
+   - מעבר בין 16:9 / 9:16 / 1:1 משנה בפועל את “הקופסה” של הגרדיינט על המסך (מוצג במרכז, לא מתיחה לכל המסך).
+2) אין מסגרת.
+3) כשהאנימציה עצורה:
+   - הזזת אחוזים משנה מיידית את המראה (דרך שכבת preview) ולא רק את המספר.
+4) Export תמונה:
+   - אם בוחרים 1920×1080, הקובץ באמת יוצא 1920×1080 ובאיכות חדה.
+5) Export וידאו:
+   - 1080p באמת יוצא 1080p (לא תלוי בגודל המסך).
+   - אם MP4 נתמך – יוצא MP4. אם לא – יוצא WebM עם הודעה ברורה.
 
----
-
-### בעיה 2: לא ניתן לשנות משקלי צבעים כשהאנימציה מושהית
-
-**הבעיה הנוכחית:**
-בדקתי את הקוד - ה-sliders של משקלי הצבעים אמורים לעבוד תמיד. הבעיה האמיתית היא כנראה אחת משתיים:
-1. משקלי הצבעים משפיעים רק על ה-CSS export ולא על הגרדיינט ה-3D (כי ShaderGradient לא תומך ב-color stops)
-2. כשהאנימציה מושהית (frozen), הגרדיינט לא מתעדכן כי ה-`uTime` קבוע
-
-**הפתרון:**
-1. לוודא שהגרדיינט מתעדכן גם במצב frozen כשמשנים צבעים
-2. להוסיף מפתח (key) ל-ShaderGradient שמשתנה כשהצבעים משתנים - מה שיאלץ re-render
-3. להציג הודעה למשתמש שמשקלי הצבעים משפיעים בעיקר על ה-CSS export
-
-**שינויים:**
-
-```typescript
-// GradientCanvas.tsx - הוספת key לאלץ re-render כשמשנים צבעים
-export const GradientCanvas = ({ config }: GradientCanvasProps) => {
-  // Create a key that changes when colors change
-  const colorKey = `${config.color1}-${config.color2}-${config.color3}-${config.colorWeight1}-${config.colorWeight2}-${config.colorWeight3}`;
-  
-  return (
-    <div className="absolute inset-0 z-0 flex items-center justify-center">
-      <div style={getContainerStyle()}>
-        <ShaderGradientCanvas
-          key={colorKey} // Forces re-render when colors change
-          // ...rest
-        >
-```
-
----
-
-### קבצים לעדכון
-
-| קובץ | שינויים |
-|------|---------|
-| `src/components/GradientCanvas.tsx` | הוספת `preserveDrawingBuffer: true` ו-key דינמי |
-| `src/components/ExportModal.tsx` | שיפור לוגיקת הייצוא עם toDataURL ישיר ודיליי |
-
----
-
-### סדר ביצוע
-
-1. עדכון `GradientCanvas.tsx` להוספת `preserveDrawingBuffer` ו-key
-2. עדכון `ExportModal.tsx` עם לוגיקת ייצוא משופרת
-3. בדיקה שהייצוא עובד ושניתן לשנות צבעים במצב מושהה
+סיכונים/הערות
+- WebGL Context Lost: אם נראה שזה קורה הרבה בגלל רנדרר ייצוא נוסף, נעבור לאסטרטגיה של “resize זמני לקנבס הראשי בזמן export”.
+- weights ב־3D: הספרייה לא תומכת ב־color stops “אמיתיים”, לכן הפתרון הוא שכבת preview שמייצרת את ההתנהגות שאתה רוצה בפועל (במיוחד בפאוז).
 
