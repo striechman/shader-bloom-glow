@@ -140,9 +140,6 @@ void main() {
 export function CustomMeshGradient({ config }: CustomMeshGradientProps) {
   const materialRef = useRef<THREE.ShaderMaterial>(null);
   
-  const isFrozen = config.frozenTime !== null;
-  const isAnimating = config.animate && !isFrozen;
-  
   // Create uniforms once (avoid allocations every render)
   const uniforms = useMemo(() => ({
     uColor1: { value: new THREE.Color(config.color1) },
@@ -157,7 +154,7 @@ export function CustomMeshGradient({ config }: CustomMeshGradientProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), []);
   
-  // Update uniforms when config changes
+  // Update uniforms every frame - read config values directly to stay reactive
   useFrame((state) => {
     if (!materialRef.current) return;
     
@@ -171,12 +168,18 @@ export function CustomMeshGradient({ config }: CustomMeshGradientProps) {
     mat.uniforms.uNoiseScale.value = config.meshNoiseScale ?? 3.0;
     mat.uniforms.uBlur.value = (config.meshBlur ?? 50) / 100;
     
-    // Animate time
-    if (isAnimating) {
+    // Check animation state directly from config (not from stale closure)
+    const isFrozen = config.frozenTime !== null;
+    const shouldAnimate = config.animate && !isFrozen;
+    
+    if (shouldAnimate) {
+      // Animate: use elapsed time multiplied by speed
       mat.uniforms.uTime.value = state.clock.elapsedTime * config.speed;
     } else if (isFrozen && config.frozenTime !== null) {
+      // Frozen at specific time
       mat.uniforms.uTime.value = config.frozenTime;
     }
+    // If not animating and not frozen, time stays at current value (static)
   });
   
   return (
