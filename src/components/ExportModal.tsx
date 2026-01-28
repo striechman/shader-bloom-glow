@@ -1,6 +1,6 @@
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useDragControls } from 'framer-motion';
 import { X, Download, Image, FileImage, Code, Copy, Check, Monitor, Printer, LayoutGrid, Share2 } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { GradientConfig, exportCategories, ExportCategory } from '@/types/gradient';
 
@@ -27,6 +27,9 @@ const categoryLabels: Record<ExportCategory, string> = {
 };
 
 export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
+  const constraintsRef = useRef<HTMLDivElement>(null);
+  const dragControls = useDragControls();
+
   const [selectedCategory, setSelectedCategory] = useState<ExportCategory>('social');
   const [selectedSize, setSelectedSize] = useState(exportCategories.social[0]);
   const [customWidth, setCustomWidth] = useState(1920);
@@ -172,22 +175,36 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
             onClick={onClose}
             className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm"
           />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg max-h-[85vh]"
-          >
-            <div className="glass rounded-2xl p-6 mx-4 max-h-[85vh] overflow-y-auto">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="font-display text-xl font-semibold text-foreground">Export Gradient</h2>
-                <button
-                  onClick={onClose}
-                  className="p-2 rounded-full hover:bg-secondary/50 transition-colors"
+          <div ref={constraintsRef} className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              drag
+              dragControls={dragControls}
+              dragListener={false}
+              dragConstraints={constraintsRef}
+              dragMomentum={false}
+              className="w-full max-w-lg"
+            >
+              <div className="glass rounded-2xl mx-auto max-h-[80vh] overflow-y-auto">
+                <div
+                  className="px-6 pt-4 pb-4 flex items-center justify-between border-b border-border cursor-move select-none"
+                  onPointerDown={(e) => dragControls.start(e)}
                 >
-                  <X className="w-5 h-5 text-muted-foreground" />
-                </button>
-              </div>
+                  <div>
+                    <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-border" />
+                    <h2 className="font-display text-xl font-semibold text-foreground">Export Gradient</h2>
+                  </div>
+                  <button
+                    onClick={onClose}
+                    className="p-2 rounded-full hover:bg-secondary/50 transition-colors"
+                  >
+                    <X className="w-5 h-5 text-muted-foreground" />
+                  </button>
+                </div>
+
+                <div className="p-6 pb-8">
 
               {/* Tab Selection */}
               <div className="flex gap-2 mb-6">
@@ -390,8 +407,10 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
                   </motion.button>
                 </div>
               )}
-            </div>
-          </motion.div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
         </>
       )}
     </AnimatePresence>
