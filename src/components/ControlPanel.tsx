@@ -26,16 +26,27 @@ interface ControlPanelProps {
 const shapeOptions: { value: GradientConfig['type']; label: string }[] = [
   { value: 'sphere', label: 'Sphere' },
   { value: 'plane', label: 'Plane' },
-  { value: 'waterPlane', label: 'Water' },
+  { value: 'waterPlane', label: 'Mesh' },
+];
+
+// Brand color palette
+const brandColors = [
+  { name: 'Yellow Orange', hex: '#FDB515' },
+  { name: 'Coral', hex: '#F25665' },
+  { name: 'Magenta', hex: '#E71989' },
+  { name: 'Deep Violet', hex: '#6A00F4' },
+  { name: 'Electric Blue', hex: '#00C2FF' },
+  { name: 'Black', hex: '#000000' },
+  { name: 'White', hex: '#FFFFFF' },
 ];
 
 const colorPresets = [
-  { color1: '#FDB515', color2: '#E71989', color3: '#000000' }, // Yellow Orange + Magenta + Black
-  { color1: '#F25665', color2: '#6A00F4', color3: '#000000' }, // Coral + Deep Violet + Black
-  { color1: '#E71989', color2: '#00C2FF', color3: '#000000' }, // Magenta + Electric Blue + Black
-  { color1: '#6A00F4', color2: '#FDB515', color3: '#000000' }, // Deep Violet + Yellow Orange + Black
-  { color1: '#00C2FF', color2: '#F25665', color3: '#000000' }, // Electric Blue + Coral + Black
-  { color1: '#FDB515', color2: '#F25665', color3: '#000000' }, // Yellow Orange + Coral + Black
+  { color1: '#FDB515', color2: '#E71989', color3: '#000000' },
+  { color1: '#F25665', color2: '#6A00F4', color3: '#000000' },
+  { color1: '#E71989', color2: '#00C2FF', color3: '#000000' },
+  { color1: '#6A00F4', color2: '#FDB515', color3: '#000000' },
+  { color1: '#00C2FF', color2: '#F25665', color3: '#000000' },
+  { color1: '#FDB515', color2: '#F25665', color3: '#000000' },
 ];
 
 export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle }: ControlPanelProps) => {
@@ -103,34 +114,27 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle }: Contr
                 />
               ))}
             </div>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label className="text-muted-foreground">Color 1</Label>
-                <input
-                  type="color"
-                  value={config.color1}
-                  onChange={(e) => onConfigChange({ color1: e.target.value })}
-                  className="w-10 h-8 rounded cursor-pointer border-0"
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <Label className="text-muted-foreground">Color 2</Label>
-                <input
-                  type="color"
-                  value={config.color2}
-                  onChange={(e) => onConfigChange({ color2: e.target.value })}
-                  className="w-10 h-8 rounded cursor-pointer border-0"
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <Label className="text-muted-foreground">Color 3</Label>
-                <input
-                  type="color"
-                  value={config.color3}
-                  onChange={(e) => onConfigChange({ color3: e.target.value })}
-                  className="w-10 h-8 rounded cursor-pointer border-0"
-                />
-              </div>
+            <div className="space-y-4">
+              {['color1', 'color2', 'color3'].map((colorKey, index) => (
+                <div key={colorKey}>
+                  <Label className="text-muted-foreground mb-2 block">Color {index + 1}</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {brandColors.map((color) => (
+                      <button
+                        key={color.hex}
+                        onClick={() => onConfigChange({ [colorKey]: color.hex })}
+                        className={`w-8 h-8 rounded-lg transition-all border-2 ${
+                          config[colorKey as keyof GradientConfig] === color.hex
+                            ? 'border-primary scale-110'
+                            : 'border-transparent hover:scale-105'
+                        }`}
+                        style={{ backgroundColor: color.hex }}
+                        title={color.name}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
