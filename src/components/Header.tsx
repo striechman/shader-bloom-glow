@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { ThemeToggle } from './ThemeToggle';
 
 export const Header = () => {
   return (
@@ -17,18 +18,21 @@ export const Header = () => {
             transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
           >
             {/* Glass background */}
-            <div className="absolute inset-0 bg-white/10 backdrop-blur-xl" />
+            <div className="absolute inset-0 bg-foreground/10 backdrop-blur-xl" />
             {/* Border glow */}
-            <div className="absolute inset-0 rounded-xl border border-white/20" />
+            <div className="absolute inset-0 rounded-xl border border-foreground/20" />
             {/* Inner highlight */}
-            <div className="absolute inset-[1px] rounded-xl bg-gradient-to-br from-white/15 via-transparent to-white/5" />
+            <div className="absolute inset-[1px] rounded-xl bg-gradient-to-br from-foreground/15 via-transparent to-foreground/5" />
             {/* Subtle shine */}
-            <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/10 to-transparent rounded-t-xl" />
+            <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-foreground/10 to-transparent rounded-t-xl" />
           </motion.div>
           <div className="font-display text-lg font-semibold tracking-tight text-foreground lowercase">
             amdocs ambiance studio
           </div>
         </div>
+        
+        {/* Theme Toggle */}
+        <ThemeToggle />
       </div>
     </motion.header>
   );
