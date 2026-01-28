@@ -176,9 +176,9 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg max-h-[90vh] overflow-y-auto"
+            className="fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg max-h-[85vh]"
           >
-            <div className="glass rounded-2xl p-6 mx-4">
+            <div className="glass rounded-2xl p-6 mx-4 max-h-[85vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="font-display text-xl font-semibold text-foreground">Export Gradient</h2>
                 <button
