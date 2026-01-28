@@ -48,7 +48,7 @@ export const defaultGradientConfig: GradientConfig = {
   uDensity: 1.3,
   uFrequency: 5.5,
   frozenTime: null,
-  meshNoiseScale: 3.0,
+  meshNoiseScale: 1.0,
   meshBlur: 50,
   aspectRatio: 'free',
 };
