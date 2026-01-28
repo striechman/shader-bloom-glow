@@ -1,4 +1,4 @@
-import { forwardRef, useMemo, useRef } from 'react';
+import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { GradientConfig } from '@/types/gradient';
@@ -136,8 +136,8 @@ void main() {
 }
 `;
 
-export const CustomMeshGradient = forwardRef<THREE.Mesh, CustomMeshGradientProps>(({ config }, forwardedRef) => {
-  const localMeshRef = useRef<THREE.Mesh>(null);
+// Simple function component - no forwardRef needed for R3F child components
+export function CustomMeshGradient({ config }: CustomMeshGradientProps) {
   const materialRef = useRef<THREE.ShaderMaterial>(null);
   
   const isFrozen = config.frozenTime !== null;
@@ -145,15 +145,16 @@ export const CustomMeshGradient = forwardRef<THREE.Mesh, CustomMeshGradientProps
   
   // Create uniforms once (avoid allocations every render)
   const uniforms = useMemo(() => ({
-    uColor1: { value: new THREE.Color() },
-    uColor2: { value: new THREE.Color() },
-    uColor3: { value: new THREE.Color() },
-    uWeight1: { value: 33 },
-    uWeight2: { value: 34 },
-    uWeight3: { value: 33 },
+    uColor1: { value: new THREE.Color(config.color1) },
+    uColor2: { value: new THREE.Color(config.color2) },
+    uColor3: { value: new THREE.Color(config.color3) },
+    uWeight1: { value: config.colorWeight1 },
+    uWeight2: { value: config.colorWeight2 },
+    uWeight3: { value: config.colorWeight3 },
     uTime: { value: 0 },
-    uNoiseScale: { value: 3.0 },
-    uBlur: { value: 0.5 },
+    uNoiseScale: { value: config.meshNoiseScale ?? 3.0 },
+    uBlur: { value: (config.meshBlur ?? 50) / 100 },
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }), []);
   
   // Update uniforms when config changes
@@ -179,14 +180,7 @@ export const CustomMeshGradient = forwardRef<THREE.Mesh, CustomMeshGradientProps
   });
   
   return (
-    <mesh
-      ref={(node) => {
-        // Support both local ref + forwarded ref (fixes "function components cannot be given refs" warning)
-        localMeshRef.current = node;
-        if (typeof forwardedRef === 'function') forwardedRef(node);
-        else if (forwardedRef) (forwardedRef as { current: THREE.Mesh | null }).current = node;
-      }}
-    >
+    <mesh>
       <planeGeometry args={[10, 10]} />
       <shaderMaterial
         ref={materialRef}
@@ -196,6 +190,4 @@ export const CustomMeshGradient = forwardRef<THREE.Mesh, CustomMeshGradientProps
       />
     </mesh>
   );
-});
-
-CustomMeshGradient.displayName = 'CustomMeshGradient';
+}
