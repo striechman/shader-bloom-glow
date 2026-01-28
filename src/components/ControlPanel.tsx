@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 
 interface GradientConfig {
   type: 'sphere' | 'plane' | 'waterPlane';
+  wireframe: boolean;
   animate: boolean;
   speed: number;
   color1: string;
@@ -23,10 +24,11 @@ interface ControlPanelProps {
   onToggle: () => void;
 }
 
-const shapeOptions: { value: GradientConfig['type']; label: string }[] = [
-  { value: 'sphere', label: 'Sphere' },
-  { value: 'plane', label: 'Plane' },
-  { value: 'waterPlane', label: 'Mesh' },
+const shapeOptions: { value: GradientConfig['type']; wireframe: boolean; label: string }[] = [
+  { value: 'sphere', wireframe: false, label: 'Sphere' },
+  { value: 'plane', wireframe: false, label: 'Plane' },
+  { value: 'waterPlane', wireframe: false, label: 'Water' },
+  { value: 'sphere', wireframe: true, label: 'Mesh' },
 ];
 
 // Brand color palette
@@ -83,20 +85,23 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle }: Contr
         <div className="p-6 pt-20 space-y-8">
           <div>
             <h3 className="font-display text-lg font-medium mb-4 text-foreground">Shape</h3>
-            <div className="grid grid-cols-3 gap-2">
-              {shapeOptions.map((shape) => (
-                <button
-                  key={shape.value}
-                  onClick={() => onConfigChange({ type: shape.value })}
-                  className={`py-2 px-3 rounded-lg text-sm font-medium transition-all ${
-                    config.type === shape.value
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                  }`}
-                >
-                  {shape.label}
-                </button>
-              ))}
+            <div className="grid grid-cols-2 gap-2">
+              {shapeOptions.map((shape) => {
+                const isActive = config.type === shape.value && config.wireframe === shape.wireframe;
+                return (
+                  <button
+                    key={shape.label}
+                    onClick={() => onConfigChange({ type: shape.value, wireframe: shape.wireframe })}
+                    className={`py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                      isActive
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                    }`}
+                  >
+                    {shape.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
