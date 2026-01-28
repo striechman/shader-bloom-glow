@@ -11,21 +11,14 @@ export const Header = () => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <motion.div
-            className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary via-accent to-gradient-3"
+            className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary via-accent to-gradient-3"
             animate={{ rotate: 360 }}
             transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
           />
-          <div className="leading-tight">
-            <div className="font-display text-base md:text-lg font-semibold tracking-tight text-foreground">
-              <span className="text-muted-foreground lowercase">amdocs</span>{' '}
-              <span className="uppercase">AMBIANCE</span>
-            </div>
-            <div className="text-xs text-muted-foreground lowercase">studio</div>
+          <div className="font-display text-lg font-semibold tracking-tight text-foreground lowercase">
+            amdocs ambiance studio
           </div>
         </div>
-        <p className="hidden md:block text-sm text-muted-foreground">
-          Create • Customize • Export
-        </p>
       </div>
     </motion.header>
   );
