@@ -7,6 +7,7 @@ import { ExportModal } from '@/components/ExportModal';
 
 interface GradientConfig {
   type: 'sphere' | 'plane' | 'waterPlane';
+  wireframe: boolean;
   animate: boolean;
   speed: number;
   color1: string;
@@ -20,6 +21,7 @@ interface GradientConfig {
 
 const defaultConfig: GradientConfig = {
   type: 'sphere',
+  wireframe: false,
   animate: true,
   speed: 0.4,
   color1: '#FDB515',

@@ -2,6 +2,7 @@ import { ShaderGradientCanvas, ShaderGradient } from '@shadergradient/react';
 
 interface GradientConfig {
   type: 'sphere' | 'plane' | 'waterPlane';
+  wireframe: boolean;
   animate: boolean;
   speed: number;
   color1: string;
@@ -32,7 +33,7 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
         <ShaderGradient
           animate={config.animate ? 'on' : 'off'}
           type={config.type}
-          wireframe={false}
+          wireframe={config.wireframe}
           shader="defaults"
           uTime={0}
           uSpeed={config.speed}
