@@ -110,6 +110,60 @@ const smoothstep = (edge0: number, edge1: number, x: number) => {
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
+async function captureVisibleWebGLCanvasToCanvas(
+  sourceCanvas: HTMLCanvasElement,
+  targetCtx: CanvasRenderingContext2D,
+  targetWidth: number,
+  targetHeight: number
+): Promise<void> {
+  // Wait for at least one paint so we capture the latest frame
+  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
+  const gl =
+    (sourceCanvas.getContext('webgl2') as WebGL2RenderingContext | null) ||
+    (sourceCanvas.getContext('webgl') as WebGLRenderingContext | null);
+
+  // If we can't access WebGL context, fallback to drawImage (may be lower fidelity)
+  if (!gl) {
+    targetCtx.drawImage(sourceCanvas, 0, 0, targetWidth, targetHeight);
+    return;
+  }
+
+  const srcW = sourceCanvas.width;
+  const srcH = sourceCanvas.height;
+  const pixels = new Uint8Array(srcW * srcH * 4);
+
+  try {
+    gl.readPixels(0, 0, srcW, srcH, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+  } catch {
+    // Some browsers can block readPixels depending on context state
+    targetCtx.drawImage(sourceCanvas, 0, 0, targetWidth, targetHeight);
+    return;
+  }
+
+  // Flip Y axis (WebGL is bottom-left origin)
+  const imageData = new ImageData(srcW, srcH);
+  for (let y = 0; y < srcH; y++) {
+    const srcRow = (srcH - 1 - y) * srcW * 4;
+    const dstRow = y * srcW * 4;
+    imageData.data.set(pixels.subarray(srcRow, srcRow + srcW * 4), dstRow);
+  }
+
+  const tmp = document.createElement('canvas');
+  tmp.width = srcW;
+  tmp.height = srcH;
+  const tmpCtx = tmp.getContext('2d');
+  if (!tmpCtx) {
+    targetCtx.drawImage(sourceCanvas, 0, 0, targetWidth, targetHeight);
+    return;
+  }
+  tmpCtx.putImageData(imageData, 0, 0);
+
+  targetCtx.imageSmoothingEnabled = true;
+  (targetCtx as any).imageSmoothingQuality = 'high';
+  targetCtx.drawImage(tmp, 0, 0, targetWidth, targetHeight);
+}
+
 // Render gradient based on type - pixel-perfect export
 async function renderGradientToCanvas(
   ctx: CanvasRenderingContext2D,
@@ -433,10 +487,56 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
         return;
       }
 
-      if (config) {
-        // Render gradient directly at target resolution for all types
-        // This ensures pixel-perfect export matching what's on screen
-        await renderGradientToCanvas(ctx, targetWidth, targetHeight, config);
+      if (!config) {
+        toast.error('Missing gradient config');
+        setIsExporting(false);
+        return;
+      }
+
+      // Capture EXACTLY what is on screen from the visible WebGL canvas.
+      // This avoids discrepancies between our JS approximation and the shader output.
+      const gradientStage = document.querySelector('#gradient-stage');
+      const sourceCanvas = (gradientStage?.querySelector('canvas') ?? null) as HTMLCanvasElement | null;
+
+      if (!sourceCanvas) {
+        toast.error('Canvas not found');
+        setIsExporting(false);
+        return;
+      }
+
+      await captureVisibleWebGLCanvasToCanvas(sourceCanvas, ctx, targetWidth, targetHeight);
+
+      // Add weight overlay for static mode (matches on-screen behavior)
+      const isFrozen = config.frozenTime !== null;
+      const isStaticMode = !config.animate || isFrozen;
+      const isMeshMode = config.wireframe === true;
+
+      if (isStaticMode && !isMeshMode) {
+        const w1 = config.colorWeight1;
+        const w2 = w1 + config.colorWeight2;
+        const feather = 6;
+        const f1 = Math.max(0, w1 - feather) / 100;
+        const f2 = Math.min(100, w1 + feather) / 100;
+        const f3 = Math.max(0, w2 - feather) / 100;
+        const f4 = Math.min(100, w2 + feather) / 100;
+
+        const g = ctx.createLinearGradient(0, 0, targetWidth, targetHeight);
+        g.addColorStop(0, config.color1);
+        g.addColorStop(f1, config.color1);
+        g.addColorStop(f2, config.color2);
+        g.addColorStop(f3, config.color2);
+        g.addColorStop(f4, config.color3);
+        g.addColorStop(1, config.color3);
+
+        ctx.save();
+        ctx.globalAlpha = 0.4;
+        ctx.globalCompositeOperation = 'soft-light';
+        ctx.filter = 'blur(48px)';
+        ctx.fillStyle = g;
+        const padX = targetWidth * 0.08;
+        const padY = targetHeight * 0.08;
+        ctx.fillRect(-padX, -padY, targetWidth + padX * 2, targetHeight + padY * 2);
+        ctx.restore();
       }
 
       // Export
