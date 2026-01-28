@@ -211,6 +211,7 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle }: Contr
             <div>
               <h3 className="font-display text-lg font-medium mb-4 text-foreground">Mesh Settings</h3>
               <div className="space-y-4">
+                {/* Grid Density */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label className="text-muted-foreground">Grid Density</Label>
@@ -225,6 +226,60 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle }: Contr
                     className="w-full"
                   />
                 </div>
+                
+                {/* Line Thickness */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-muted-foreground">Line Thickness</Label>
+                    <span className="text-xs text-muted-foreground">{config.meshLineThickness.toFixed(3)}</span>
+                  </div>
+                  <Slider
+                    value={[config.meshLineThickness]}
+                    onValueChange={([value]) => onConfigChange({ meshLineThickness: value })}
+                    min={0.005}
+                    max={0.1}
+                    step={0.005}
+                    className="w-full"
+                  />
+                </div>
+                
+                {/* Line Color */}
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Line Color</Label>
+                  <div className="flex gap-2">
+                    {(['black', 'white', 'accent'] as const).map((color) => (
+                      <button
+                        key={color}
+                        onClick={() => onConfigChange({ meshLineColor: color })}
+                        className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-all capitalize ${
+                          config.meshLineColor === color
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                        }`}
+                      >
+                        {color}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Fill Opacity */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-muted-foreground">Fill Opacity</Label>
+                    <span className="text-xs text-muted-foreground">{(config.meshFillOpacity * 100).toFixed(0)}%</span>
+                  </div>
+                  <Slider
+                    value={[config.meshFillOpacity]}
+                    onValueChange={([value]) => onConfigChange({ meshFillOpacity: value })}
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    className="w-full"
+                  />
+                </div>
+                
+                {/* View Angle */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label className="text-muted-foreground">View Angle</Label>
