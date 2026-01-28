@@ -1,5 +1,7 @@
 import { ShaderGradientCanvas, ShaderGradient } from '@shadergradient/react';
+import { Canvas } from '@react-three/fiber';
 import { GradientConfig, aspectRatioValues } from '@/types/gradient';
+import { CustomMeshGradient } from './CustomMeshGradient';
 
 interface GradientCanvasProps {
   config: GradientConfig;
@@ -58,56 +60,70 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
         style={getContainerStyle()} 
         className="flex items-center justify-center"
       >
-        <ShaderGradientCanvas
-          key={colorKey}
-          style={{
-            width: '100%',
-            height: '100%',
-            position: 'absolute',
-          }}
-          pixelDensity={2}
-          pointerEvents="none"
-        >
-          <ShaderGradient
-            animate={isFrozen ? 'off' : (config.animate ? 'on' : 'off')}
-            type={config.type}
-            wireframe={isWireframe}
-            shader="defaults"
-            uTime={isFrozen ? config.frozenTime : 0}
-            uSpeed={config.speed}
-            // Mesh mode: use user's effect controls, just with adjusted base values
-            uStrength={isWireframe ? Math.max(1, config.uStrength * 0.5) : config.uStrength}
-            uDensity={isWireframe ? config.meshDensity : config.uDensity}
-            uFrequency={isWireframe ? Math.max(3, config.uFrequency * 1.2) : config.uFrequency}
-            uAmplitude={isWireframe ? 2.5 : 3.2}
-            positionX={0}
-            positionY={0}
-            positionZ={0}
-            rotationX={isWireframe ? config.meshAngle : 0}
-            rotationY={isWireframe ? 10 : 10}
-            rotationZ={isWireframe ? 40 : 50}
-            color1={config.color1}
-            color2={config.color2}
-            color3={config.color3}
-            // Higher reflection for mesh = better color visibility on lines
-            reflection={isWireframe ? 0.8 : 0.1}
-            cAzimuthAngle={180}
-            cPolarAngle={isWireframe ? 80 : 115}
-            // Closer camera for mesh to see detail
-            cDistance={isWireframe ? 2.2 : (config.animate ? 3.6 : 4.5)}
-            cameraZoom={isWireframe ? 1.1 : 1}
-            lightType="3d"
-            // Higher brightness for mesh so colors pop
-            brightness={isWireframe ? 2.5 : 1.4}
-            envPreset="city"
-            grain={config.grain ? 'on' : 'off'}
-            toggleAxis={false}
-            zoomOut={false}
-          />
-        </ShaderGradientCanvas>
+        {/* Use custom mesh for wireframe mode, ShaderGradient for others */}
+        {isWireframe ? (
+          <Canvas
+            key={colorKey}
+            style={{
+              width: '100%',
+              height: '100%',
+              position: 'absolute',
+            }}
+            camera={{ position: [0, 0, 4], fov: 50 }}
+            gl={{ preserveDrawingBuffer: true, alpha: true }}
+          >
+            <ambientLight intensity={0.5} />
+            <directionalLight position={[5, 5, 5]} intensity={1} />
+            <CustomMeshGradient config={config} />
+          </Canvas>
+        ) : (
+          <ShaderGradientCanvas
+            key={colorKey}
+            style={{
+              width: '100%',
+              height: '100%',
+              position: 'absolute',
+            }}
+            pixelDensity={2}
+            pointerEvents="none"
+          >
+            <ShaderGradient
+              animate={isFrozen ? 'off' : (config.animate ? 'on' : 'off')}
+              type={config.type}
+              wireframe={false}
+              shader="defaults"
+              uTime={isFrozen ? config.frozenTime : 0}
+              uSpeed={config.speed}
+              uStrength={config.uStrength}
+              uDensity={config.uDensity}
+              uFrequency={config.uFrequency}
+              uAmplitude={3.2}
+              positionX={0}
+              positionY={0}
+              positionZ={0}
+              rotationX={0}
+              rotationY={10}
+              rotationZ={50}
+              color1={config.color1}
+              color2={config.color2}
+              color3={config.color3}
+              reflection={0.1}
+              cAzimuthAngle={180}
+              cPolarAngle={115}
+              cDistance={config.animate ? 3.6 : 4.5}
+              cameraZoom={1}
+              lightType="3d"
+              brightness={1.4}
+              envPreset="city"
+              grain={config.grain ? 'on' : 'off'}
+              toggleAxis={false}
+              zoomOut={false}
+            />
+          </ShaderGradientCanvas>
+        )}
 
         {/* Static-mode weights overlay: softened (no hard banding) + doesn't kill shader effects */}
-        {isStaticMode && (
+        {isStaticMode && !isWireframe && (
           <div
             className="absolute inset-0 pointer-events-none rounded-lg"
             style={{

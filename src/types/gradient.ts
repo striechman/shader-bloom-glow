@@ -27,6 +27,9 @@ export interface GradientConfig {
   // Mesh-specific
   meshDensity: number;
   meshAngle: number;
+  meshLineThickness: number; // 0.01-0.1
+  meshLineColor: 'black' | 'white' | 'accent'; // Line color option
+  meshFillOpacity: number; // 0-1
   
   // Aspect Ratio
   aspectRatio: '1:1' | '16:9' | '9:16' | '2:3' | '3:2' | '4:5' | '4:3' | '3:4' | 'free';
@@ -50,6 +53,9 @@ export const defaultGradientConfig: GradientConfig = {
   frozenTime: null,
   meshDensity: 3.5,
   meshAngle: 45,
+  meshLineThickness: 0.02,
+  meshLineColor: 'black',
+  meshFillOpacity: 0.3,
   aspectRatio: 'free',
 };
 
