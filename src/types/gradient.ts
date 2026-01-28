@@ -43,7 +43,7 @@ export const defaultGradientConfig: GradientConfig = {
   colorWeight1: 33,
   colorWeight2: 34,
   colorWeight3: 33,
-  grain: true,
+  grain: false,
   uStrength: 4,
   uDensity: 1.3,
   uFrequency: 5.5,

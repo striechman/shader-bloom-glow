@@ -274,8 +274,8 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle }: Contr
                         onClick={() => onConfigChange({ [colorKey]: color.hex })}
                         className={`w-8 h-8 rounded-lg transition-all border-2 ${
                           config[colorKey] === color.hex
-                            ? 'border-primary scale-110'
-                            : 'border-transparent hover:scale-105'
+                            ? 'border-primary scale-110 ring-2 ring-primary ring-offset-2 ring-offset-background'
+                            : 'border-border hover:scale-105 hover:border-muted-foreground'
                         }`}
                         style={{ backgroundColor: color.hex }}
                         title={color.name}

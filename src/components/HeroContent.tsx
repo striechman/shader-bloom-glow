@@ -15,36 +15,18 @@ export const HeroContent = ({ onOpenPanel, onExport }: HeroContentProps) => {
         transition={{ duration: 0.8, delay: 0.4 }}
         className="max-w-4xl"
       >
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.6 }}
-          className="text-sm uppercase letter-spacing-wide text-muted-foreground mb-6"
-        >
-          Gradient Generator for Print & Web
-        </motion.p>
-        
         <h1 className="font-display text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight mb-6">
-          <span className="text-gradient">Create</span>
+          <span className="text-muted-foreground text-2xl md:text-3xl lg:text-4xl block mb-2">amdocs</span>
+          <span className="text-gradient">AMBIANCE</span>
           <br />
-          <span className="text-foreground">Gradients</span>
+          <span className="text-foreground">studio</span>
         </h1>
-
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.8 }}
-          className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10"
-        >
-          Design stunning 3D animated gradients for your projects. 
-          Export in high resolution for print or web use.
-        </motion.p>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 1 }}
-          className="flex flex-col sm:flex-row items-center justify-center gap-4"
+          className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10"
         >
           <motion.button
             onClick={onOpenPanel}
@@ -65,21 +47,6 @@ export const HeroContent = ({ onOpenPanel, onExport }: HeroContentProps) => {
             <Download className="w-5 h-5" />
             Export
           </motion.button>
-        </motion.div>
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.8, delay: 1.2 }}
-        className="absolute bottom-10 left-1/2 -translate-x-1/2"
-      >
-        <motion.div
-          animate={{ y: [0, 10, 0] }}
-          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-          className="flex flex-col items-center gap-2 text-muted-foreground"
-        >
-          <span className="text-xs uppercase letter-spacing-wide">Click customize to start</span>
         </motion.div>
       </motion.div>
     </div>
