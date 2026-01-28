@@ -19,6 +19,8 @@ interface GradientCanvasProps {
 }
 
 export const GradientCanvas = ({ config }: GradientCanvasProps) => {
+  console.log('GradientCanvas config:', { type: config.type, wireframe: config.wireframe });
+  
   return (
     <div className="absolute inset-0 z-0">
       <ShaderGradientCanvas
@@ -33,7 +35,7 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
         <ShaderGradient
           animate={config.animate ? 'on' : 'off'}
           type={config.type}
-          wireframe={config.wireframe}
+          wireframe={config.wireframe === true}
           shader="defaults"
           uTime={0}
           uSpeed={config.speed}
