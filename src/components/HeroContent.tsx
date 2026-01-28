@@ -34,12 +34,14 @@ export const HeroContent = ({ onOpenPanel, onExport }: HeroContentProps) => {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
-            {/* Gradient background */}
-            <div className="absolute inset-0 bg-gradient-to-r from-primary via-accent to-gradient-3 opacity-90" />
-            {/* Glass overlay */}
-            <div className="absolute inset-0 bg-white/10 backdrop-blur-sm" />
-            {/* Inner glow */}
-            <div className="absolute inset-[1px] rounded-full bg-gradient-to-b from-white/20 to-transparent pointer-events-none" />
+            {/* Glass background */}
+            <div className="absolute inset-0 bg-white/10 backdrop-blur-xl rounded-full" />
+            {/* Border */}
+            <div className="absolute inset-0 rounded-full border border-white/20" />
+            {/* Top highlight */}
+            <div className="absolute inset-[1px] rounded-full bg-gradient-to-b from-white/15 to-transparent pointer-events-none" />
+            {/* Hover glow */}
+            <div className="absolute inset-0 rounded-full bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             {/* Content */}
             <Settings className="w-5 h-5 relative z-10 text-foreground" />
             <span className="relative z-10 text-foreground lowercase">customize</span>
@@ -52,10 +54,14 @@ export const HeroContent = ({ onOpenPanel, onExport }: HeroContentProps) => {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
-            {/* Dark glass background */}
-            <div className="absolute inset-0 bg-background/60 backdrop-blur-xl border border-white/10" style={{ borderRadius: 'inherit' }} />
-            {/* Subtle inner highlight */}
-            <div className="absolute inset-[1px] rounded-full bg-gradient-to-b from-white/5 to-transparent pointer-events-none" />
+            {/* Glass background - slightly darker */}
+            <div className="absolute inset-0 bg-black/20 backdrop-blur-xl rounded-full" />
+            {/* Border */}
+            <div className="absolute inset-0 rounded-full border border-white/10" />
+            {/* Top highlight */}
+            <div className="absolute inset-[1px] rounded-full bg-gradient-to-b from-white/10 to-transparent pointer-events-none" />
+            {/* Hover glow */}
+            <div className="absolute inset-0 rounded-full bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             {/* Content */}
             <Download className="w-5 h-5 relative z-10 text-foreground" />
             <span className="relative z-10 text-foreground lowercase">export</span>
