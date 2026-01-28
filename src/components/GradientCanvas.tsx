@@ -75,27 +75,30 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
             shader="defaults"
             uTime={isFrozen ? config.frozenTime : 0}
             uSpeed={config.speed}
-            uStrength={isWireframe ? 1.5 : config.uStrength}
+            // Mesh mode: use user's effect controls, just with adjusted base values
+            uStrength={isWireframe ? Math.max(1, config.uStrength * 0.5) : config.uStrength}
             uDensity={isWireframe ? config.meshDensity : config.uDensity}
-            uFrequency={isWireframe ? 8 : config.uFrequency}
-            // Keep rich deformation even when static (static = fixed time, not reduced effect)
-            uAmplitude={isWireframe ? 1 : 3.2}
+            uFrequency={isWireframe ? Math.max(3, config.uFrequency * 1.2) : config.uFrequency}
+            uAmplitude={isWireframe ? 2.5 : 3.2}
             positionX={0}
             positionY={0}
             positionZ={0}
             rotationX={isWireframe ? config.meshAngle : 0}
-            rotationY={isWireframe ? 0 : 10}
-            rotationZ={isWireframe ? 0 : 50}
+            rotationY={isWireframe ? 10 : 10}
+            rotationZ={isWireframe ? 40 : 50}
             color1={config.color1}
             color2={config.color2}
             color3={config.color3}
-            reflection={isWireframe ? 0.5 : 0.1}
+            // Higher reflection for mesh = better color visibility on lines
+            reflection={isWireframe ? 0.8 : 0.1}
             cAzimuthAngle={180}
-            cPolarAngle={isWireframe ? 90 : 115}
-            cDistance={isWireframe ? 2.5 : (config.animate ? 3.6 : 4.5)}
-            cameraZoom={1}
+            cPolarAngle={isWireframe ? 80 : 115}
+            // Closer camera for mesh to see detail
+            cDistance={isWireframe ? 2.2 : (config.animate ? 3.6 : 4.5)}
+            cameraZoom={isWireframe ? 1.1 : 1}
             lightType="3d"
-            brightness={isWireframe ? 2 : 1.4}
+            // Higher brightness for mesh so colors pop
+            brightness={isWireframe ? 2.5 : 1.4}
             envPreset="city"
             grain={config.grain ? 'on' : 'off'}
             toggleAxis={false}
