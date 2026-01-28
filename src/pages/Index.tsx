@@ -1,15 +1,23 @@
-import { useState, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { GradientCanvas } from '@/components/GradientCanvas';
 import { ControlPanel } from '@/components/ControlPanel';
 import { Header } from '@/components/Header';
 import { HeroContent } from '@/components/HeroContent';
 import { ExportModal } from '@/components/ExportModal';
 import { GradientConfig, defaultGradientConfig } from '@/types/gradient';
+import { useTheme } from '@/hooks/useTheme';
 
 const Index = () => {
+  const { theme } = useTheme();
   const [config, setConfig] = useState<GradientConfig>(defaultGradientConfig);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
+
+  // Automatically update color3 based on theme
+  useEffect(() => {
+    const newColor3 = theme === 'dark' ? '#000000' : '#FFFFFF';
+    setConfig(prev => ({ ...prev, color3: newColor3 }));
+  }, [theme]);
 
   const handleConfigChange = (updates: Partial<GradientConfig>) => {
     setConfig((prev) => ({ ...prev, ...updates }));
