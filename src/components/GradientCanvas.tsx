@@ -8,7 +8,6 @@ interface GradientCanvasProps {
 export const GradientCanvas = ({ config }: GradientCanvasProps) => {
   const isWireframe = config.wireframe === true;
   const isFrozen = config.frozenTime !== null;
-  // Show overlay when animation is off OR frozen - this is "static mode"
   const isStaticMode = !config.animate || isFrozen;
   
   // Create a key that changes when colors/weights change to force re-render
@@ -47,6 +46,11 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
   // Calculate color weight percentages for the gradient overlay
   const w1 = config.colorWeight1;
   const w2 = w1 + config.colorWeight2;
+  const feather = 6; // soft transition band (in %)
+  const f1 = Math.max(0, w1 - feather);
+  const f2 = Math.min(100, w1 + feather);
+  const f3 = Math.max(0, w2 - feather);
+  const f4 = Math.min(100, w2 + feather);
   
   return (
     <div className="absolute inset-0 z-0 flex items-center justify-center overflow-hidden p-4">
@@ -74,7 +78,8 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
             uStrength={isWireframe ? 1.5 : config.uStrength}
             uDensity={isWireframe ? config.meshDensity : config.uDensity}
             uFrequency={isWireframe ? 8 : config.uFrequency}
-            uAmplitude={isWireframe ? 1 : (config.animate ? 3.2 : 0.5)}
+            // Keep rich deformation even when static (static = fixed time, not reduced effect)
+            uAmplitude={isWireframe ? 1 : 3.2}
             positionX={0}
             positionY={0}
             positionZ={0}
@@ -97,15 +102,24 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
             zoomOut={false}
           />
         </ShaderGradientCanvas>
-        
-        {/* Color weights overlay - visible in static mode (animation off or frozen) */}
+
+        {/* Static-mode weights overlay: softened (no hard banding) + doesn't kill shader effects */}
         {isStaticMode && (
-          <div 
+          <div
             className="absolute inset-0 pointer-events-none rounded-lg"
             style={{
-              background: `linear-gradient(135deg, ${config.color1} 0%, ${config.color1} ${w1}%, ${config.color2} ${w1}%, ${config.color2} ${w2}%, ${config.color3} ${w2}%, ${config.color3} 100%)`,
-              opacity: 0.4,
-              mixBlendMode: 'overlay',
+              background: `linear-gradient(135deg,
+                ${config.color1} 0%,
+                ${config.color1} ${f1}%,
+                ${config.color2} ${f2}%,
+                ${config.color2} ${f3}%,
+                ${config.color3} ${f4}%,
+                ${config.color3} 100%
+              )`,
+              opacity: 0.22,
+              mixBlendMode: 'soft-light',
+              filter: 'blur(28px)',
+              transform: 'scale(1.08)',
             }}
           />
         )}

@@ -160,7 +160,7 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
     setIsExporting(true);
 
     try {
-      const canvas = document.querySelector('canvas') as HTMLCanvasElement;
+      const canvas = document.querySelector('#gradient-stage canvas') as HTMLCanvasElement | null;
       if (!canvas) {
         toast.error('Canvas not found');
         setIsExporting(false);
@@ -196,28 +196,6 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
       // Draw the source canvas scaled to the target size
       ctx.drawImage(canvas, 0, 0, targetWidth, targetHeight);
 
-      // Add the color weights overlay if in static mode
-      if (config && (!config.animate || config.frozenTime !== null)) {
-        const w1 = config.colorWeight1;
-        const w2 = w1 + config.colorWeight2;
-        
-        // Create gradient overlay
-        const gradient = ctx.createLinearGradient(0, 0, targetWidth, targetHeight);
-        gradient.addColorStop(0, config.color1);
-        gradient.addColorStop(w1 / 100, config.color1);
-        gradient.addColorStop(w1 / 100, config.color2);
-        gradient.addColorStop(w2 / 100, config.color2);
-        gradient.addColorStop(w2 / 100, config.color3);
-        gradient.addColorStop(1, config.color3);
-        
-        ctx.globalAlpha = 0.4;
-        ctx.globalCompositeOperation = 'overlay';
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, targetWidth, targetHeight);
-        ctx.globalAlpha = 1;
-        ctx.globalCompositeOperation = 'source-over';
-      }
-
       // Export
       const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
       const quality = format === 'jpg' ? 0.95 : undefined;
@@ -233,14 +211,24 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
         const link = document.createElement('a');
         link.download = `gradient-${targetWidth}x${targetHeight}.${format}`;
         link.href = url;
+        link.rel = 'noopener';
+
+        // Some browsers (notably iOS Safari) can ignore download on blob URLs.
+        // Try download first; if it fails, open in a new tab.
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+
+        // Best-effort fallback for iOS Safari
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        if (isIOS) {
+          window.open(url, '_blank', 'noopener,noreferrer');
+        }
+
+        setTimeout(() => URL.revokeObjectURL(url), 500);
 
         toast.success(`Exported ${format.toUpperCase()} (${targetWidth}×${targetHeight})`);
         setIsExporting(false);
-        onClose();
       }, mimeType, quality);
 
     } catch (error) {
@@ -255,7 +243,7 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
     setVideoProgress(0);
     
     try {
-      const canvas = document.querySelector('canvas') as HTMLCanvasElement;
+      const canvas = document.querySelector('#gradient-stage canvas') as HTMLCanvasElement | null;
       if (!canvas) {
         toast.error('Canvas not found');
         setIsExporting(false);
