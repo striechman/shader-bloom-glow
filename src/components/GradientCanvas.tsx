@@ -12,7 +12,7 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
   // Create a key that changes when colors/weights change to force re-render
   const colorKey = `${config.color1}-${config.color2}-${config.color3}-${config.colorWeight1}-${config.colorWeight2}-${config.colorWeight3}`;
   
-  // Calculate aspect ratio container styles
+  // Calculate aspect ratio container styles - properly constrained
   const getContainerStyle = (): React.CSSProperties => {
     if (config.aspectRatio === 'free') {
       return { width: '100%', height: '100%', position: 'relative' };
@@ -21,24 +21,36 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
     const ratio = aspectRatioValues[config.aspectRatio];
     if (!ratio) return { width: '100%', height: '100%', position: 'relative' };
     
-    // Use aspect-ratio CSS property for proper scaling
-    return {
-      width: '100%',
-      height: '100%',
-      maxWidth: ratio >= 1 ? `min(100%, calc(100vh * ${ratio}))` : '100%',
-      maxHeight: ratio < 1 ? `min(100%, calc(100vw * ${1/ratio}))` : '100%',
-      aspectRatio: `${ratio}`,
-      position: 'relative',
-    };
+    // For landscape (ratio >= 1): constrain width based on viewport height
+    // For portrait (ratio < 1): constrain height based on viewport width
+    if (ratio >= 1) {
+      // Landscape: width is the limiting factor
+      return {
+        width: `min(100%, calc((100vh - 4rem) * ${ratio}))`,
+        height: 'auto',
+        aspectRatio: `${ratio}`,
+        position: 'relative' as const,
+      };
+    } else {
+      // Portrait: height is the limiting factor
+      return {
+        height: `min(100%, calc((100vw - 4rem) / ${ratio}))`,
+        width: 'auto',
+        aspectRatio: `${ratio}`,
+        position: 'relative' as const,
+      };
+    }
   };
   
-  const showFrame = config.aspectRatio !== 'free';
+  // Calculate color weight percentages for the gradient overlay
+  const w1 = config.colorWeight1;
+  const w2 = w1 + config.colorWeight2;
   
   return (
-    <div className="absolute inset-0 z-0 flex items-center justify-center overflow-hidden">
+    <div className="absolute inset-0 z-0 flex items-center justify-center overflow-hidden p-4">
       <div 
         style={getContainerStyle()} 
-        className={`flex items-center justify-center ${showFrame ? 'ring-2 ring-white/30 ring-offset-4 ring-offset-transparent rounded-lg' : ''}`}
+        className="flex items-center justify-center"
       >
         <ShaderGradientCanvas
           key={colorKey}
@@ -83,6 +95,18 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
             zoomOut={false}
           />
         </ShaderGradientCanvas>
+        
+        {/* Color weights overlay - visible when animation is paused */}
+        {isFrozen && (
+          <div 
+            className="absolute inset-0 pointer-events-none rounded-lg"
+            style={{
+              background: `linear-gradient(135deg, ${config.color1} 0%, ${config.color1} ${w1}%, ${config.color2} ${w1}%, ${config.color2} ${w2}%, ${config.color3} ${w2}%, ${config.color3} 100%)`,
+              opacity: 0.35,
+              mixBlendMode: 'overlay',
+            }}
+          />
+        )}
       </div>
     </div>
   );
