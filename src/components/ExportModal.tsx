@@ -1,11 +1,18 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Download, Image, FileImage } from 'lucide-react';
+import { X, Download, Image, FileImage, Code, Copy, Check } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+
+interface GradientConfig {
+  color1: string;
+  color2: string;
+  color3: string;
+}
 
 interface ExportModalProps {
   isOpen: boolean;
   onClose: () => void;
+  config?: GradientConfig;
 }
 
 const exportSizes = [
@@ -19,12 +26,62 @@ const exportSizes = [
   { label: 'Custom', width: 1920, height: 1080 },
 ];
 
-export const ExportModal = ({ isOpen, onClose }: ExportModalProps) => {
+type ExportTab = 'image' | 'css';
+
+export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
   const [selectedSize, setSelectedSize] = useState(exportSizes[3]);
   const [customWidth, setCustomWidth] = useState(1920);
   const [customHeight, setCustomHeight] = useState(1080);
   const [format, setFormat] = useState<'png' | 'jpg'>('png');
   const [isExporting, setIsExporting] = useState(false);
+  const [activeTab, setActiveTab] = useState<ExportTab>('image');
+  const [copied, setCopied] = useState(false);
+
+  const generateCSSCode = () => {
+    if (!config) return '';
+    
+    return `.gradient-background {
+  background: linear-gradient(
+    135deg,
+    ${config.color1} 0%,
+    ${config.color2} 50%,
+    ${config.color3} 100%
+  );
+}
+
+/* Radial gradient variant */
+.gradient-background-radial {
+  background: radial-gradient(
+    ellipse at center,
+    ${config.color1} 0%,
+    ${config.color2} 50%,
+    ${config.color3} 100%
+  );
+}
+
+/* Conic gradient variant */
+.gradient-background-conic {
+  background: conic-gradient(
+    from 0deg,
+    ${config.color1},
+    ${config.color2},
+    ${config.color3},
+    ${config.color1}
+  );
+}`;
+  };
+
+  const handleCopyCSS = async () => {
+    const css = generateCSSCode();
+    try {
+      await navigator.clipboard.writeText(css);
+      setCopied(true);
+      toast.success('CSS copied to clipboard');
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error('Failed to copy');
+    }
+  };
 
   const handleExport = async () => {
     setIsExporting(true);
@@ -33,7 +90,6 @@ export const ExportModal = ({ isOpen, onClose }: ExportModalProps) => {
     const height = selectedSize.label === 'Custom' ? customHeight : selectedSize.height;
 
     try {
-      // Get the canvas element from the shader gradient
       const canvas = document.querySelector('canvas');
       if (!canvas) {
         toast.error('Canvas not found');
@@ -41,7 +97,6 @@ export const ExportModal = ({ isOpen, onClose }: ExportModalProps) => {
         return;
       }
 
-      // Create a new canvas with the desired dimensions
       const exportCanvas = document.createElement('canvas');
       exportCanvas.width = width;
       exportCanvas.height = height;
@@ -53,10 +108,8 @@ export const ExportModal = ({ isOpen, onClose }: ExportModalProps) => {
         return;
       }
 
-      // Draw the original canvas scaled to the new dimensions
       ctx.drawImage(canvas, 0, 0, width, height);
 
-      // Convert to the selected format
       const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
       const quality = format === 'jpg' ? 0.95 : undefined;
       
@@ -67,7 +120,6 @@ export const ExportModal = ({ isOpen, onClose }: ExportModalProps) => {
           return;
         }
 
-        // Create download link
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -102,7 +154,7 @@ export const ExportModal = ({ isOpen, onClose }: ExportModalProps) => {
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 w-full max-w-md"
+            className="fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 w-full max-w-md max-h-[90vh] overflow-y-auto"
           >
             <div className="glass rounded-2xl p-6 mx-4">
               <div className="flex items-center justify-between mb-6">
@@ -115,95 +167,169 @@ export const ExportModal = ({ isOpen, onClose }: ExportModalProps) => {
                 </button>
               </div>
 
-              <div className="space-y-6">
-                {/* Size Selection */}
-                <div>
-                  <label className="text-sm text-muted-foreground mb-3 block">Size</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {exportSizes.map((size) => (
+              {/* Tab Selection */}
+              <div className="flex gap-2 mb-6">
+                <button
+                  onClick={() => setActiveTab('image')}
+                  className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                    activeTab === 'image'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                  }`}
+                >
+                  <Image className="w-4 h-4" />
+                  Image
+                </button>
+                <button
+                  onClick={() => setActiveTab('css')}
+                  className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                    activeTab === 'css'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                  }`}
+                >
+                  <Code className="w-4 h-4" />
+                  CSS Code
+                </button>
+              </div>
+
+              {activeTab === 'image' ? (
+                <div className="space-y-6">
+                  {/* Size Selection */}
+                  <div>
+                    <label className="text-sm text-muted-foreground mb-3 block">Size</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {exportSizes.map((size) => (
+                        <button
+                          key={size.label}
+                          onClick={() => setSelectedSize(size)}
+                          className={`py-2 px-3 rounded-lg text-sm font-medium transition-all text-left ${
+                            selectedSize.label === size.label
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                          }`}
+                        >
+                          <div>{size.label}</div>
+                          {size.label !== 'Custom' && (
+                            <div className="text-xs opacity-70">{size.width}×{size.height}</div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Custom Size */}
+                  {selectedSize.label === 'Custom' && (
+                    <div className="flex gap-4">
+                      <div className="flex-1">
+                        <label className="text-sm text-muted-foreground mb-2 block">Width</label>
+                        <input
+                          type="number"
+                          value={customWidth}
+                          onChange={(e) => setCustomWidth(Number(e.target.value))}
+                          className="w-full bg-secondary text-foreground rounded-lg px-3 py-2 text-sm"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <label className="text-sm text-muted-foreground mb-2 block">Height</label>
+                        <input
+                          type="number"
+                          value={customHeight}
+                          onChange={(e) => setCustomHeight(Number(e.target.value))}
+                          className="w-full bg-secondary text-foreground rounded-lg px-3 py-2 text-sm"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Format Selection */}
+                  <div>
+                    <label className="text-sm text-muted-foreground mb-3 block">Format</label>
+                    <div className="flex gap-3">
                       <button
-                        key={size.label}
-                        onClick={() => setSelectedSize(size)}
-                        className={`py-2 px-3 rounded-lg text-sm font-medium transition-all text-left ${
-                          selectedSize.label === size.label
+                        onClick={() => setFormat('png')}
+                        className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                          format === 'png'
                             ? 'bg-primary text-primary-foreground'
                             : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
                         }`}
                       >
-                        <div>{size.label}</div>
-                        {size.label !== 'Custom' && (
-                          <div className="text-xs opacity-70">{size.width}×{size.height}</div>
-                        )}
+                        <Image className="w-4 h-4" />
+                        PNG
                       </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Custom Size */}
-                {selectedSize.label === 'Custom' && (
-                  <div className="flex gap-4">
-                    <div className="flex-1">
-                      <label className="text-sm text-muted-foreground mb-2 block">Width</label>
-                      <input
-                        type="number"
-                        value={customWidth}
-                        onChange={(e) => setCustomWidth(Number(e.target.value))}
-                        className="w-full bg-secondary text-foreground rounded-lg px-3 py-2 text-sm"
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <label className="text-sm text-muted-foreground mb-2 block">Height</label>
-                      <input
-                        type="number"
-                        value={customHeight}
-                        onChange={(e) => setCustomHeight(Number(e.target.value))}
-                        className="w-full bg-secondary text-foreground rounded-lg px-3 py-2 text-sm"
-                      />
+                      <button
+                        onClick={() => setFormat('jpg')}
+                        className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                          format === 'jpg'
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                        }`}
+                      >
+                        <FileImage className="w-4 h-4" />
+                        JPG
+                      </button>
                     </div>
                   </div>
-                )}
 
-                {/* Format Selection */}
-                <div>
-                  <label className="text-sm text-muted-foreground mb-3 block">Format</label>
-                  <div className="flex gap-3">
+                  {/* Export Button */}
+                  <motion.button
+                    onClick={handleExport}
+                    disabled={isExporting}
+                    className="w-full py-4 rounded-full bg-gradient-to-r from-primary via-accent to-gradient-3 text-primary-foreground font-medium text-lg hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50"
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                  >
+                    <Download className="w-5 h-5" />
+                    {isExporting ? 'Exporting...' : 'Download'}
+                  </motion.button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* CSS Code Preview */}
+                  <div className="relative">
+                    <pre className="bg-secondary/80 rounded-lg p-4 text-sm text-foreground overflow-x-auto max-h-64 overflow-y-auto">
+                      <code>{generateCSSCode()}</code>
+                    </pre>
                     <button
-                      onClick={() => setFormat('png')}
-                      className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
-                        format === 'png'
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                      }`}
+                      onClick={handleCopyCSS}
+                      className="absolute top-2 right-2 p-2 rounded-lg bg-background/50 hover:bg-background/80 transition-colors"
                     >
-                      <Image className="w-4 h-4" />
-                      PNG
-                    </button>
-                    <button
-                      onClick={() => setFormat('jpg')}
-                      className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
-                        format === 'jpg'
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                      }`}
-                    >
-                      <FileImage className="w-4 h-4" />
-                      JPG
+                      {copied ? (
+                        <Check className="w-4 h-4 text-green-500" />
+                      ) : (
+                        <Copy className="w-4 h-4 text-muted-foreground" />
+                      )}
                     </button>
                   </div>
-                </div>
 
-                {/* Export Button */}
-                <motion.button
-                  onClick={handleExport}
-                  disabled={isExporting}
-                  className="w-full py-4 rounded-full bg-gradient-to-r from-primary via-accent to-gradient-3 text-primary-foreground font-medium text-lg hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50"
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.99 }}
-                >
-                  <Download className="w-5 h-5" />
-                  {isExporting ? 'Exporting...' : 'Download'}
-                </motion.button>
-              </div>
+                  {/* Color Values */}
+                  <div>
+                    <label className="text-sm text-muted-foreground mb-3 block">Color Values</label>
+                    <div className="space-y-2">
+                      {config && [config.color1, config.color2, config.color3].map((color, index) => (
+                        <div key={index} className="flex items-center gap-3 bg-secondary/50 rounded-lg p-2">
+                          <div 
+                            className="w-8 h-8 rounded-md border border-border"
+                            style={{ backgroundColor: color }}
+                          />
+                          <span className="text-sm font-mono text-foreground">{color.toUpperCase()}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Copy Button */}
+                  <motion.button
+                    onClick={handleCopyCSS}
+                    className="w-full py-4 rounded-full bg-gradient-to-r from-primary via-accent to-gradient-3 text-primary-foreground font-medium text-lg hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                  >
+                    {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+                    {copied ? 'Copied!' : 'Copy CSS'}
+                  </motion.button>
+                </div>
+              )}
             </div>
           </motion.div>
         </>
