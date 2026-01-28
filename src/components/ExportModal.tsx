@@ -1,13 +1,8 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Download, Image, FileImage, Code, Copy, Check } from 'lucide-react';
+import { X, Download, Image, FileImage, Code, Copy, Check, Monitor, Printer, LayoutGrid, Share2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-
-interface GradientConfig {
-  color1: string;
-  color2: string;
-  color3: string;
-}
+import { GradientConfig, exportCategories, ExportCategory } from '@/types/gradient';
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -15,32 +10,59 @@ interface ExportModalProps {
   config?: GradientConfig;
 }
 
-const exportSizes = [
-  { label: 'Instagram Post', width: 1080, height: 1080 },
-  { label: 'Instagram Story', width: 1080, height: 1920 },
-  { label: 'Facebook Cover', width: 820, height: 312 },
-  { label: 'Desktop Wallpaper', width: 1920, height: 1080 },
-  { label: '4K Wallpaper', width: 3840, height: 2160 },
-  { label: 'A4 Print (300dpi)', width: 2480, height: 3508 },
-  { label: 'A3 Print (300dpi)', width: 3508, height: 4961 },
-  { label: 'Custom', width: 1920, height: 1080 },
-];
-
 type ExportTab = 'image' | 'css';
 
+const categoryIcons: Record<ExportCategory, React.ReactNode> = {
+  social: <Share2 className="w-4 h-4" />,
+  web: <Monitor className="w-4 h-4" />,
+  print: <Printer className="w-4 h-4" />,
+  banner: <LayoutGrid className="w-4 h-4" />,
+};
+
+const categoryLabels: Record<ExportCategory, string> = {
+  social: 'Social',
+  web: 'Web',
+  print: 'Print',
+  banner: 'Banner',
+};
+
 export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
-  const [selectedSize, setSelectedSize] = useState(exportSizes[3]);
+  const [selectedCategory, setSelectedCategory] = useState<ExportCategory>('social');
+  const [selectedSize, setSelectedSize] = useState(exportCategories.social[0]);
   const [customWidth, setCustomWidth] = useState(1920);
   const [customHeight, setCustomHeight] = useState(1080);
+  const [useCustomSize, setUseCustomSize] = useState(false);
   const [format, setFormat] = useState<'png' | 'jpg'>('png');
   const [isExporting, setIsExporting] = useState(false);
   const [activeTab, setActiveTab] = useState<ExportTab>('image');
   const [copied, setCopied] = useState(false);
 
+  const handleCategoryChange = (category: ExportCategory) => {
+    setSelectedCategory(category);
+    setSelectedSize(exportCategories[category][0]);
+    setUseCustomSize(false);
+  };
+
   const generateCSSCode = () => {
     if (!config) return '';
     
+    const w1 = config.colorWeight1 ?? 33;
+    const w2 = w1 + (config.colorWeight2 ?? 34);
+    
     return `.gradient-background {
+  background: linear-gradient(
+    135deg,
+    ${config.color1} 0%,
+    ${config.color1} ${w1}%,
+    ${config.color2} ${w1}%,
+    ${config.color2} ${w2}%,
+    ${config.color3} ${w2}%,
+    ${config.color3} 100%
+  );
+}
+
+/* Smooth gradient variant */
+.gradient-background-smooth {
   background: linear-gradient(
     135deg,
     ${config.color1} 0%,
@@ -86,8 +108,8 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
   const handleExport = async () => {
     setIsExporting(true);
     
-    const width = selectedSize.label === 'Custom' ? customWidth : selectedSize.width;
-    const height = selectedSize.label === 'Custom' ? customHeight : selectedSize.height;
+    const width = useCustomSize ? customWidth : selectedSize.width;
+    const height = useCustomSize ? customHeight : selectedSize.height;
 
     try {
       const canvas = document.querySelector('canvas');
@@ -154,7 +176,7 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 w-full max-w-md max-h-[90vh] overflow-y-auto"
+            className="fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg max-h-[90vh] overflow-y-auto"
           >
             <div className="glass rounded-2xl p-6 mx-4">
               <div className="flex items-center justify-between mb-6">
@@ -195,31 +217,64 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
 
               {activeTab === 'image' ? (
                 <div className="space-y-6">
-                  {/* Size Selection */}
+                  {/* Category Selection */}
                   <div>
-                    <label className="text-sm text-muted-foreground mb-3 block">Size</label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {exportSizes.map((size) => (
+                    <label className="text-sm text-muted-foreground mb-3 block">Use Case</label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {(Object.keys(exportCategories) as ExportCategory[]).map((category) => (
                         <button
-                          key={size.label}
-                          onClick={() => setSelectedSize(size)}
-                          className={`py-2 px-3 rounded-lg text-sm font-medium transition-all text-left ${
-                            selectedSize.label === size.label
+                          key={category}
+                          onClick={() => handleCategoryChange(category)}
+                          className={`py-2 px-3 rounded-lg text-xs font-medium transition-all flex flex-col items-center gap-1 ${
+                            selectedCategory === category
                               ? 'bg-primary text-primary-foreground'
                               : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
                           }`}
                         >
-                          <div>{size.label}</div>
-                          {size.label !== 'Custom' && (
-                            <div className="text-xs opacity-70">{size.width}×{size.height}</div>
-                          )}
+                          {categoryIcons[category]}
+                          {categoryLabels[category]}
                         </button>
                       ))}
                     </div>
                   </div>
 
+                  {/* Size Selection */}
+                  <div>
+                    <label className="text-sm text-muted-foreground mb-3 block">Size</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {exportCategories[selectedCategory].map((size) => (
+                        <button
+                          key={size.label}
+                          onClick={() => {
+                            setSelectedSize(size);
+                            setUseCustomSize(false);
+                          }}
+                          className={`py-2 px-3 rounded-lg text-sm font-medium transition-all text-left ${
+                            !useCustomSize && selectedSize.label === size.label
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                          }`}
+                        >
+                          <div className="truncate">{size.label}</div>
+                          <div className="text-xs opacity-70">{size.width}×{size.height}</div>
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => setUseCustomSize(true)}
+                        className={`py-2 px-3 rounded-lg text-sm font-medium transition-all text-left ${
+                          useCustomSize
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                        }`}
+                      >
+                        <div>Custom</div>
+                        <div className="text-xs opacity-70">Any size</div>
+                      </button>
+                    </div>
+                  </div>
+
                   {/* Custom Size */}
-                  {selectedSize.label === 'Custom' && (
+                  {useCustomSize && (
                     <div className="flex gap-4">
                       <div className="flex-1">
                         <label className="text-sm text-muted-foreground mb-2 block">Width</label>
@@ -306,13 +361,18 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
                   <div>
                     <label className="text-sm text-muted-foreground mb-3 block">Color Values</label>
                     <div className="space-y-2">
-                      {config && [config.color1, config.color2, config.color3].map((color, index) => (
+                      {config && [
+                        { color: config.color1, weight: config.colorWeight1 },
+                        { color: config.color2, weight: config.colorWeight2 },
+                        { color: config.color3, weight: config.colorWeight3 },
+                      ].map((item, index) => (
                         <div key={index} className="flex items-center gap-3 bg-secondary/50 rounded-lg p-2">
                           <div 
                             className="w-8 h-8 rounded-md border border-border"
-                            style={{ backgroundColor: color }}
+                            style={{ backgroundColor: item.color }}
                           />
-                          <span className="text-sm font-mono text-foreground">{color.toUpperCase()}</span>
+                          <span className="text-sm font-mono text-foreground flex-1">{item.color.toUpperCase()}</span>
+                          <span className="text-xs text-muted-foreground">{item.weight ?? 33}%</span>
                         </div>
                       ))}
                     </div>

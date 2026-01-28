@@ -2,20 +2,9 @@ import { motion } from 'framer-motion';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-
-interface GradientConfig {
-  type: 'sphere' | 'plane' | 'waterPlane';
-  wireframe: boolean;
-  animate: boolean;
-  speed: number;
-  color1: string;
-  color2: string;
-  color3: string;
-  grain: boolean;
-  uStrength: number;
-  uDensity: number;
-  uFrequency: number;
-}
+import { Play, Pause, Camera, RotateCcw } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { GradientConfig } from '@/types/gradient';
 
 interface ControlPanelProps {
   config: GradientConfig;
@@ -29,6 +18,10 @@ const shapeOptions: { value: GradientConfig['type']; wireframe: boolean; label: 
   { value: 'plane', wireframe: false, label: 'Plane' },
   { value: 'waterPlane', wireframe: false, label: 'Water' },
   { value: 'plane', wireframe: true, label: 'Mesh' },
+];
+
+const aspectRatioOptions: GradientConfig['aspectRatio'][] = [
+  'free', '1:1', '16:9', '9:16', '4:3', '3:4', '2:3', '3:2', '4:5'
 ];
 
 // Brand color palette
@@ -52,6 +45,93 @@ const colorPresets = [
 ];
 
 export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle }: ControlPanelProps) => {
+  const [internalTime, setInternalTime] = useState(0);
+  const animationRef = useRef<number | null>(null);
+  const startTimeRef = useRef<number | null>(null);
+  
+  // Track animation time for freeze frame
+  useEffect(() => {
+    if (config.animate && config.frozenTime === null) {
+      const animate = (timestamp: number) => {
+        if (startTimeRef.current === null) {
+          startTimeRef.current = timestamp;
+        }
+        const elapsed = (timestamp - startTimeRef.current) / 1000 * config.speed;
+        setInternalTime(elapsed % 10); // Loop every 10 seconds
+        animationRef.current = requestAnimationFrame(animate);
+      };
+      animationRef.current = requestAnimationFrame(animate);
+    }
+    
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [config.animate, config.frozenTime, config.speed]);
+
+  const handleColorWeightChange = (colorIndex: number, newValue: number) => {
+    const weights = [config.colorWeight1, config.colorWeight2, config.colorWeight3];
+    const oldValue = weights[colorIndex];
+    const diff = newValue - oldValue;
+    
+    const otherIndices = [0, 1, 2].filter(i => i !== colorIndex);
+    const adjustment = diff / 2;
+    
+    const newWeights = weights.map((w, i) => {
+      if (i === colorIndex) return newValue;
+      return Math.max(5, Math.min(90, w - adjustment));
+    });
+    
+    // Normalize to ensure sum = 100
+    const total = newWeights.reduce((a, b) => a + b, 0);
+    if (total !== 100) {
+      const correction = (100 - total) / otherIndices.length;
+      otherIndices.forEach(i => {
+        newWeights[i] = Math.max(5, Math.min(90, newWeights[i] + correction));
+      });
+    }
+    
+    // Final normalization
+    const finalTotal = newWeights.reduce((a, b) => a + b, 0);
+    if (finalTotal !== 100) {
+      newWeights[otherIndices[0]] += 100 - finalTotal;
+    }
+    
+    onConfigChange({
+      colorWeight1: Math.round(newWeights[0]),
+      colorWeight2: Math.round(newWeights[1]),
+      colorWeight3: Math.round(newWeights[2])
+    });
+  };
+
+  const handleFreezeFrame = () => {
+    if (config.frozenTime === null) {
+      // Freeze at current time
+      onConfigChange({ frozenTime: internalTime, animate: false });
+    } else {
+      // Unfreeze - resume animation
+      startTimeRef.current = null;
+      onConfigChange({ frozenTime: null, animate: true });
+    }
+  };
+
+  const handleCaptureFrame = () => {
+    onConfigChange({ frozenTime: internalTime, animate: false });
+  };
+
+  const handleTimelineChange = (value: number) => {
+    onConfigChange({ frozenTime: value, animate: false });
+  };
+
+  const handleResetAnimation = () => {
+    startTimeRef.current = null;
+    setInternalTime(0);
+    onConfigChange({ frozenTime: null, animate: true });
+  };
+
+  const isWireframeMode = config.wireframe;
+
   return (
     <>
       {/* Toggle Button */}
@@ -83,6 +163,7 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle }: Contr
         className="fixed right-0 top-0 h-full w-80 z-40 glass overflow-y-auto"
       >
         <div className="p-6 pt-20 space-y-8">
+          {/* Shape Selection */}
           <div>
             <h3 className="font-display text-lg font-medium mb-4 text-foreground">Shape</h3>
             <div className="grid grid-cols-2 gap-2">
@@ -105,6 +186,64 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle }: Contr
             </div>
           </div>
 
+          {/* Aspect Ratio */}
+          <div>
+            <h3 className="font-display text-lg font-medium mb-4 text-foreground">Aspect Ratio</h3>
+            <div className="flex flex-wrap gap-2">
+              {aspectRatioOptions.map((ratio) => (
+                <button
+                  key={ratio}
+                  onClick={() => onConfigChange({ aspectRatio: ratio })}
+                  className={`py-1.5 px-3 rounded-lg text-xs font-medium transition-all ${
+                    config.aspectRatio === ratio
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                  }`}
+                >
+                  {ratio === 'free' ? 'Free' : ratio}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Mesh Controls (only visible when Mesh is selected) */}
+          {isWireframeMode && (
+            <div>
+              <h3 className="font-display text-lg font-medium mb-4 text-foreground">Mesh Settings</h3>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-muted-foreground">Grid Density</Label>
+                    <span className="text-xs text-muted-foreground">{config.meshDensity.toFixed(1)}</span>
+                  </div>
+                  <Slider
+                    value={[config.meshDensity]}
+                    onValueChange={([value]) => onConfigChange({ meshDensity: value })}
+                    min={1}
+                    max={6}
+                    step={0.1}
+                    className="w-full"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-muted-foreground">View Angle</Label>
+                    <span className="text-xs text-muted-foreground">{config.meshAngle}°</span>
+                  </div>
+                  <Slider
+                    value={[config.meshAngle]}
+                    onValueChange={([value]) => onConfigChange({ meshAngle: value })}
+                    min={0}
+                    max={90}
+                    step={1}
+                    className="w-full"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Colors */}
           <div>
             <h3 className="font-display text-lg font-medium mb-4 text-foreground">Colors</h3>
             <div className="grid grid-cols-3 gap-3 mb-4">
@@ -120,16 +259,21 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle }: Contr
               ))}
             </div>
             <div className="space-y-4">
-              {['color1', 'color2', 'color3'].map((colorKey, index) => (
+              {(['color1', 'color2', 'color3'] as const).map((colorKey, index) => (
                 <div key={colorKey}>
-                  <Label className="text-muted-foreground mb-2 block">Color {index + 1}</Label>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex items-center justify-between mb-2">
+                    <Label className="text-muted-foreground">Color {index + 1}</Label>
+                    <span className="text-xs text-muted-foreground font-mono">
+                      {[config.colorWeight1, config.colorWeight2, config.colorWeight3][index]}%
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2 mb-2">
                     {brandColors.map((color) => (
                       <button
                         key={color.hex}
                         onClick={() => onConfigChange({ [colorKey]: color.hex })}
                         className={`w-8 h-8 rounded-lg transition-all border-2 ${
-                          config[colorKey as keyof GradientConfig] === color.hex
+                          config[colorKey] === color.hex
                             ? 'border-primary scale-110'
                             : 'border-transparent hover:scale-105'
                         }`}
@@ -138,21 +282,80 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle }: Contr
                       />
                     ))}
                   </div>
+                  <Slider
+                    value={[[config.colorWeight1, config.colorWeight2, config.colorWeight3][index]]}
+                    onValueChange={([value]) => handleColorWeightChange(index, value)}
+                    min={5}
+                    max={90}
+                    step={1}
+                    className="w-full"
+                  />
                 </div>
               ))}
             </div>
           </div>
 
+          {/* Animation / Freeze Frame */}
           <div>
-            <h3 className="font-display text-lg font-medium mb-4 text-foreground">Motion</h3>
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <Label className="text-muted-foreground">Animate</Label>
-                <Switch
-                  checked={config.animate}
-                  onCheckedChange={(checked) => onConfigChange({ animate: checked })}
+            <h3 className="font-display text-lg font-medium mb-4 text-foreground">Animation</h3>
+            <div className="space-y-4">
+              {/* Play/Pause/Capture Controls */}
+              <div className="flex gap-2">
+                <button
+                  onClick={handleFreezeFrame}
+                  className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                    config.frozenTime === null
+                      ? 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                      : 'bg-primary text-primary-foreground'
+                  }`}
+                >
+                  {config.frozenTime === null ? (
+                    <>
+                      <Pause className="w-4 h-4" />
+                      Pause
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-4 h-4" />
+                      Play
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={handleCaptureFrame}
+                  className="py-2 px-3 rounded-lg text-sm font-medium transition-all bg-secondary text-secondary-foreground hover:bg-secondary/80 flex items-center gap-2"
+                  title="Capture current frame"
+                >
+                  <Camera className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={handleResetAnimation}
+                  className="py-2 px-3 rounded-lg text-sm font-medium transition-all bg-secondary text-secondary-foreground hover:bg-secondary/80 flex items-center gap-2"
+                  title="Reset animation"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Timeline Slider */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-muted-foreground">Timeline</Label>
+                  <span className="text-xs text-muted-foreground">
+                    {(config.frozenTime ?? internalTime).toFixed(1)}s
+                  </span>
+                </div>
+                <Slider
+                  value={[config.frozenTime ?? internalTime]}
+                  onValueChange={([value]) => handleTimelineChange(value)}
+                  min={0}
+                  max={10}
+                  step={0.1}
+                  className="w-full"
                 />
               </div>
+
+              {/* Speed Control */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label className="text-muted-foreground">Speed</Label>
@@ -170,6 +373,7 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle }: Contr
             </div>
           </div>
 
+          {/* Effects */}
           <div>
             <h3 className="font-display text-lg font-medium mb-4 text-foreground">Effects</h3>
             <div className="space-y-6">
