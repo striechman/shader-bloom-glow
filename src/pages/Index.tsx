@@ -4,37 +4,10 @@ import { ControlPanel } from '@/components/ControlPanel';
 import { Header } from '@/components/Header';
 import { HeroContent } from '@/components/HeroContent';
 import { ExportModal } from '@/components/ExportModal';
-
-interface GradientConfig {
-  type: 'sphere' | 'plane' | 'waterPlane';
-  wireframe: boolean;
-  animate: boolean;
-  speed: number;
-  color1: string;
-  color2: string;
-  color3: string;
-  grain: boolean;
-  uStrength: number;
-  uDensity: number;
-  uFrequency: number;
-}
-
-const defaultConfig: GradientConfig = {
-  type: 'sphere',
-  wireframe: false,
-  animate: true,
-  speed: 0.4,
-  color1: '#FDB515',
-  color2: '#E71989',
-  color3: '#000000',
-  grain: true,
-  uStrength: 4,
-  uDensity: 1.3,
-  uFrequency: 5.5,
-};
+import { GradientConfig, defaultGradientConfig } from '@/types/gradient';
 
 const Index = () => {
-  const [config, setConfig] = useState<GradientConfig>(defaultConfig);
+  const [config, setConfig] = useState<GradientConfig>(defaultGradientConfig);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
 
