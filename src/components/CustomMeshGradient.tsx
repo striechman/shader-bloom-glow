@@ -32,24 +32,32 @@ export const CustomMeshGradient = ({ config }: CustomMeshGradientProps) => {
     }
   }, [config.meshLineColor, config.color1]);
   
-  // Create gradient colors for the fill
+  // Create gradient colors for the fill - use the dominant color based on weights
   const fillColor = useMemo(() => {
-    // Mix colors based on weights
-    const c1 = new THREE.Color(config.color1);
-    const c2 = new THREE.Color(config.color2);
-    const c3 = new THREE.Color(config.color3);
+    const w1 = config.colorWeight1;
+    const w2 = config.colorWeight2;
+    const w3 = config.colorWeight3;
     
-    const w1 = config.colorWeight1 / 100;
-    const w2 = config.colorWeight2 / 100;
-    const w3 = config.colorWeight3 / 100;
+    // Return the color with highest weight for a more vibrant fill
+    if (w1 >= w2 && w1 >= w3) return config.color1;
+    if (w2 >= w1 && w2 >= w3) return config.color2;
+    return config.color3;
+  }, [config.color1, config.color2, config.color3, config.colorWeight1, config.colorWeight2, config.colorWeight3]);
+  
+  // Secondary fill color for richer appearance
+  const secondaryFillColor = useMemo(() => {
+    const w1 = config.colorWeight1;
+    const w2 = config.colorWeight2;
+    const w3 = config.colorWeight3;
     
-    const mixed = new THREE.Color(
-      c1.r * w1 + c2.r * w2 + c3.r * w3,
-      c1.g * w1 + c2.g * w2 + c3.g * w3,
-      c1.b * w1 + c2.b * w2 + c3.b * w3
-    );
-    
-    return '#' + mixed.getHexString();
+    // Return the second highest weighted color
+    if (w1 >= w2 && w1 >= w3) {
+      return w2 >= w3 ? config.color2 : config.color3;
+    }
+    if (w2 >= w1 && w2 >= w3) {
+      return w1 >= w3 ? config.color1 : config.color3;
+    }
+    return w1 >= w2 ? config.color1 : config.color2;
   }, [config.color1, config.color2, config.color3, config.colorWeight1, config.colorWeight2, config.colorWeight3]);
   
   // Animate the mesh vertices
@@ -80,15 +88,29 @@ export const CustomMeshGradient = ({ config }: CustomMeshGradientProps) => {
   // Convert mesh angle to radians
   const rotationX = THREE.MathUtils.degToRad(config.meshAngle);
   
+  // Calculate effective fill opacity - ensure colors are visible
+  const effectiveFillOpacity = Math.max(0.5, config.meshFillOpacity);
+  
   return (
     <group rotation={[rotationX, 0, 0]} position={[0, 0, 0]}>
+      {/* Background plane with gradient colors */}
+      <mesh position={[0, 0, -0.01]}>
+        <planeGeometry args={[5.2, 5.2]} />
+        <meshBasicMaterial 
+          color={secondaryFillColor} 
+          transparent 
+          opacity={effectiveFillOpacity * 0.8}
+        />
+      </mesh>
+      
+      {/* Main mesh with wireframe */}
       <mesh ref={meshRef}>
         <planeGeometry args={[5, 5, segments, segments]} />
         <Wireframe
           stroke={strokeColor}
           thickness={config.meshLineThickness}
           fill={fillColor}
-          fillOpacity={config.meshFillOpacity}
+          fillOpacity={effectiveFillOpacity}
           squeeze
           backfaceStroke={strokeColor}
         />

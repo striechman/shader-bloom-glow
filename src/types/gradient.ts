@@ -55,7 +55,7 @@ export const defaultGradientConfig: GradientConfig = {
   meshAngle: 45,
   meshLineThickness: 0.02,
   meshLineColor: 'black',
-  meshFillOpacity: 0.3,
+  meshFillOpacity: 0.7,
   aspectRatio: 'free',
 };
 
