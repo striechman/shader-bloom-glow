@@ -219,8 +219,10 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
     
     const w1 = config.colorWeight1 ?? 33;
     const w2 = w1 + (config.colorWeight2 ?? 34);
+    const animDuration = Math.round(10 / config.speed);
     
-    return `.gradient-background {
+    return `/* Static Gradient */
+.gradient-background {
   background: linear-gradient(
     135deg,
     ${config.color1} 0%,
@@ -261,6 +263,85 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
     ${config.color3},
     ${config.color1}
   );
+}
+
+/* ========== ANIMATED GRADIENTS ========== */
+
+/* Animated gradient - color shift */
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.gradient-animated {
+  background: linear-gradient(
+    135deg,
+    ${config.color1},
+    ${config.color2},
+    ${config.color3},
+    ${config.color2},
+    ${config.color1}
+  );
+  background-size: 400% 400%;
+  animation: gradient-shift ${animDuration}s ease infinite;
+}
+
+/* Animated rotating conic gradient */
+@keyframes gradient-rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.gradient-animated-rotate {
+  position: relative;
+  overflow: hidden;
+}
+
+.gradient-animated-rotate::before {
+  content: '';
+  position: absolute;
+  inset: -50%;
+  background: conic-gradient(
+    from 0deg,
+    ${config.color1},
+    ${config.color2},
+    ${config.color3},
+    ${config.color1}
+  );
+  animation: gradient-rotate ${animDuration}s linear infinite;
+}
+
+/* Animated pulse gradient */
+@keyframes gradient-pulse {
+  0%, 100% {
+    opacity: 1;
+    filter: blur(0px);
+  }
+  50% {
+    opacity: 0.8;
+    filter: blur(20px);
+  }
+}
+
+.gradient-animated-pulse {
+  background: radial-gradient(
+    ellipse at center,
+    ${config.color1} 0%,
+    ${config.color2} 50%,
+    ${config.color3} 100%
+  );
+  animation: gradient-pulse ${animDuration}s ease-in-out infinite;
 }`;
   };
 
@@ -414,7 +495,28 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
     setVideoProgress(0);
     
     try {
-      const canvas = document.querySelector('#gradient-stage canvas') as HTMLCanvasElement | null;
+      // Find the right canvas - either ShaderGradient canvas or Mesh mode canvas
+      const isMeshMode = config?.wireframe === true;
+      let canvas: HTMLCanvasElement | null = null;
+      
+      if (isMeshMode) {
+        // Mesh mode uses a separate R3F Canvas
+        const allCanvases = document.querySelectorAll('canvas');
+        // Find the canvas that's inside the gradient container (not the ShaderGradientCanvas)
+        for (const c of allCanvases) {
+          const parent = c.closest('.absolute.inset-0');
+          if (parent) {
+            canvas = c;
+            break;
+          }
+        }
+      }
+      
+      // Fallback to #gradient-stage canvas
+      if (!canvas) {
+        canvas = document.querySelector('#gradient-stage canvas') as HTMLCanvasElement | null;
+      }
+      
       if (!canvas) {
         toast.error('Canvas not found');
         setIsExporting(false);
