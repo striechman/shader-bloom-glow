@@ -71,6 +71,7 @@ const Index = () => {
       <ExportModal
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
+        config={config}
       />
 
       {/* Main Content */}
