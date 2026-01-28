@@ -122,56 +122,54 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
 
   const handleExport = async () => {
     setIsExporting(true);
-    
-    const width = useCustomSize ? customWidth : selectedSize.width;
-    const height = useCustomSize ? customHeight : selectedSize.height;
 
     try {
-      const canvas = document.querySelector('canvas');
+      const canvas = document.querySelector('canvas') as HTMLCanvasElement;
       if (!canvas) {
         toast.error('Canvas not found');
         setIsExporting(false);
         return;
       }
 
-      const exportCanvas = document.createElement('canvas');
-      exportCanvas.width = width;
-      exportCanvas.height = height;
-      const ctx = exportCanvas.getContext('2d');
+      const width = useCustomSize ? customWidth : selectedSize.width;
+      const height = useCustomSize ? customHeight : selectedSize.height;
+
+      // Use requestAnimationFrame to ensure the canvas is rendered
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            resolve();
+          });
+        });
+      });
+
+      // Capture the canvas at its current state
+      const dataUrl = canvas.toDataURL(
+        format === 'png' ? 'image/png' : 'image/jpeg',
+        format === 'jpg' ? 0.95 : undefined
+      );
       
-      if (!ctx) {
-        toast.error('Could not create export canvas');
+      // Check if the image is valid (not empty/transparent)
+      if (dataUrl === 'data:,' || dataUrl.length < 100) {
+        toast.error('Canvas capture failed - try pausing the animation first');
         setIsExporting(false);
         return;
       }
 
-      ctx.drawImage(canvas, 0, 0, width, height);
+      // Create download link
+      const link = document.createElement('a');
+      link.download = `gradient-${width}x${height}.${format}`;
+      link.href = dataUrl;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
 
-      const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
-      const quality = format === 'jpg' ? 0.95 : undefined;
-      
-      exportCanvas.toBlob((blob) => {
-        if (!blob) {
-          toast.error('Export failed');
-          setIsExporting(false);
-          return;
-        }
-
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `gradient-${width}x${height}.${format}`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-
-        toast.success(`Exported ${width}x${height} ${format.toUpperCase()}`);
-        setIsExporting(false);
-        onClose();
-      }, mimeType, quality);
-    } catch {
-      toast.error('Export failed');
+      toast.success(`Exported ${format.toUpperCase()} successfully!`);
+      setIsExporting(false);
+      onClose();
+    } catch (error) {
+      console.error('Export failed:', error);
+      toast.error('Export failed - try pausing the animation first');
       setIsExporting(false);
     }
   };

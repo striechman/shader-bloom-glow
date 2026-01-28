@@ -9,6 +9,9 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
   const isWireframe = config.wireframe === true;
   const isFrozen = config.frozenTime !== null;
   
+  // Create a key that changes when colors/weights change to force re-render
+  const colorKey = `${config.color1}-${config.color2}-${config.color3}-${config.colorWeight1}-${config.colorWeight2}-${config.colorWeight3}`;
+  
   // Calculate aspect ratio container styles
   const getContainerStyle = () => {
     if (config.aspectRatio === 'free') {
@@ -41,6 +44,7 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
     <div className="absolute inset-0 z-0 flex items-center justify-center">
       <div style={getContainerStyle()}>
         <ShaderGradientCanvas
+          key={colorKey}
           style={{
             width: '100%',
             height: '100%',
