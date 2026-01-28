@@ -30,12 +30,12 @@ const shapeOptions: { value: GradientConfig['type']; label: string }[] = [
 ];
 
 const colorPresets = [
-  { color1: '#ff5005', color2: '#dbba95', color3: '#d0bce1' },
-  { color1: '#69d2e7', color2: '#a7dbd8', color3: '#e0e4cc' },
-  { color1: '#fe4365', color2: '#fc9d9a', color3: '#f9cdad' },
-  { color1: '#556270', color2: '#4ecdc4', color3: '#c7f464' },
-  { color1: '#00c9ff', color2: '#92fe9d', color3: '#00c9ff' },
-  { color1: '#fc466b', color2: '#3f5efb', color3: '#fc466b' },
+  { color1: '#FDB515', color2: '#E71989', color3: '#000000' }, // Yellow Orange + Magenta + Black
+  { color1: '#F25665', color2: '#6A00F4', color3: '#000000' }, // Coral + Deep Violet + Black
+  { color1: '#E71989', color2: '#00C2FF', color3: '#000000' }, // Magenta + Electric Blue + Black
+  { color1: '#6A00F4', color2: '#FDB515', color3: '#000000' }, // Deep Violet + Yellow Orange + Black
+  { color1: '#00C2FF', color2: '#F25665', color3: '#000000' }, // Electric Blue + Coral + Black
+  { color1: '#FDB515', color2: '#F25665', color3: '#000000' }, // Yellow Orange + Coral + Black
 ];
 
 export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle }: ControlPanelProps) => {
