@@ -2,9 +2,10 @@ import { motion } from 'framer-motion';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Play, Pause, Camera, RotateCcw } from 'lucide-react';
+import { Play, Pause, Camera, RotateCcw, X, Moon, Sun } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { GradientConfig } from '@/types/gradient';
+import { useTheme } from '@/hooks/useTheme';
 
 interface ControlPanelProps {
   config: GradientConfig;
@@ -131,30 +132,11 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle }: Contr
   };
 
   const isWireframeMode = config.wireframe;
+  const { theme, toggleTheme } = useTheme();
+  const isDark = theme === 'dark';
 
   return (
     <>
-      {/* Toggle Button */}
-      <motion.button
-        onClick={onToggle}
-        className="fixed right-6 top-6 z-50 glass rounded-full p-4 hover:bg-secondary/50 transition-colors"
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-      >
-        <svg
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          className="text-foreground"
-        >
-          <circle cx="12" cy="12" r="3" />
-          <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
-        </svg>
-      </motion.button>
-
       {/* Panel */}
       <motion.div
         initial={{ x: 400, opacity: 0 }}
@@ -162,7 +144,37 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle }: Contr
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
         className="fixed right-0 top-0 h-full w-80 z-40 glass overflow-y-auto"
       >
-        <div className="p-6 pt-20 space-y-8">
+        <div className="p-6 pt-6 space-y-8">
+          {/* Panel Header with close button */}
+          <div className="flex items-center justify-between">
+            <h2 className="font-display text-xl font-semibold text-foreground">Settings</h2>
+            <button
+              onClick={onToggle}
+              className="p-2 rounded-lg hover:bg-secondary/50 transition-colors"
+              aria-label="Close panel"
+            >
+              <X className="w-5 h-5 text-foreground" />
+            </button>
+          </div>
+
+          {/* Theme Toggle */}
+          <div className="flex items-center justify-between py-3 px-4 rounded-lg bg-secondary/50">
+            <div className="flex items-center gap-3">
+              {isDark ? (
+                <Moon className="w-5 h-5 text-foreground" />
+              ) : (
+                <Sun className="w-5 h-5 text-foreground" />
+              )}
+              <span className="text-sm font-medium text-foreground">
+                {isDark ? 'Dark Mode' : 'Light Mode'}
+              </span>
+            </div>
+            <Switch
+              checked={!isDark}
+              onCheckedChange={toggleTheme}
+            />
+          </div>
+
           {/* Shape Selection */}
           <div>
             <h3 className="font-display text-lg font-medium mb-4 text-foreground">Shape</h3>
