@@ -111,6 +111,18 @@ void main() {
   float freq = max(0.1, uFrequency);
   float density = max(0.0, uDensity);
   float strength = max(0.0, uStrength);
+  
+  // Center UV coordinates for edge distance calculation
+  vec2 centeredUv = vUv - 0.5;
+  
+  // Calculate distance from edges (0 at edges, 1 at center)
+  float edgeDistX = 1.0 - abs(centeredUv.x) * 2.0;
+  float edgeDistY = 1.0 - abs(centeredUv.y) * 2.0;
+  float edgeDist = min(edgeDistX, edgeDistY);
+  
+  // Smooth falloff from edges - corners fade to color3 (typically black)
+  float edgeFade = smoothstep(0.0, 0.3, edgeDist);
+  
   vec3 noisePos = vec3(vUv * uNoiseScale * freq, uTime * 0.5);
   
   float n1 = snoise(noisePos) * 0.5 + 0.5;
@@ -141,6 +153,9 @@ void main() {
   // Mix colors: noise < threshold1 = color1, threshold1-threshold2 = color2, > threshold2 = color3
   finalColor = mix(uColor1, uColor2, edge1);
   finalColor = mix(finalColor, uColor3, edge2);
+  
+  // Apply edge fade - corners blend to color3 (typically black) to prevent artifacts
+  finalColor = mix(uColor3, finalColor, edgeFade);
   
   gl_FragColor = vec4(finalColor, 1.0);
 

@@ -171,23 +171,27 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
         {/* Static-mode weights overlay: softened (no hard banding) + doesn't kill shader effects */}
         {isStaticMode && !isWireframe && !isButton && (
           <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              background: `linear-gradient(135deg,
-                ${currentColors.color1} 0%,
-                ${currentColors.color1} ${f1}%,
-                ${currentColors.color2} ${f2}%,
-                ${currentColors.color2} ${f3}%,
-                ${currentColors.color3} ${f4}%,
-                ${currentColors.color3} 100%
-              )`,
-              // Make weights clearly visible in static mode (especially dark colors)
-              opacity: 0.48,
-              mixBlendMode: 'normal',
-              filter: 'blur(32px)',
-              transform: 'scale(1.08)',
-            }}
-          />
+            className="absolute inset-0 pointer-events-none overflow-hidden"
+            style={{ borderRadius: 'inherit' }}
+          >
+            <div
+              className="absolute inset-[-8%] pointer-events-none"
+              style={{
+                background: `linear-gradient(135deg,
+                  ${currentColors.color1} 0%,
+                  ${currentColors.color1} ${f1}%,
+                  ${currentColors.color2} ${f2}%,
+                  ${currentColors.color2} ${f3}%,
+                  ${currentColors.color3} ${f4}%,
+                  ${currentColors.color3} 100%
+                )`,
+                // Make weights clearly visible in static mode (especially dark colors)
+                opacity: 0.48,
+                mixBlendMode: 'normal',
+                filter: 'blur(32px)',
+              }}
+            />
+          </div>
         )}
         
         {/* Hero Banner black fade overlay - only for hero-banner */}
