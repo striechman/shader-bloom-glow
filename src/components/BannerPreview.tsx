@@ -55,12 +55,43 @@ export const BannerPreview = ({ config: externalConfig, onConfigChange }: Banner
         return;
       }
 
-      // Get WebGL context and read pixels
+      // Get WebGL context
       const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
       if (!gl) {
         toast.error('Could not get WebGL context');
         return;
       }
+
+      // Read pixels from WebGL canvas
+      const sourceWidth = canvas.width;
+      const sourceHeight = canvas.height;
+      const pixels = new Uint8Array(sourceWidth * sourceHeight * 4);
+      gl.readPixels(0, 0, sourceWidth, sourceHeight, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+
+      // Create ImageData from pixels (flip Y-axis as WebGL is bottom-up)
+      const imageData = new ImageData(sourceWidth, sourceHeight);
+      for (let y = 0; y < sourceHeight; y++) {
+        for (let x = 0; x < sourceWidth; x++) {
+          const sourceY = sourceHeight - 1 - y; // Flip Y
+          const sourceIdx = (sourceY * sourceWidth + x) * 4;
+          const destIdx = (y * sourceWidth + x) * 4;
+          imageData.data[destIdx] = pixels[sourceIdx];     // R
+          imageData.data[destIdx + 1] = pixels[sourceIdx + 1]; // G
+          imageData.data[destIdx + 2] = pixels[sourceIdx + 2]; // B
+          imageData.data[destIdx + 3] = pixels[sourceIdx + 3]; // A
+        }
+      }
+
+      // Create temp canvas with source pixels
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = sourceWidth;
+      tempCanvas.height = sourceHeight;
+      const tempCtx = tempCanvas.getContext('2d');
+      if (!tempCtx) {
+        toast.error('Could not create temp canvas');
+        return;
+      }
+      tempCtx.putImageData(imageData, 0, 0);
 
       // Create export canvas at target resolution
       const exportCanvas = document.createElement('canvas');
@@ -72,8 +103,12 @@ export const BannerPreview = ({ config: externalConfig, onConfigChange }: Banner
         return;
       }
 
-      // Draw the WebGL canvas scaled to export size
-      ctx.drawImage(canvas, 0, 0, config.width, config.height);
+      // Fill with black background first to avoid transparency
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, config.width, config.height);
+
+      // Draw the source canvas scaled to fill export size
+      ctx.drawImage(tempCanvas, 0, 0, config.width, config.height);
 
       // Apply black fade overlay for hero banners
       if (config.type === 'hero') {
