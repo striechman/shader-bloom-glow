@@ -15,38 +15,38 @@ const buttonPresets = [
   { 
     id: 'royal',
     name: 'Royal', 
-    default: { color1: '#6A00F4', color2: '#E71989', color3: '#000000' }, 
-    hover: { color1: '#E71989', color2: '#FDB515', color3: '#000000' } 
+    default: { color1: '#6A00F4', color2: '#EC008C', color3: '#000000' }, 
+    hover: { color1: '#EC008C', color2: '#FDB515', color3: '#000000' } 
   },
   { 
     id: 'sunset',
     name: 'Sunset', 
-    default: { color1: '#FDB515', color2: '#E71989', color3: '#000000' }, 
-    hover: { color1: '#E71989', color2: '#6A00F4', color3: '#000000' } 
+    default: { color1: '#FDB515', color2: '#EC008C', color3: '#000000' }, 
+    hover: { color1: '#EC008C', color2: '#6A00F4', color3: '#000000' } 
   },
   { 
     id: 'ocean',
     name: 'Ocean', 
     default: { color1: '#00C2FF', color2: '#6A00F4', color3: '#000000' }, 
-    hover: { color1: '#6A00F4', color2: '#E71989', color3: '#000000' } 
+    hover: { color1: '#6A00F4', color2: '#EC008C', color3: '#000000' } 
   },
   { 
     id: 'coral',
     name: 'Coral', 
-    default: { color1: '#F25665', color2: '#6A00F4', color3: '#000000' }, 
-    hover: { color1: '#6A00F4', color2: '#E71989', color3: '#000000' } 
+    default: { color1: '#F2665F', color2: '#6A00F4', color3: '#000000' }, 
+    hover: { color1: '#6A00F4', color2: '#EC008C', color3: '#000000' } 
   },
   { 
     id: 'neon',
     name: 'Neon', 
-    default: { color1: '#E71989', color2: '#00C2FF', color3: '#000000' }, 
+    default: { color1: '#EC008C', color2: '#00C2FF', color3: '#000000' }, 
     hover: { color1: '#00C2FF', color2: '#FDB515', color3: '#000000' } 
   },
   { 
     id: 'electric',
     name: 'Electric', 
-    default: { color1: '#00C2FF', color2: '#E71989', color3: '#000000' }, 
-    hover: { color1: '#E71989', color2: '#6A00F4', color3: '#000000' } 
+    default: { color1: '#00C2FF', color2: '#EC008C', color3: '#000000' }, 
+    hover: { color1: '#EC008C', color2: '#6A00F4', color3: '#000000' } 
   },
 ];
 

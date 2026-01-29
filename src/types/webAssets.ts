@@ -41,7 +41,7 @@ export const defaultBannerConfig: BannerConfig = {
   width: 1280,
   height: 400,
   blackFadePercentage: 30,
-  gradientColors: ['#FDB515', '#E71989', '#6A00F4'],
+  gradientColors: ['#FDB515', '#EC008C', '#6A00F4'],
   gradientWeights: [33, 34, 33],
   
   // Shader defaults
@@ -57,11 +57,11 @@ export const defaultBannerConfig: BannerConfig = {
 
 export const defaultButtonConfig: ButtonGradientConfig = {
   defaultGradient: {
-    colors: ['#FDB515', '#E71989'],
+    colors: ['#FDB515', '#EC008C'],
     direction: 'horizontal',
   },
   hoverGradient: {
-    colors: ['#E71989', '#6A00F4'],
+    colors: ['#EC008C', '#6A00F4'],
     direction: 'horizontal',
   },
   borderRadius: 8,
@@ -72,8 +72,8 @@ export const defaultButtonConfig: ButtonGradientConfig = {
 // Brand colors for web assets
 export const webAssetsBrandColors = [
   { name: 'Yellow Orange', hex: '#FDB515' },
-  { name: 'Coral', hex: '#F25665' },
-  { name: 'Magenta', hex: '#E71989' },
+  { name: 'Coral', hex: '#F2665F' },
+  { name: 'Magenta', hex: '#EC008C' },
   { name: 'Deep Violet', hex: '#6A00F4' },
   { name: 'Electric Blue', hex: '#00C2FF' },
   { name: 'Black', hex: '#000000' },
@@ -89,7 +89,7 @@ export function generateHeroBannerGradient(
   const fadeEnd = blackPercentage;
   
   const color1 = colors[0] || '#FDB515';
-  const color2 = colors[1] || colors[0] || '#E71989';
+  const color2 = colors[1] || colors[0] || '#EC008C';
   const color3 = colors[2] || colors[1] || colors[0] || '#6A00F4';
   
   return `linear-gradient(to right,
@@ -107,7 +107,7 @@ export function generateSmallBannerGradient(
   weights: number[]
 ): string {
   const color1 = colors[0] || '#FDB515';
-  const color2 = colors[1] || '#E71989';
+  const color2 = colors[1] || '#EC008C';
   const color3 = colors[2] || '#6A00F4';
   
   const w1 = weights[0] || 33;

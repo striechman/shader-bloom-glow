@@ -142,7 +142,7 @@ function BannerMeshGradient({ config }: MeshGradientProps) {
   
   const uniforms = useMemo(() => ({
     uColor1: { value: new THREE.Color(config.gradientColors[0] || '#FDB515') },
-    uColor2: { value: new THREE.Color(config.gradientColors[1] || '#E71989') },
+    uColor2: { value: new THREE.Color(config.gradientColors[1] || '#EC008C') },
     uColor3: { value: new THREE.Color(config.gradientColors[2] || '#6A00F4') },
     uWeight1: { value: config.gradientWeights[0] || 33 },
     uWeight2: { value: config.gradientWeights[1] || 34 },
@@ -160,7 +160,7 @@ function BannerMeshGradient({ config }: MeshGradientProps) {
     
     const mat = materialRef.current;
     mat.uniforms.uColor1.value.set(config.gradientColors[0] || '#FDB515');
-    mat.uniforms.uColor2.value.set(config.gradientColors[1] || '#E71989');
+    mat.uniforms.uColor2.value.set(config.gradientColors[1] || '#EC008C');
     mat.uniforms.uColor3.value.set(config.gradientColors[2] || '#6A00F4');
     mat.uniforms.uWeight1.value = config.gradientWeights[0] || 33;
     mat.uniforms.uWeight2.value = config.gradientWeights[1] || 34;
@@ -225,7 +225,7 @@ export const BannerCanvas = ({ config, className }: BannerCanvasProps) => {
             rotationY={10}
             rotationZ={50}
             color1={config.gradientColors[0] || '#FDB515'}
-            color2={config.gradientColors[1] || '#E71989'}
+            color2={config.gradientColors[1] || '#EC008C'}
             color3={config.gradientColors[2] || '#6A00F4'}
             reflection={0.1}
             cAzimuthAngle={180}
