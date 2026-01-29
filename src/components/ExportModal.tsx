@@ -5,6 +5,8 @@ import { toast } from 'sonner';
 import { GradientConfig, exportCategories, ExportCategory, aspectRatioValues } from '@/types/gradient';
 import { Slider } from '@/components/ui/slider';
 import { noise3D, perlinNoise3D, smoothstep, lerp, parseColor } from '@/lib/noise';
+import { captureWebGLCanvasTo2D } from '@/lib/webglCapture';
+import { downloadBlob } from '@/lib/download';
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -99,59 +101,7 @@ const videoResolutions = [
   { label: '4K', width: 3840, height: 2160 },
 ];
 
-async function captureVisibleWebGLCanvasToCanvas(
-  sourceCanvas: HTMLCanvasElement,
-  targetCtx: CanvasRenderingContext2D,
-  targetWidth: number,
-  targetHeight: number
-): Promise<void> {
-  // Wait for at least one paint so we capture the latest frame
-  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-
-  const gl =
-    (sourceCanvas.getContext('webgl2') as WebGL2RenderingContext | null) ||
-    (sourceCanvas.getContext('webgl') as WebGLRenderingContext | null);
-
-  // If we can't access WebGL context, fallback to drawImage (may be lower fidelity)
-  if (!gl) {
-    targetCtx.drawImage(sourceCanvas, 0, 0, targetWidth, targetHeight);
-    return;
-  }
-
-  const srcW = sourceCanvas.width;
-  const srcH = sourceCanvas.height;
-  const pixels = new Uint8Array(srcW * srcH * 4);
-
-  try {
-    gl.readPixels(0, 0, srcW, srcH, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
-  } catch {
-    // Some browsers can block readPixels depending on context state
-    targetCtx.drawImage(sourceCanvas, 0, 0, targetWidth, targetHeight);
-    return;
-  }
-
-  // Flip Y axis (WebGL is bottom-left origin)
-  const imageData = new ImageData(srcW, srcH);
-  for (let y = 0; y < srcH; y++) {
-    const srcRow = (srcH - 1 - y) * srcW * 4;
-    const dstRow = y * srcW * 4;
-    imageData.data.set(pixels.subarray(srcRow, srcRow + srcW * 4), dstRow);
-  }
-
-  const tmp = document.createElement('canvas');
-  tmp.width = srcW;
-  tmp.height = srcH;
-  const tmpCtx = tmp.getContext('2d');
-  if (!tmpCtx) {
-    targetCtx.drawImage(sourceCanvas, 0, 0, targetWidth, targetHeight);
-    return;
-  }
-  tmpCtx.putImageData(imageData, 0, 0);
-
-  targetCtx.imageSmoothingEnabled = true;
-  (targetCtx as any).imageSmoothingQuality = 'high';
-  targetCtx.drawImage(tmp, 0, 0, targetWidth, targetHeight);
-}
+// (WebGL capture moved to src/lib/webglCapture.ts)
 
 // ============================================================================
 // High-Quality 4-Color Gradient Renderer
@@ -203,9 +153,7 @@ async function render4ColorGradientHighQuality(
   // Hero banner fade settings
   const bannerBlackFade = config.bannerBlackFade ?? 30;
   
-  // Debug log
-  console.log('[ExportModal] Rendering', width, 'x', height, 'type:', config.type);
-  console.log('[ExportModal] Sample noise at (0.5, 0.5):', noise3D(0.5 * freq, 0.5 * freq, time));
+  // (Debug logs removed)
   
   // Process each pixel
   for (let y = 0; y < height; y++) {
@@ -696,32 +644,25 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
         return;
       }
 
-      // Check if we should use high-quality JS render
-      // Use for: Mesh mode, Plane mode, and banner aspect ratios
-      const isMeshMode = config.wireframe === true;
-      const isPlaneMode = config.type === 'plane';
-      const isBannerRatio = config.aspectRatio === 'hero-banner' || config.aspectRatio === 'small-banner';
+      // Prefer WebGL pixel capture (matches the preview exactly). Fall back to JS render only if capture fails.
       const isHeroBanner = config.aspectRatio === 'hero-banner';
-      const useJSRender = isMeshMode || isPlaneMode || isBannerRatio;
+      const gradientStage = document.querySelector('#gradient-stage');
+      const sourceCanvas = (gradientStage?.querySelector('canvas') ?? null) as HTMLCanvasElement | null;
 
-      if (useJSRender) {
-        // ========== High-quality JS render ==========
-        // This produces pixel-perfect output at any resolution
+      let captured = false;
+      if (sourceCanvas) {
+        try {
+          await captureWebGLCanvasTo2D(sourceCanvas, ctx, targetWidth, targetHeight);
+          captured = true;
+        } catch {
+          captured = false;
+        }
+      }
+
+      if (!captured) {
         await render4ColorGradientHighQuality(ctx, targetWidth, targetHeight, config, isHeroBanner);
       } else {
-        // ========== Sphere/Water Mode: Capture WebGL canvas ==========
-        const gradientStage = document.querySelector('#gradient-stage');
-        const sourceCanvas = (gradientStage?.querySelector('canvas') ?? null) as HTMLCanvasElement | null;
-
-        if (!sourceCanvas) {
-          toast.error('Canvas not found');
-          setIsExporting(false);
-          return;
-        }
-
-        await captureVisibleWebGLCanvasToCanvas(sourceCanvas, ctx, targetWidth, targetHeight);
-
-        // Heal corner artifacts for WebGL capture (not needed for JS render)
+        // Heal corner artifacts for WebGL capture
         {
           const fadeSize = Math.min(targetWidth, targetHeight) * 0.18;
           const sampleSize = Math.max(8, Math.floor(fadeSize * 0.08));
@@ -813,35 +754,17 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
       const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
       const quality = format === 'jpg' ? 0.98 : undefined;
 
-      tempCanvas.toBlob((blob) => {
-        if (!blob) {
-          toast.error('Failed to create image');
-          setIsExporting(false);
-          return;
-        }
+       tempCanvas.toBlob((blob) => {
+         if (!blob) {
+           toast.error('Failed to create image');
+           setIsExporting(false);
+           return;
+         }
 
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.download = `gradient-${targetWidth}x${targetHeight}.${format}`;
-        link.href = url;
-        link.rel = 'noopener';
-
-        // Some browsers (notably iOS Safari) can ignore download on blob URLs.
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        // Best-effort fallback for iOS Safari
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-        if (isIOS) {
-          window.open(url, '_blank', 'noopener,noreferrer');
-        }
-
-        setTimeout(() => URL.revokeObjectURL(url), 500);
-
-        toast.success(`Exported ${format.toUpperCase()} (${targetWidth}×${targetHeight})`);
-        setIsExporting(false);
-      }, mimeType, quality);
+         downloadBlob(blob, `gradient-${targetWidth}x${targetHeight}.${format}`);
+         toast.success(`Exported ${format.toUpperCase()} (${targetWidth}×${targetHeight})`);
+         setIsExporting(false);
+       }, mimeType, quality);
 
     } catch (error) {
       console.error('Export failed:', error);
