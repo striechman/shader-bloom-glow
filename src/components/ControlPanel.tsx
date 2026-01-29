@@ -4,7 +4,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Play, Pause, Camera, RotateCcw, X, Moon, Sun, ChevronDown, ChevronUp, Globe } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
-import { GradientConfig } from '@/types/gradient';
+import { GradientConfig, isBannerRatio } from '@/types/gradient';
 import { useTheme } from '@/hooks/useTheme';
 import { WebAssetsPanel } from './WebAssetsPanel';
 
@@ -22,8 +22,18 @@ const shapeOptions: { value: GradientConfig['type']; wireframe: boolean; label: 
   { value: 'plane', wireframe: true, label: 'Mesh' },
 ];
 
-const aspectRatioOptions: GradientConfig['aspectRatio'][] = [
-  'free', '1:1', '16:9', '9:16', '4:3', '3:4', '2:3', '3:2', '4:5'
+const aspectRatioOptions: { value: GradientConfig['aspectRatio']; label: string }[] = [
+  { value: 'free', label: 'Free' },
+  { value: '1:1', label: '1:1' },
+  { value: '16:9', label: '16:9' },
+  { value: '9:16', label: '9:16' },
+  { value: '4:3', label: '4:3' },
+  { value: '3:4', label: '3:4' },
+  { value: '2:3', label: '2:3' },
+  { value: '3:2', label: '3:2' },
+  { value: '4:5', label: '4:5' },
+  { value: 'hero-banner', label: 'Hero Banner' },
+  { value: 'small-banner', label: 'Small Banner' },
 ];
 
 // Brand color palette
@@ -204,20 +214,41 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle }: Contr
           <div>
             <h3 className="font-display text-lg font-medium mb-4 text-foreground">Aspect Ratio</h3>
             <div className="flex flex-wrap gap-2">
-              {aspectRatioOptions.map((ratio) => (
+              {aspectRatioOptions.map((option) => (
                 <button
-                  key={ratio}
-                  onClick={() => onConfigChange({ aspectRatio: ratio })}
+                  key={option.value}
+                  onClick={() => onConfigChange({ aspectRatio: option.value })}
                   className={`py-1.5 px-3 rounded-lg text-xs font-medium transition-all ${
-                    config.aspectRatio === ratio
+                    config.aspectRatio === option.value
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
                   }`}
                 >
-                  {ratio === 'free' ? 'Free' : ratio}
+                  {option.label}
                 </button>
               ))}
             </div>
+            
+            {/* Banner Black Fade Control */}
+            {isBannerRatio(config.aspectRatio) && (
+              <div className="mt-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-muted-foreground">Black Fade</Label>
+                  <span className="text-xs text-muted-foreground">{config.bannerBlackFade}%</span>
+                </div>
+                <Slider
+                  value={[config.bannerBlackFade]}
+                  onValueChange={([value]) => onConfigChange({ bannerBlackFade: value })}
+                  min={15}
+                  max={50}
+                  step={1}
+                  className="w-full"
+                />
+                <p className="text-xs text-muted-foreground/70">
+                  Left side will be solid black, then fade into the gradient
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Mesh Controls (only visible when Mesh is selected) */}

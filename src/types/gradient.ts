@@ -30,7 +30,10 @@ export interface GradientConfig {
   meshBlur: number; // Softness between colors (0-100)
   
   // Aspect Ratio
-  aspectRatio: '1:1' | '16:9' | '9:16' | '2:3' | '3:2' | '4:5' | '4:3' | '3:4' | 'free';
+  aspectRatio: '1:1' | '16:9' | '9:16' | '2:3' | '3:2' | '4:5' | '4:3' | '3:4' | 'free' | 'hero-banner' | 'small-banner';
+  
+  // Banner settings (only applies when aspectRatio is hero-banner or small-banner)
+  bannerBlackFade: number; // Percentage of left side that's black (15-50)
 }
 
 export const defaultGradientConfig: GradientConfig = {
@@ -53,6 +56,7 @@ export const defaultGradientConfig: GradientConfig = {
   meshNoiseScale: 1.0,
   meshBlur: 50,
   aspectRatio: 'free',
+  bannerBlackFade: 30,
 };
 
 export const aspectRatioValues: Record<string, number> = {
@@ -65,6 +69,13 @@ export const aspectRatioValues: Record<string, number> = {
   '4:3': 4 / 3,
   '3:4': 3 / 4,
   'free': 0,
+  'hero-banner': 1280 / 400, // ~3.2:1
+  'small-banner': 600 / 300, // 2:1
+};
+
+// Check if aspect ratio is a banner type
+export const isBannerRatio = (ratio: string): boolean => {
+  return ratio === 'hero-banner' || ratio === 'small-banner';
 };
 
 export const exportCategories = {
