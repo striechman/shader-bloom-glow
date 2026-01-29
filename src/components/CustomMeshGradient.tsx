@@ -98,20 +98,30 @@ uniform float uWeight3;
 uniform float uTime;
 uniform float uNoiseScale;
 uniform float uBlur;
+uniform float uStrength;
+uniform float uDensity;
+uniform float uFrequency;
+uniform float uGrain;
 
 varying vec2 vUv;
 varying vec3 vPosition;
 
 void main() {
   // Multi-octave noise for richer texture
-  vec3 noisePos = vec3(vUv * uNoiseScale, uTime * 0.1);
+  float freq = max(0.1, uFrequency);
+  float density = max(0.0, uDensity);
+  float strength = max(0.0, uStrength);
+  vec3 noisePos = vec3(vUv * uNoiseScale * freq, uTime * 0.1);
   
   float n1 = snoise(noisePos) * 0.5 + 0.5;
-  float n2 = snoise(noisePos * 2.0 + 100.0) * 0.25;
-  float n3 = snoise(noisePos * 4.0 + 200.0) * 0.125;
+  float n2 = snoise(noisePos * 2.0 + 100.0) * (0.20 + 0.10 * density);
+  float n3 = snoise(noisePos * 4.0 + 200.0) * (0.10 + 0.06 * density);
   
   float noise = n1 + n2 + n3;
   noise = noise / 1.375; // Normalize to 0-1 range
+
+  // Strength = more contrast in the blobs
+  noise = pow(clamp(noise, 0.0, 1.0), 1.0 + strength * 0.18);
   
   // Apply blur (softness) - higher blur = smoother transitions
   float blurFactor = uBlur * 0.5;
@@ -133,6 +143,13 @@ void main() {
   finalColor = mix(finalColor, uColor3, edge2);
   
   gl_FragColor = vec4(finalColor, 1.0);
+
+  // Film grain (subtle) for Mesh mode too
+  if (uGrain > 0.0) {
+    float g = snoise(vec3(vUv * 220.0, uTime * 0.7));
+    float grainAmt = (g * 0.5 + 0.5 - 0.5) * (uGrain * 0.18);
+    gl_FragColor.rgb = clamp(gl_FragColor.rgb + grainAmt, 0.0, 1.0);
+  }
 }
 `;
 
@@ -151,6 +168,10 @@ export function CustomMeshGradient({ config }: CustomMeshGradientProps) {
     uTime: { value: 0 },
     uNoiseScale: { value: config.meshNoiseScale ?? 3.0 },
     uBlur: { value: (config.meshBlur ?? 50) / 100 },
+    uStrength: { value: config.uStrength },
+    uDensity: { value: config.uDensity },
+    uFrequency: { value: config.uFrequency },
+    uGrain: { value: config.grain ? (config.grainIntensity ?? 50) / 100 : 0 },
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), []);
   
@@ -167,6 +188,10 @@ export function CustomMeshGradient({ config }: CustomMeshGradientProps) {
     mat.uniforms.uWeight3.value = config.colorWeight3;
     mat.uniforms.uNoiseScale.value = config.meshNoiseScale ?? 3.0;
     mat.uniforms.uBlur.value = (config.meshBlur ?? 50) / 100;
+    mat.uniforms.uStrength.value = config.uStrength;
+    mat.uniforms.uDensity.value = config.uDensity;
+    mat.uniforms.uFrequency.value = config.uFrequency;
+    mat.uniforms.uGrain.value = config.grain ? (config.grainIntensity ?? 50) / 100 : 0;
     
     // Check animation state directly from config (not from stale closure)
     const isFrozen = config.frozenTime !== null;
