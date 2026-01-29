@@ -30,9 +30,9 @@ export interface GradientConfig {
   meshBlur: number; // Softness between colors (0-100)
   
   // Aspect Ratio
-  aspectRatio: '1:1' | '16:9' | '9:16' | '2:3' | '3:2' | '4:5' | '4:3' | '3:4' | 'free' | 'hero-banner' | 'small-banner';
+  aspectRatio: '1:1' | '16:9' | '9:16' | '2:3' | '3:2' | '4:5' | '4:3' | '3:4' | 'free' | 'hero-banner' | 'small-banner' | 'button-large' | 'button-medium' | 'button-small';
   
-  // Banner settings (only applies when aspectRatio is hero-banner or small-banner)
+  // Banner settings (only applies when aspectRatio is hero-banner)
   bannerBlackFade: number; // Percentage of left side that's black (15-50)
 }
 
@@ -70,12 +70,25 @@ export const aspectRatioValues: Record<string, number> = {
   '3:4': 3 / 4,
   'free': 0,
   'hero-banner': 1280 / 400, // ~3.2:1
-  'small-banner': 600 / 300, // 2:1
+  'small-banner': 300 / 100, // 3:1 - compact small banner
+  'button-large': 200 / 60, // ~3.3:1
+  'button-medium': 150 / 50, // 3:1
+  'button-small': 100 / 40, // 2.5:1
 };
 
-// Check if aspect ratio is a banner type
+// Check if aspect ratio is a hero banner (only hero has black fade)
+export const isHeroBannerRatio = (ratio: string): boolean => {
+  return ratio === 'hero-banner';
+};
+
+// Check if aspect ratio is any banner type
 export const isBannerRatio = (ratio: string): boolean => {
   return ratio === 'hero-banner' || ratio === 'small-banner';
+};
+
+// Check if aspect ratio is a button type
+export const isButtonRatio = (ratio: string): boolean => {
+  return ratio === 'button-large' || ratio === 'button-medium' || ratio === 'button-small';
 };
 
 export const exportCategories = {

@@ -2,11 +2,10 @@ import { motion } from 'framer-motion';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Play, Pause, Camera, RotateCcw, X, Moon, Sun, ChevronDown, ChevronUp, Globe } from 'lucide-react';
+import { Play, Pause, Camera, RotateCcw, X, Moon, Sun } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
-import { GradientConfig, isBannerRatio } from '@/types/gradient';
+import { GradientConfig, isHeroBannerRatio } from '@/types/gradient';
 import { useTheme } from '@/hooks/useTheme';
-import { WebAssetsPanel } from './WebAssetsPanel';
 
 interface ControlPanelProps {
   config: GradientConfig;
@@ -22,7 +21,7 @@ const shapeOptions: { value: GradientConfig['type']; wireframe: boolean; label: 
   { value: 'plane', wireframe: true, label: 'Mesh' },
 ];
 
-const aspectRatioOptions: { value: GradientConfig['aspectRatio']; label: string }[] = [
+const aspectRatioOptions: { value: GradientConfig['aspectRatio']; label: string; category?: string }[] = [
   { value: 'free', label: 'Free' },
   { value: '1:1', label: '1:1' },
   { value: '16:9', label: '16:9' },
@@ -32,8 +31,11 @@ const aspectRatioOptions: { value: GradientConfig['aspectRatio']; label: string 
   { value: '2:3', label: '2:3' },
   { value: '3:2', label: '3:2' },
   { value: '4:5', label: '4:5' },
-  { value: 'hero-banner', label: 'Hero Banner' },
-  { value: 'small-banner', label: 'Small Banner' },
+  { value: 'hero-banner', label: 'Hero Banner', category: 'web' },
+  { value: 'small-banner', label: 'Small Banner', category: 'web' },
+  { value: 'button-large', label: 'Button L', category: 'button' },
+  { value: 'button-medium', label: 'Button M', category: 'button' },
+  { value: 'button-small', label: 'Button S', category: 'button' },
 ];
 
 // Brand color palette
@@ -60,7 +62,6 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle }: Contr
   const [internalTime, setInternalTime] = useState(0);
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
-  const [isWebAssetsOpen, setIsWebAssetsOpen] = useState(false);
   
   // Track animation time for freeze frame
   useEffect(() => {
@@ -229,8 +230,8 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle }: Contr
               ))}
             </div>
             
-            {/* Banner Black Fade Control */}
-            {isBannerRatio(config.aspectRatio) && (
+            {/* Hero Banner Black Fade Control - only for hero-banner */}
+            {isHeroBannerRatio(config.aspectRatio) && (
               <div className="mt-4 space-y-2">
                 <div className="flex items-center justify-between">
                   <Label className="text-muted-foreground">Black Fade</Label>
@@ -498,31 +499,6 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle }: Contr
             </div>
           </div>
 
-          {/* Web Assets Section */}
-          <div className="border-t border-border pt-4">
-            <button
-              onClick={() => setIsWebAssetsOpen(!isWebAssetsOpen)}
-              className="flex items-center justify-between w-full py-2 text-left"
-            >
-              <div className="flex items-center gap-2">
-                <Globe className="w-5 h-5 text-primary" />
-                <h3 className="font-display text-lg font-medium text-foreground">Web Assets</h3>
-              </div>
-              {isWebAssetsOpen ? (
-                <ChevronUp className="w-5 h-5 text-muted-foreground" />
-              ) : (
-                <ChevronDown className="w-5 h-5 text-muted-foreground" />
-              )}
-            </button>
-            <p className="text-xs text-muted-foreground mb-3">
-              Generate banners and gradient buttons
-            </p>
-            {isWebAssetsOpen && (
-              <div className="mt-4">
-                <WebAssetsPanel />
-              </div>
-            )}
-          </div>
         </div>
       </motion.div>
     </>
