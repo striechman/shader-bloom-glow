@@ -2,6 +2,7 @@ import { ShaderGradientCanvas, ShaderGradient } from '@shadergradient/react';
 import { Canvas } from '@react-three/fiber';
 import { GradientConfig, aspectRatioValues } from '@/types/gradient';
 import { CustomMeshGradient } from './CustomMeshGradient';
+import { useMemo } from 'react';
 
 interface GradientCanvasProps {
   config: GradientConfig;
@@ -52,6 +53,9 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
   const f2 = Math.min(100, w1 + feather);
   const f3 = Math.max(0, w2 - feather);
   const f4 = Math.min(100, w2 + feather);
+  
+  // Generate grain noise pattern URL
+  const grainOpacity = config.grain ? (config.grainIntensity ?? 50) / 100 : 0;
   
   return (
     <div className="absolute inset-0 z-0 flex items-center justify-center overflow-hidden p-4">
@@ -110,8 +114,7 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
               lightType="3d"
               brightness={1.4}
               envPreset="city"
-              grain={config.grain ? 'on' : 'off'}
-              grainBlending={config.grain ? (config.grainIntensity ?? 50) / 100 : 0}
+              grain="off"
               toggleAxis={false}
               zoomOut={false}
             />
@@ -136,6 +139,18 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
               mixBlendMode: 'normal',
               filter: 'blur(32px)',
               transform: 'scale(1.08)',
+            }}
+          />
+        )}
+        
+        {/* Grain overlay - CSS noise effect with controllable intensity */}
+        {config.grain && grainOpacity > 0 && (
+          <div
+            className="absolute inset-0 pointer-events-none z-10"
+            style={{
+              opacity: grainOpacity,
+              backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
+              mixBlendMode: 'overlay',
             }}
           />
         )}
