@@ -99,6 +99,7 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
   // Create a modified config with current colors for CustomMeshGradient
   const meshConfig = useMemo(() => ({
     ...config,
+    color0: config.color0, // Always black
     color1: currentColors.color1,
     color2: currentColors.color2,
     color3: currentColors.color3,
