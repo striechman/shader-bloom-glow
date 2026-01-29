@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { createRoot } from 'react-dom/client';
 import { Download, Play, Pause, Video } from 'lucide-react';
 import { toast } from 'sonner';
 import { Label } from '@/components/ui/label';
@@ -13,6 +14,8 @@ import {
 } from '@/types/webAssets';
 import { BannerCanvas } from './BannerCanvas';
 import { noise3D, smoothstep, lerp, parseColor } from '@/lib/noise';
+import { captureWebGLCanvasTo2D } from '@/lib/webglCapture';
+import { downloadBlob } from '@/lib/download';
 
 interface BannerPreviewProps {
   config?: BannerConfig;
@@ -161,37 +164,81 @@ export const BannerPreview = ({ config: externalConfig, onConfigChange }: Banner
   const handleExport = async () => {
     setIsExporting(true);
     try {
-      // Create high-resolution canvas at target size
+      // Render an offscreen BannerCanvas at the *exact* target resolution,
+      // then capture via WebGL readPixels for pixel-perfect fidelity.
+      const host = document.createElement('div');
+      host.style.position = 'fixed';
+      host.style.left = '-10000px';
+      host.style.top = '-10000px';
+      host.style.width = `${config.width}px`;
+      host.style.height = `${config.height}px`;
+      host.style.pointerEvents = 'none';
+      host.style.opacity = '0';
+      document.body.appendChild(host);
+
+      const root = createRoot(host);
+      root.render(
+        <div style={{ width: config.width, height: config.height }}>
+          <BannerCanvas config={{ ...config, animate: false }} className="w-full h-full" />
+        </div>
+      );
+
+      // Give WebGL a moment to draw
+      await new Promise<void>((r) => requestAnimationFrame(() => r()));
+      await new Promise<void>((r) => requestAnimationFrame(() => r()));
+
+      const sourceCanvas = host.querySelector('canvas') as HTMLCanvasElement | null;
+      if (!sourceCanvas) {
+        root.unmount();
+        document.body.removeChild(host);
+        toast.error('WebGL canvas not found');
+        return;
+      }
+
       const exportCanvas = document.createElement('canvas');
       exportCanvas.width = config.width;
       exportCanvas.height = config.height;
       const ctx = exportCanvas.getContext('2d');
-      
       if (!ctx) {
+        root.unmount();
+        document.body.removeChild(host);
         toast.error('Could not create export canvas');
         return;
       }
-      
-      // Use high-quality JS renderer that matches the shader
-      renderBannerHighQuality(ctx, config.width, config.height, config);
+
+      await captureWebGLCanvasTo2D(sourceCanvas, ctx, config.width, config.height);
+
+      // Re-apply hero banner black fade overlay (matches on-screen CSS overlay)
+      if (config.type === 'hero') {
+        const g = ctx.createLinearGradient(0, 0, config.width, 0);
+        const fadeStart = (config.blackFadePercentage * 0.5) / 100;
+        const fadeEnd = config.blackFadePercentage / 100;
+        g.addColorStop(0, 'rgba(0,0,0,1)');
+        g.addColorStop(fadeStart, 'rgba(0,0,0,1)');
+        g.addColorStop(fadeEnd, 'rgba(0,0,0,0)');
+        ctx.save();
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, config.width, config.height);
+        ctx.restore();
+      }
 
       const blob = await new Promise<Blob | null>((resolve) =>
         exportCanvas.toBlob(resolve, 'image/png', 1.0)
       );
+
+      root.unmount();
+      document.body.removeChild(host);
 
       if (!blob) {
         toast.error('Failed to create image');
         return;
       }
 
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${config.type}-banner-${config.effectType}-${config.width}x${config.height}.png`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      downloadBlob(
+        blob,
+        `${config.type}-banner-${config.effectType}-${config.width}x${config.height}.png`
+      );
 
       toast.success(`${config.type === 'hero' ? 'Hero' : 'Small'} banner exported at ${config.width}x${config.height}!`);
     } catch (error) {
