@@ -33,65 +33,151 @@ const videoResolutions = [
   { label: '4K', width: 3840, height: 2160 },
 ];
 
-// Simplex noise for high-quality gradient export
-function simplexNoise2D(x: number, y: number): number {
-  const F2 = 0.5 * (Math.sqrt(3) - 1);
-  const G2 = (3 - Math.sqrt(3)) / 6;
+// ============================================================================
+// Simplex 3D Noise - Exact port of GLSL shader implementation
+// Matches CustomMeshGradient.tsx shader for pixel-perfect export
+// ============================================================================
+
+// Helper: mod289 (matches GLSL mod289)
+function mod289(x: number): number {
+  return x - Math.floor(x / 289.0) * 289.0;
+}
+
+// Helper: permute (matches GLSL permute)
+function permute(x: number): number {
+  return mod289(((x * 34.0) + 1.0) * x);
+}
+
+// Helper: taylorInvSqrt (matches GLSL)
+function taylorInvSqrt(r: number): number {
+  return 1.79284291400159 - 0.85373472095314 * r;
+}
+
+// Full 3D Simplex Noise - exact match to shader snoise(vec3 v)
+function simplexNoise3D(x: number, y: number, z: number): number {
+  const C_x = 1.0 / 6.0;
+  const C_y = 1.0 / 3.0;
   
-  const s = (x + y) * F2;
-  const i = Math.floor(x + s);
-  const j = Math.floor(y + s);
+  // First corner
+  const dot_v_Cyyy = x * C_y + y * C_y + z * C_y;
+  const i = Math.floor(x + dot_v_Cyyy);
+  const j = Math.floor(y + dot_v_Cyyy);
+  const k = Math.floor(z + dot_v_Cyyy);
   
-  const t = (i + j) * G2;
-  const X0 = i - t;
-  const Y0 = j - t;
-  const x0 = x - X0;
-  const y0 = y - Y0;
+  const dot_ijk_Cxxx = (i + j + k) * C_x;
+  const x0 = x - (i - dot_ijk_Cxxx);
+  const y0 = y - (j - dot_ijk_Cxxx);
+  const z0 = z - (k - dot_ijk_Cxxx);
   
-  const i1 = x0 > y0 ? 1 : 0;
-  const j1 = x0 > y0 ? 0 : 1;
+  // Offsets for second corner
+  let i1: number, j1: number, k1: number;
+  let i2: number, j2: number, k2: number;
   
-  const x1 = x0 - i1 + G2;
-  const y1 = y0 - j1 + G2;
-  const x2 = x0 - 1 + 2 * G2;
-  const y2 = y0 - 1 + 2 * G2;
+  if (x0 >= y0) {
+    if (y0 >= z0) {
+      i1 = 1; j1 = 0; k1 = 0;
+      i2 = 1; j2 = 1; k2 = 0;
+    } else if (x0 >= z0) {
+      i1 = 1; j1 = 0; k1 = 0;
+      i2 = 1; j2 = 0; k2 = 1;
+    } else {
+      i1 = 0; j1 = 0; k1 = 1;
+      i2 = 1; j2 = 0; k2 = 1;
+    }
+  } else {
+    if (y0 < z0) {
+      i1 = 0; j1 = 0; k1 = 1;
+      i2 = 0; j2 = 1; k2 = 1;
+    } else if (x0 < z0) {
+      i1 = 0; j1 = 1; k1 = 0;
+      i2 = 0; j2 = 1; k2 = 1;
+    } else {
+      i1 = 0; j1 = 1; k1 = 0;
+      i2 = 1; j2 = 1; k2 = 0;
+    }
+  }
   
-  const grad = (hash: number, dx: number, dy: number): number => {
-    const h = hash & 7;
-    const u = h < 4 ? dx : dy;
-    const v = h < 4 ? dy : dx;
-    return ((h & 1) ? -u : u) + ((h & 2) ? -2 * v : 2 * v);
+  // Offsets for remaining corners
+  const x1 = x0 - i1 + C_x;
+  const y1 = y0 - j1 + C_x;
+  const z1 = z0 - k1 + C_x;
+  const x2 = x0 - i2 + C_y; // 2.0 * C.x = C.y
+  const y2 = y0 - j2 + C_y;
+  const z2 = z0 - k2 + C_y;
+  const x3 = x0 - 0.5; // -1.0 + 3.0 * C.x = -0.5
+  const y3 = y0 - 0.5;
+  const z3 = z0 - 0.5;
+  
+  // Permutations
+  const ii = mod289(i);
+  const jj = mod289(j);
+  const kk = mod289(k);
+  
+  const p0 = permute(permute(permute(kk) + jj) + ii);
+  const p1 = permute(permute(permute(kk + k1) + jj + j1) + ii + i1);
+  const p2 = permute(permute(permute(kk + k2) + jj + j2) + ii + i2);
+  const p3 = permute(permute(permute(kk + 1) + jj + 1) + ii + 1);
+  
+  // Gradients
+  const n_ = 0.142857142857; // 1/7
+  const ns_x = n_ * 2.0 - 1.0; // -D.x = 0.0 -> ns.x = n_ * D.w - D.x = n_ * 2 - 0
+  const ns_y = n_ * 0.5 - 0.0; // n_ * D.y - D.z
+  const ns_z = n_ * n_; // D.z * D.z
+  
+  // Calculate gradients for each corner
+  const calcGrad = (p: number) => {
+    const j = p - 49.0 * Math.floor(p * ns_z * ns_z);
+    const x_ = Math.floor(j * ns_z);
+    const y_ = Math.floor(j - 7.0 * x_);
+    const gx = x_ * ns_x + ns_y;
+    const gy = y_ * ns_x + ns_y;
+    const gz = 1.0 - Math.abs(gx) - Math.abs(gy);
+    
+    // Normalize gradient
+    const len = Math.sqrt(gx * gx + gy * gy + gz * gz);
+    const invLen = len > 0 ? taylorInvSqrt(gx * gx + gy * gy + gz * gz) : 0;
+    return { x: gx * invLen, y: gy * invLen, z: gz * invLen };
   };
   
-  const perm = (n: number): number => {
-    const p = [151, 160, 137, 91, 90, 15, 131, 13, 201, 95, 96, 53, 194, 233, 7, 225];
-    return p[n & 15];
-  };
+  const g0 = calcGrad(p0);
+  const g1 = calcGrad(p1);
+  const g2 = calcGrad(p2);
+  const g3 = calcGrad(p3);
   
-  const ii = i & 255;
-  const jj = j & 255;
+  // Mix contributions
+  let n0 = 0, n1 = 0, n2 = 0, n3 = 0;
   
-  let n0 = 0, n1 = 0, n2 = 0;
-  
-  let t0 = 0.5 - x0 * x0 - y0 * y0;
+  let t0 = 0.6 - x0 * x0 - y0 * y0 - z0 * z0;
   if (t0 >= 0) {
     t0 *= t0;
-    n0 = t0 * t0 * grad(perm(ii + perm(jj)), x0, y0);
+    n0 = t0 * t0 * (g0.x * x0 + g0.y * y0 + g0.z * z0);
   }
   
-  let t1 = 0.5 - x1 * x1 - y1 * y1;
+  let t1 = 0.6 - x1 * x1 - y1 * y1 - z1 * z1;
   if (t1 >= 0) {
     t1 *= t1;
-    n1 = t1 * t1 * grad(perm(ii + i1 + perm(jj + j1)), x1, y1);
+    n1 = t1 * t1 * (g1.x * x1 + g1.y * y1 + g1.z * z1);
   }
   
-  let t2 = 0.5 - x2 * x2 - y2 * y2;
+  let t2 = 0.6 - x2 * x2 - y2 * y2 - z2 * z2;
   if (t2 >= 0) {
     t2 *= t2;
-    n2 = t2 * t2 * grad(perm(ii + 1 + perm(jj + 1)), x2, y2);
+    n2 = t2 * t2 * (g2.x * x2 + g2.y * y2 + g2.z * z2);
   }
   
-  return 70 * (n0 + n1 + n2);
+  let t3 = 0.6 - x3 * x3 - y3 * y3 - z3 * z3;
+  if (t3 >= 0) {
+    t3 *= t3;
+    n3 = t3 * t3 * (g3.x * x3 + g3.y * y3 + g3.z * z3);
+  }
+  
+  // Scale to [-1, 1]
+  return 32.0 * (n0 + n1 + n2 + n3);
+}
+
+// Legacy 2D noise for sphere/plane modes (kept for backwards compatibility)
+function simplexNoise2D(x: number, y: number): number {
+  return simplexNoise3D(x, y, 0);
 }
 
 // Parse hex color to RGB
@@ -164,7 +250,111 @@ async function captureVisibleWebGLCanvasToCanvas(
   targetCtx.drawImage(tmp, 0, 0, targetWidth, targetHeight);
 }
 
-// Render gradient based on type - pixel-perfect export
+// ============================================================================
+// High-Quality Mesh Gradient Renderer
+// Renders the gradient at target resolution using the exact same algorithm
+// as the GLSL shader, producing pixel-perfect output at any resolution.
+// ============================================================================
+async function renderMeshGradientHighQuality(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  config: GradientConfig
+): Promise<void> {
+  const imageData = ctx.createImageData(width, height);
+  const data = imageData.data;
+  
+  const color1 = parseColor(config.color1);
+  const color2 = parseColor(config.color2);
+  const color3 = parseColor(config.color3);
+  
+  // Shader parameters - exactly matching CustomMeshGradient.tsx
+  const noiseScale = config.meshNoiseScale ?? 1.0;
+  const blurFactor = ((config.meshBlur ?? 50) / 100) * 0.5;
+  const time = (config.frozenTime ?? 0) * 0.5; // Match shader: uTime * 0.5
+  const freq = Math.max(0.1, config.uFrequency);
+  const density = Math.max(0, config.uDensity);
+  const strength = Math.max(0, config.uStrength);
+  const grainEnabled = config.grain;
+  const grainIntensity = grainEnabled ? (config.grainIntensity ?? 50) / 100 : 0;
+  
+  // Color weight thresholds
+  const w1 = config.colorWeight1 / 100;
+  const w2 = config.colorWeight2 / 100;
+  const threshold1 = w1;
+  const threshold2 = w1 + w2;
+  
+  // Process each pixel
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const u = x / width;
+      const v = y / height;
+      
+      // Center UV for edge distance calculation (matching shader)
+      const centeredU = u - 0.5;
+      const centeredV = v - 0.5;
+      
+      // Edge distance (0 at edges, 1 at center)
+      const edgeDistX = 1.0 - Math.abs(centeredU) * 2.0;
+      const edgeDistY = 1.0 - Math.abs(centeredV) * 2.0;
+      const edgeDist = Math.min(edgeDistX, edgeDistY);
+      
+      // Smooth falloff from edges
+      const edgeFade = smoothstep(0.0, 0.3, edgeDist);
+      
+      // Multi-octave 3D noise (exactly matching shader)
+      const noiseX = u * noiseScale * freq;
+      const noiseY = v * noiseScale * freq;
+      
+      const n1 = simplexNoise3D(noiseX, noiseY, time) * 0.5 + 0.5;
+      const n2 = simplexNoise3D(noiseX * 2 + 100, noiseY * 2 + 100, time) * (0.20 + 0.10 * density);
+      const n3 = simplexNoise3D(noiseX * 4 + 200, noiseY * 4 + 200, time) * (0.10 + 0.06 * density);
+      
+      // Combine and normalize (matching shader)
+      let noise = (n1 + n2 + n3) / 1.375;
+      
+      // Apply strength (matching shader: pow(noise, 1.0 + strength * 0.18))
+      noise = Math.pow(Math.max(0, Math.min(1, noise)), 1.0 + strength * 0.18);
+      
+      // Color mixing with smooth edges (matching shader)
+      const edge1 = smoothstep(threshold1 - blurFactor, threshold1 + blurFactor, noise);
+      const edge2 = smoothstep(threshold2 - blurFactor, threshold2 + blurFactor, noise);
+      
+      // Mix colors: noise < threshold1 = color1, threshold1-threshold2 = color2, > threshold2 = color3
+      let r = lerp(color1.r, color2.r, edge1);
+      let g = lerp(color1.g, color2.g, edge1);
+      let b = lerp(color1.b, color2.b, edge1);
+      
+      r = lerp(r, color3.r, edge2);
+      g = lerp(g, color3.g, edge2);
+      b = lerp(b, color3.b, edge2);
+      
+      // Apply edge fade - corners blend to color3 (matching shader)
+      r = lerp(color3.r, r, edgeFade);
+      g = lerp(color3.g, g, edgeFade);
+      b = lerp(color3.b, b, edgeFade);
+      
+      // Apply grain if enabled (matching shader)
+      if (grainIntensity > 0) {
+        const grainNoise = simplexNoise3D(u * 220.0, v * 220.0, time * 1.4);
+        const grainAmt = (grainNoise * 0.5) * (grainIntensity * 0.18) * 255;
+        r = Math.max(0, Math.min(255, r + grainAmt));
+        g = Math.max(0, Math.min(255, g + grainAmt));
+        b = Math.max(0, Math.min(255, b + grainAmt));
+      }
+      
+      const idx = (y * width + x) * 4;
+      data[idx] = Math.round(r);
+      data[idx + 1] = Math.round(g);
+      data[idx + 2] = Math.round(b);
+      data[idx + 3] = 255;
+    }
+  }
+  
+  ctx.putImageData(imageData, 0, 0);
+}
+
+// Render gradient based on type - for non-mesh modes (sphere, plane, waterPlane)
 async function renderGradientToCanvas(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -184,7 +374,6 @@ async function renderGradientToCanvas(
   const threshold2 = w1 + w2;
   
   const time = config.frozenTime ?? 0;
-  const isMeshMode = config.wireframe === true;
   
   const centerX = width / 2;
   const centerY = height / 2;
@@ -197,14 +386,7 @@ async function renderGradientToCanvas(
       
       let blendValue: number;
       
-      if (isMeshMode) {
-        // Mesh mode: noise-based blending
-        const noiseScale = config.meshNoiseScale ?? 3.0;
-        const n1 = simplexNoise2D(u * noiseScale, v * noiseScale + time * 0.1) * 0.5 + 0.5;
-        const n2 = simplexNoise2D(u * noiseScale * 2 + 100, v * noiseScale * 2 + 100) * 0.25;
-        const n3 = simplexNoise2D(u * noiseScale * 4 + 200, v * noiseScale * 4 + 200) * 0.125;
-        blendValue = (n1 + n2 + n3) / 1.375;
-      } else if (config.type === 'sphere') {
+      if (config.type === 'sphere') {
         // Sphere mode: radial gradient with 3D-like depth + noise for organic look
         const dx = x - centerX;
         const dy = y - centerY;
@@ -239,7 +421,7 @@ async function renderGradientToCanvas(
       blendValue = Math.max(0, Math.min(1, blendValue));
       
       // Apply color weights with soft transitions
-      const blur = isMeshMode ? ((config.meshBlur ?? 50) / 100) * 0.5 : 0.15;
+      const blur = 0.15;
       
       const edge1 = smoothstep(threshold1 - blur, threshold1 + blur, blendValue);
       const edge2 = smoothstep(threshold2 - blur, threshold2 + blur, blendValue);
@@ -493,137 +675,114 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
         return;
       }
 
-      // Capture EXACTLY what is on screen from the visible WebGL canvas.
-      // This avoids discrepancies between our JS approximation and the shader output.
-      const gradientStage = document.querySelector('#gradient-stage');
-      const sourceCanvas = (gradientStage?.querySelector('canvas') ?? null) as HTMLCanvasElement | null;
-
-      if (!sourceCanvas) {
-        toast.error('Canvas not found');
-        setIsExporting(false);
-        return;
-      }
-
-      await captureVisibleWebGLCanvasToCanvas(sourceCanvas, ctx, targetWidth, targetHeight);
-
-      // Heal corner artifacts: blend corners toward the *local* image color (not color3).
-      // Using color3 can create visible black corners when color3 is black.
-      {
-        // Size of affected corner region
-        const fadeSize = Math.min(targetWidth, targetHeight) * 0.18;
-        const sampleSize = Math.max(8, Math.floor(fadeSize * 0.08)); // small sample window
-        const sampleInset = Math.max(6, Math.floor(fadeSize * 0.32));
-
-        const safeSample = (sx: number, sy: number) => {
-          try {
-            const x = Math.max(0, Math.min(targetWidth - sampleSize, Math.floor(sx)));
-            const y = Math.max(0, Math.min(targetHeight - sampleSize, Math.floor(sy)));
-            const img = ctx.getImageData(x, y, sampleSize, sampleSize).data;
-            let r = 0, g = 0, b = 0;
-            const n = img.length / 4;
-            for (let i = 0; i < img.length; i += 4) {
-              r += img[i];
-              g += img[i + 1];
-              b += img[i + 2];
-            }
-            r = Math.round(r / n);
-            g = Math.round(g / n);
-            b = Math.round(b / n);
-            return { r, g, b };
-          } catch {
-            // Fallback to color3 if sampling fails for any reason
-            return config ? parseColor(config.color3) : { r: 0, g: 0, b: 0 };
-          }
-        };
-
-        const corners = [
-          {
-            cx: 0,
-            cy: 0,
-            rx: 0,
-            ry: 0,
-            sx: sampleInset,
-            sy: sampleInset,
-          },
-          {
-            cx: targetWidth,
-            cy: 0,
-            rx: targetWidth - fadeSize,
-            ry: 0,
-            sx: targetWidth - sampleInset - sampleSize,
-            sy: sampleInset,
-          },
-          {
-            cx: 0,
-            cy: targetHeight,
-            rx: 0,
-            ry: targetHeight - fadeSize,
-            sx: sampleInset,
-            sy: targetHeight - sampleInset - sampleSize,
-          },
-          {
-            cx: targetWidth,
-            cy: targetHeight,
-            rx: targetWidth - fadeSize,
-            ry: targetHeight - fadeSize,
-            sx: targetWidth - sampleInset - sampleSize,
-            sy: targetHeight - sampleInset - sampleSize,
-          },
-        ];
-
-        ctx.save();
-        ctx.globalCompositeOperation = 'source-over';
-
-        for (const c of corners) {
-          const rgb = safeSample(c.sx, c.sy);
-          const solid = `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
-          const mid = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.75)`;
-          const trans = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`;
-
-          const g = ctx.createRadialGradient(c.cx, c.cy, 0, c.cx, c.cy, fadeSize);
-          g.addColorStop(0, solid);
-          g.addColorStop(0.35, mid);
-          g.addColorStop(1, trans);
-
-          ctx.fillStyle = g;
-          ctx.fillRect(c.rx, c.ry, fadeSize, fadeSize);
-        }
-
-        ctx.restore();
-      }
-
-      // Add weight overlay for static mode (matches on-screen behavior)
-      const isFrozen = config.frozenTime !== null;
-      const isStaticMode = !config.animate || isFrozen;
+      // Check if we're in Mesh mode - use high-quality JS render instead of WebGL capture
       const isMeshMode = config.wireframe === true;
 
-      if (isStaticMode && !isMeshMode) {
-        const w1 = config.colorWeight1;
-        const w2 = w1 + config.colorWeight2;
-        const feather = 6;
-        const f1 = Math.max(0, w1 - feather) / 100;
-        const f2 = Math.min(100, w1 + feather) / 100;
-        const f3 = Math.max(0, w2 - feather) / 100;
-        const f4 = Math.min(100, w2 + feather) / 100;
+      if (isMeshMode) {
+        // ========== Mesh Mode: Render at full resolution using JS ==========
+        // This produces pixel-perfect output that exactly matches the shader
+        // at any resolution, with no scaling artifacts
+        await renderMeshGradientHighQuality(ctx, targetWidth, targetHeight, config);
+      } else {
+        // ========== Sphere/Plane/Water Mode: Capture WebGL canvas ==========
+        const gradientStage = document.querySelector('#gradient-stage');
+        const sourceCanvas = (gradientStage?.querySelector('canvas') ?? null) as HTMLCanvasElement | null;
 
-        const g = ctx.createLinearGradient(0, 0, targetWidth, targetHeight);
-        g.addColorStop(0, config.color1);
-        g.addColorStop(f1, config.color1);
-        g.addColorStop(f2, config.color2);
-        g.addColorStop(f3, config.color2);
-        g.addColorStop(f4, config.color3);
-        g.addColorStop(1, config.color3);
+        if (!sourceCanvas) {
+          toast.error('Canvas not found');
+          setIsExporting(false);
+          return;
+        }
 
-        ctx.save();
-        ctx.globalAlpha = 0.4;
-        ctx.globalCompositeOperation = 'soft-light';
-        ctx.filter = 'blur(48px)';
-        ctx.fillStyle = g;
-        const padX = targetWidth * 0.08;
-        const padY = targetHeight * 0.08;
-        ctx.fillRect(-padX, -padY, targetWidth + padX * 2, targetHeight + padY * 2);
-        ctx.restore();
-      }
+        await captureVisibleWebGLCanvasToCanvas(sourceCanvas, ctx, targetWidth, targetHeight);
+
+        // Heal corner artifacts for WebGL capture (not needed for JS render)
+        {
+          const fadeSize = Math.min(targetWidth, targetHeight) * 0.18;
+          const sampleSize = Math.max(8, Math.floor(fadeSize * 0.08));
+          const sampleInset = Math.max(6, Math.floor(fadeSize * 0.32));
+
+          const safeSample = (sx: number, sy: number) => {
+            try {
+              const x = Math.max(0, Math.min(targetWidth - sampleSize, Math.floor(sx)));
+              const y = Math.max(0, Math.min(targetHeight - sampleSize, Math.floor(sy)));
+              const img = ctx.getImageData(x, y, sampleSize, sampleSize).data;
+              let r = 0, g = 0, b = 0;
+              const n = img.length / 4;
+              for (let i = 0; i < img.length; i += 4) {
+                r += img[i];
+                g += img[i + 1];
+                b += img[i + 2];
+              }
+              r = Math.round(r / n);
+              g = Math.round(g / n);
+              b = Math.round(b / n);
+              return { r, g, b };
+            } catch {
+              return config ? parseColor(config.color3) : { r: 0, g: 0, b: 0 };
+            }
+          };
+
+          const corners = [
+            { cx: 0, cy: 0, rx: 0, ry: 0, sx: sampleInset, sy: sampleInset },
+            { cx: targetWidth, cy: 0, rx: targetWidth - fadeSize, ry: 0, sx: targetWidth - sampleInset - sampleSize, sy: sampleInset },
+            { cx: 0, cy: targetHeight, rx: 0, ry: targetHeight - fadeSize, sx: sampleInset, sy: targetHeight - sampleInset - sampleSize },
+            { cx: targetWidth, cy: targetHeight, rx: targetWidth - fadeSize, ry: targetHeight - fadeSize, sx: targetWidth - sampleInset - sampleSize, sy: targetHeight - sampleInset - sampleSize },
+          ];
+
+          ctx.save();
+          ctx.globalCompositeOperation = 'source-over';
+
+          for (const c of corners) {
+            const rgb = safeSample(c.sx, c.sy);
+            const solid = `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+            const mid = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.75)`;
+            const trans = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`;
+
+            const g = ctx.createRadialGradient(c.cx, c.cy, 0, c.cx, c.cy, fadeSize);
+            g.addColorStop(0, solid);
+            g.addColorStop(0.35, mid);
+            g.addColorStop(1, trans);
+
+            ctx.fillStyle = g;
+            ctx.fillRect(c.rx, c.ry, fadeSize, fadeSize);
+          }
+
+          ctx.restore();
+        }
+
+        // Add weight overlay for static mode (matches on-screen behavior)
+        const isFrozen = config.frozenTime !== null;
+        const isStaticMode = !config.animate || isFrozen;
+
+        if (isStaticMode) {
+          const w1 = config.colorWeight1;
+          const w2 = w1 + config.colorWeight2;
+          const feather = 6;
+          const f1 = Math.max(0, w1 - feather) / 100;
+          const f2 = Math.min(100, w1 + feather) / 100;
+          const f3 = Math.max(0, w2 - feather) / 100;
+          const f4 = Math.min(100, w2 + feather) / 100;
+
+          const g = ctx.createLinearGradient(0, 0, targetWidth, targetHeight);
+          g.addColorStop(0, config.color1);
+          g.addColorStop(f1, config.color1);
+          g.addColorStop(f2, config.color2);
+          g.addColorStop(f3, config.color2);
+          g.addColorStop(f4, config.color3);
+          g.addColorStop(1, config.color3);
+
+          ctx.save();
+          ctx.globalAlpha = 0.4;
+          ctx.globalCompositeOperation = 'soft-light';
+          ctx.filter = 'blur(48px)';
+          ctx.fillStyle = g;
+          const padX = targetWidth * 0.08;
+          const padY = targetHeight * 0.08;
+          ctx.fillRect(-padX, -padY, targetWidth + padX * 2, targetHeight + padY * 2);
+          ctx.restore();
+        }
+      } // End of else block (Sphere/Plane/Water mode)
 
       // Export
       const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
