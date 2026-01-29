@@ -1,4 +1,5 @@
 export type GradientDirection = 'horizontal' | 'vertical' | 'diagonal' | 'radial';
+export type BannerEffectType = 'mesh' | 'plane' | 'waterPlane';
 
 export interface BannerConfig {
   type: 'hero' | 'small';
@@ -7,6 +8,18 @@ export interface BannerConfig {
   blackFadePercentage: number; // For hero banners (0-50)
   gradientColors: string[];
   gradientWeights: number[];
+  
+  // Shader effect settings
+  effectType: BannerEffectType;
+  animate: boolean;
+  speed: number;
+  
+  // Effect parameters
+  uStrength: number;
+  uDensity: number;
+  uFrequency: number;
+  meshNoiseScale: number;
+  meshBlur: number;
 }
 
 export interface ButtonGradientConfig {
@@ -30,6 +43,16 @@ export const defaultBannerConfig: BannerConfig = {
   blackFadePercentage: 30,
   gradientColors: ['#FDB515', '#E71989', '#6A00F4'],
   gradientWeights: [33, 34, 33],
+  
+  // Shader defaults
+  effectType: 'mesh',
+  animate: false,
+  speed: 0.4,
+  uStrength: 4,
+  uDensity: 1.3,
+  uFrequency: 5.5,
+  meshNoiseScale: 1,
+  meshBlur: 50,
 };
 
 export const defaultButtonConfig: ButtonGradientConfig = {

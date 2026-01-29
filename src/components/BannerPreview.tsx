@@ -1,26 +1,34 @@
-import { useRef, useEffect, useState } from 'react';
-import { Download } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { Download, Play, Pause, Video } from 'lucide-react';
 import { toast } from 'sonner';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import {
   BannerConfig,
+  BannerEffectType,
   defaultBannerConfig,
-  generateHeroBannerGradient,
-  generateSmallBannerGradient,
   webAssetsBrandColors,
 } from '@/types/webAssets';
+import { BannerCanvas } from './BannerCanvas';
 
 interface BannerPreviewProps {
   config?: BannerConfig;
   onConfigChange?: (config: Partial<BannerConfig>) => void;
 }
 
+const effectTypes: { value: BannerEffectType; label: string }[] = [
+  { value: 'mesh', label: 'Mesh' },
+  { value: 'plane', label: 'Plane' },
+  { value: 'waterPlane', label: 'Water' },
+];
+
 export const BannerPreview = ({ config: externalConfig, onConfigChange }: BannerPreviewProps) => {
   const [internalConfig, setInternalConfig] = useState<BannerConfig>(defaultBannerConfig);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [isExportingVideo, setIsExportingVideo] = useState(false);
 
   const config = externalConfig || internalConfig;
 
@@ -32,64 +40,53 @@ export const BannerPreview = ({ config: externalConfig, onConfigChange }: Banner
     }
   };
 
-  const gradient =
-    config.type === 'hero'
-      ? generateHeroBannerGradient(config.gradientColors, config.blackFadePercentage)
-      : generateSmallBannerGradient(config.gradientColors, config.gradientWeights);
-
-  // Render to canvas for export
-  const renderToCanvas = (width: number, height: number): HTMLCanvasElement => {
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('Could not get canvas context');
-
-    // Parse gradient and draw
-    if (config.type === 'hero') {
-      const fadeStart = config.blackFadePercentage * 0.5;
-      const fadeEnd = config.blackFadePercentage;
-      const color1 = config.gradientColors[0] || '#FDB515';
-      const color2 = config.gradientColors[1] || '#E71989';
-      const color3 = config.gradientColors[2] || '#6A00F4';
-
-      const grad = ctx.createLinearGradient(0, 0, width, 0);
-      grad.addColorStop(0, '#000000');
-      grad.addColorStop(fadeStart / 100, '#000000');
-      grad.addColorStop(fadeEnd / 100, color1);
-      grad.addColorStop((50 + fadeEnd / 2) / 100, color2);
-      grad.addColorStop(1, color3);
-
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, width, height);
-    } else {
-      const color1 = config.gradientColors[0] || '#FDB515';
-      const color2 = config.gradientColors[1] || '#E71989';
-      const color3 = config.gradientColors[2] || '#6A00F4';
-      const w1 = (config.gradientWeights[0] || 33) / 100;
-      const w2 = w1 + (config.gradientWeights[1] || 34) / 100;
-
-      const grad = ctx.createLinearGradient(0, 0, width, 0);
-      grad.addColorStop(0, color1);
-      grad.addColorStop(w1, color1);
-      grad.addColorStop(w1, color2);
-      grad.addColorStop(w2, color2);
-      grad.addColorStop(w2, color3);
-      grad.addColorStop(1, color3);
-
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, width, height);
-    }
-
-    return canvas;
-  };
-
   const handleExport = async () => {
     setIsExporting(true);
     try {
-      const canvas = renderToCanvas(config.width, config.height);
+      const container = canvasContainerRef.current;
+      if (!container) {
+        toast.error('Canvas not found');
+        return;
+      }
+
+      const canvas = container.querySelector('canvas');
+      if (!canvas) {
+        toast.error('WebGL canvas not found');
+        return;
+      }
+
+      // Get WebGL context and read pixels
+      const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+      if (!gl) {
+        toast.error('Could not get WebGL context');
+        return;
+      }
+
+      // Create export canvas at target resolution
+      const exportCanvas = document.createElement('canvas');
+      exportCanvas.width = config.width;
+      exportCanvas.height = config.height;
+      const ctx = exportCanvas.getContext('2d');
+      if (!ctx) {
+        toast.error('Could not create export canvas');
+        return;
+      }
+
+      // Draw the WebGL canvas scaled to export size
+      ctx.drawImage(canvas, 0, 0, config.width, config.height);
+
+      // Apply black fade overlay for hero banners
+      if (config.type === 'hero') {
+        const gradient = ctx.createLinearGradient(0, 0, config.width, 0);
+        gradient.addColorStop(0, 'rgba(0, 0, 0, 1)');
+        gradient.addColorStop(config.blackFadePercentage * 0.5 / 100, 'rgba(0, 0, 0, 1)');
+        gradient.addColorStop(config.blackFadePercentage / 100, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, config.width, config.height);
+      }
+
       const blob = await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob(resolve, 'image/png', 1.0)
+        exportCanvas.toBlob(resolve, 'image/png', 1.0)
       );
 
       if (!blob) {
@@ -100,7 +97,7 @@ export const BannerPreview = ({ config: externalConfig, onConfigChange }: Banner
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${config.type}-banner-${config.width}x${config.height}.png`;
+      a.download = `${config.type}-banner-${config.effectType}-${config.width}x${config.height}.png`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -112,6 +109,64 @@ export const BannerPreview = ({ config: externalConfig, onConfigChange }: Banner
       toast.error('Export failed');
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  const handleExportVideo = async () => {
+    if (!config.animate) {
+      toast.error('Enable animation to export video');
+      return;
+    }
+
+    setIsExportingVideo(true);
+    try {
+      const container = canvasContainerRef.current;
+      if (!container) {
+        toast.error('Canvas not found');
+        return;
+      }
+
+      const canvas = container.querySelector('canvas');
+      if (!canvas) {
+        toast.error('WebGL canvas not found');
+        return;
+      }
+
+      const stream = canvas.captureStream(30);
+      const mimeType = MediaRecorder.isTypeSupported('video/mp4')
+        ? 'video/mp4'
+        : 'video/webm';
+      const recorder = new MediaRecorder(stream, { mimeType });
+      const chunks: Blob[] = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${config.type}-banner-${config.effectType}.${mimeType === 'video/mp4' ? 'mp4' : 'webm'}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast.success('Video exported!');
+      };
+
+      recorder.start();
+      setTimeout(() => {
+        recorder.stop();
+        setIsExportingVideo(false);
+      }, 5000); // 5 second video
+
+      toast.info('Recording 5 seconds...');
+    } catch (error) {
+      console.error('Video export error:', error);
+      toast.error('Video export failed');
+      setIsExportingVideo(false);
     }
   };
 
@@ -159,15 +214,68 @@ export const BannerPreview = ({ config: externalConfig, onConfigChange }: Banner
         </button>
       </div>
 
-      {/* Preview */}
+      {/* Effect Type Selector */}
+      <div className="space-y-2">
+        <Label className="text-muted-foreground text-xs">Effect Type</Label>
+        <div className="flex gap-2">
+          {effectTypes.map((effect) => (
+            <button
+              key={effect.value}
+              onClick={() => handleConfigChange({ effectType: effect.value })}
+              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-all ${
+                config.effectType === effect.value
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+              }`}
+            >
+              {effect.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Live WebGL Preview */}
       <div
+        ref={canvasContainerRef}
         className="w-full rounded-lg overflow-hidden border border-border"
         style={{
-          background: gradient,
           height: `${Math.min(config.height / 3, 150)}px`,
           minHeight: '100px',
         }}
-      />
+      >
+        <BannerCanvas config={config} className="w-full h-full" />
+      </div>
+
+      {/* Animation Controls */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <Label className="text-muted-foreground text-xs flex items-center gap-2">
+            {config.animate ? <Play className="w-3 h-3" /> : <Pause className="w-3 h-3" />}
+            Animation
+          </Label>
+          <Switch
+            checked={config.animate}
+            onCheckedChange={(animate) => handleConfigChange({ animate })}
+          />
+        </div>
+        
+        {config.animate && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-muted-foreground text-xs">Speed</Label>
+              <span className="text-xs text-muted-foreground">{config.speed.toFixed(1)}</span>
+            </div>
+            <Slider
+              value={[config.speed]}
+              onValueChange={([value]) => handleConfigChange({ speed: value })}
+              min={0.1}
+              max={2}
+              step={0.1}
+              className="w-full"
+            />
+          </div>
+        )}
+      </div>
 
       {/* Dimension Controls */}
       <div className="grid grid-cols-2 gap-3">
@@ -217,14 +325,14 @@ export const BannerPreview = ({ config: externalConfig, onConfigChange }: Banner
             className="w-full"
           />
           <p className="text-xs text-muted-foreground/70">
-            Left side will be solid black, then fade into colors
+            Left side will be solid black, then fade into the shader effect
           </p>
         </div>
       )}
 
       {/* Gradient Colors */}
       <div className="space-y-3">
-        <Label className="text-muted-foreground text-xs">Gradient Colors</Label>
+        <Label className="text-muted-foreground text-xs">Shader Colors</Label>
         <div className="grid grid-cols-3 gap-2">
           {[0, 1, 2].map((index) => (
             <div key={index} className="space-y-1">
@@ -249,16 +357,30 @@ export const BannerPreview = ({ config: externalConfig, onConfigChange }: Banner
         </div>
       </div>
 
-      {/* Export Button */}
-      <Button
-        onClick={handleExport}
-        disabled={isExporting}
-        className="w-full"
-        size="sm"
-      >
-        <Download className="w-4 h-4 mr-2" />
-        {isExporting ? 'Exporting...' : `Export ${config.type === 'hero' ? 'Hero' : 'Small'} Banner`}
-      </Button>
+      {/* Export Buttons */}
+      <div className="flex gap-2">
+        <Button
+          onClick={handleExport}
+          disabled={isExporting}
+          className="flex-1"
+          size="sm"
+        >
+          <Download className="w-4 h-4 mr-2" />
+          {isExporting ? 'Exporting...' : 'Export Image'}
+        </Button>
+        
+        {config.animate && (
+          <Button
+            onClick={handleExportVideo}
+            disabled={isExportingVideo}
+            variant="outline"
+            size="sm"
+          >
+            <Video className="w-4 h-4 mr-2" />
+            {isExportingVideo ? 'Recording...' : 'Video'}
+          </Button>
+        )}
+      </div>
     </div>
   );
 };
