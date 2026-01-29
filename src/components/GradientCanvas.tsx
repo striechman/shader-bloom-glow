@@ -1,6 +1,6 @@
 import { ShaderGradientCanvas, ShaderGradient } from '@shadergradient/react';
 import { Canvas } from '@react-three/fiber';
-import { GradientConfig, aspectRatioValues } from '@/types/gradient';
+import { GradientConfig, aspectRatioValues, isBannerRatio } from '@/types/gradient';
 import { CustomMeshGradient } from './CustomMeshGradient';
 import { useMemo } from 'react';
 
@@ -12,6 +12,7 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
   const isWireframe = config.wireframe === true;
   const isFrozen = config.frozenTime !== null;
   const isStaticMode = !config.animate || isFrozen;
+  const isBanner = isBannerRatio(config.aspectRatio);
   
   // NOTE: Avoid forcing remounts on every slider move (can cause WebGL context loss).
   
@@ -138,6 +139,20 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
               mixBlendMode: 'normal',
               filter: 'blur(32px)',
               transform: 'scale(1.08)',
+            }}
+          />
+        )}
+        
+        {/* Banner black fade overlay - left side black gradient */}
+        {isBanner && (
+          <div
+            className="absolute inset-0 pointer-events-none z-10 rounded-lg"
+            style={{
+              background: `linear-gradient(to right,
+                rgba(0, 0, 0, 1) 0%,
+                rgba(0, 0, 0, 1) ${config.bannerBlackFade * 0.5}%,
+                rgba(0, 0, 0, 0) ${config.bannerBlackFade}%
+              )`,
             }}
           />
         )}
