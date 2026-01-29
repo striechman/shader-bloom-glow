@@ -506,44 +506,89 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
 
       await captureVisibleWebGLCanvasToCanvas(sourceCanvas, ctx, targetWidth, targetHeight);
 
-      // Apply edge-fade mask to prevent corner artifacts
-      // This covers the shader's corner noise with smooth color3 fade
-      if (config) {
-        const c3 = parseColor(config.color3);
-        const color3Solid = `rgb(${c3.r}, ${c3.g}, ${c3.b})`;
-        const color3Half = `rgba(${c3.r}, ${c3.g}, ${c3.b}, 0.7)`;
-        const color3Trans = `rgba(${c3.r}, ${c3.g}, ${c3.b}, 0)`;
-        
-        // Larger fade zone to fully cover corner artifacts
+      // Heal corner artifacts: blend corners toward the *local* image color (not color3).
+      // Using color3 can create visible black corners when color3 is black.
+      {
+        // Size of affected corner region
         const fadeSize = Math.min(targetWidth, targetHeight) * 0.18;
-        
-        ctx.save();
-        
-        // Draw corner fades using radial gradients
+        const sampleSize = Math.max(8, Math.floor(fadeSize * 0.08)); // small sample window
+        const sampleInset = Math.max(6, Math.floor(fadeSize * 0.32));
+
+        const safeSample = (sx: number, sy: number) => {
+          try {
+            const x = Math.max(0, Math.min(targetWidth - sampleSize, Math.floor(sx)));
+            const y = Math.max(0, Math.min(targetHeight - sampleSize, Math.floor(sy)));
+            const img = ctx.getImageData(x, y, sampleSize, sampleSize).data;
+            let r = 0, g = 0, b = 0;
+            const n = img.length / 4;
+            for (let i = 0; i < img.length; i += 4) {
+              r += img[i];
+              g += img[i + 1];
+              b += img[i + 2];
+            }
+            r = Math.round(r / n);
+            g = Math.round(g / n);
+            b = Math.round(b / n);
+            return { r, g, b };
+          } catch {
+            // Fallback to color3 if sampling fails for any reason
+            return config ? parseColor(config.color3) : { r: 0, g: 0, b: 0 };
+          }
+        };
+
         const corners = [
-          { x: 0, y: 0 },                      // Top-left
-          { x: targetWidth, y: 0 },            // Top-right
-          { x: 0, y: targetHeight },           // Bottom-left
-          { x: targetWidth, y: targetHeight }, // Bottom-right
+          {
+            cx: 0,
+            cy: 0,
+            rx: 0,
+            ry: 0,
+            sx: sampleInset,
+            sy: sampleInset,
+          },
+          {
+            cx: targetWidth,
+            cy: 0,
+            rx: targetWidth - fadeSize,
+            ry: 0,
+            sx: targetWidth - sampleInset - sampleSize,
+            sy: sampleInset,
+          },
+          {
+            cx: 0,
+            cy: targetHeight,
+            rx: 0,
+            ry: targetHeight - fadeSize,
+            sx: sampleInset,
+            sy: targetHeight - sampleInset - sampleSize,
+          },
+          {
+            cx: targetWidth,
+            cy: targetHeight,
+            rx: targetWidth - fadeSize,
+            ry: targetHeight - fadeSize,
+            sx: targetWidth - sampleInset - sampleSize,
+            sy: targetHeight - sampleInset - sampleSize,
+          },
         ];
-        
-        for (const corner of corners) {
-          const gradient = ctx.createRadialGradient(
-            corner.x, corner.y, 0,
-            corner.x, corner.y, fadeSize
-          );
-          gradient.addColorStop(0, color3Solid);
-          gradient.addColorStop(0.4, color3Half);
-          gradient.addColorStop(1, color3Trans);
-          
-          ctx.fillStyle = gradient;
-          
-          // Draw in a region around the corner
-          const rectX = corner.x === 0 ? 0 : targetWidth - fadeSize;
-          const rectY = corner.y === 0 ? 0 : targetHeight - fadeSize;
-          ctx.fillRect(rectX, rectY, fadeSize, fadeSize);
+
+        ctx.save();
+        ctx.globalCompositeOperation = 'source-over';
+
+        for (const c of corners) {
+          const rgb = safeSample(c.sx, c.sy);
+          const solid = `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+          const mid = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.75)`;
+          const trans = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`;
+
+          const g = ctx.createRadialGradient(c.cx, c.cy, 0, c.cx, c.cy, fadeSize);
+          g.addColorStop(0, solid);
+          g.addColorStop(0.35, mid);
+          g.addColorStop(1, trans);
+
+          ctx.fillStyle = g;
+          ctx.fillRect(c.rx, c.ry, fadeSize, fadeSize);
         }
-        
+
         ctx.restore();
       }
 
