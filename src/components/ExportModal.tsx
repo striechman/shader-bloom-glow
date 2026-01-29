@@ -316,15 +316,17 @@ async function captureVisibleWebGLCanvasToCanvas(
 }
 
 // ============================================================================
-// High-Quality Mesh Gradient Renderer
+// High-Quality 4-Color Gradient Renderer
 // Renders the gradient at target resolution using the exact same algorithm
 // as the GLSL shader, producing pixel-perfect output at any resolution.
+// Supports all gradient types: Mesh, Plane, Sphere, Water
 // ============================================================================
-async function renderMeshGradientHighQuality(
+async function render4ColorGradientHighQuality(
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number,
-  config: GradientConfig
+  config: GradientConfig,
+  applyHeroBannerFade: boolean = false
 ): Promise<void> {
   const imageData = ctx.createImageData(width, height);
   const data = imageData.data;
@@ -334,10 +336,10 @@ async function renderMeshGradientHighQuality(
   const color2 = parseColor(config.color2);
   const color3 = parseColor(config.color3);
   
-  // Shader parameters - exactly matching CustomMeshGradient.tsx
+  // Shader parameters
   const noiseScale = config.meshNoiseScale ?? 1.0;
   const blurFactor = ((config.meshBlur ?? 50) / 100) * 0.5;
-  const time = (config.frozenTime ?? 0) * 0.5; // Match shader: uTime * 0.5
+  const time = (config.frozenTime ?? 0) * 0.5;
   const freq = Math.max(0.1, config.uFrequency);
   const density = Math.max(0, config.uDensity);
   const strength = Math.max(0, config.uStrength);
@@ -352,44 +354,98 @@ async function renderMeshGradientHighQuality(
   const threshold1 = w0 + w1;
   const threshold2 = w0 + w1 + w2;
   
+  // Plane angle in radians
+  const planeAngle = (config.planeAngle ?? 45) * Math.PI / 180;
+  const planeRadial = config.planeRadial ?? false;
+  
+  // Gradient type: 0=mesh, 1=sphere, 2=plane, 3=water
+  const gradientType = config.wireframe ? 0 : 
+    config.type === 'sphere' ? 1 : 
+    config.type === 'plane' ? 2 : 
+    config.type === 'waterPlane' ? 3 : 0;
+  
+  // Hero banner fade settings
+  const bannerBlackFade = config.bannerBlackFade ?? 30;
+  
   // Process each pixel
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const u = x / width;
       const v = y / height;
       
-      // Center UV for edge distance calculation (matching shader)
+      // Center UV for edge distance calculation
       const centeredU = u - 0.5;
       const centeredV = v - 0.5;
       
-      // Edge distance (0 at edges, 1 at center)
+      // Edge distance (0 at edges, 1 at center) - for corners only in non-banner mode
       const edgeDistX = 1.0 - Math.abs(centeredU) * 2.0;
       const edgeDistY = 1.0 - Math.abs(centeredV) * 2.0;
       const edgeDist = Math.min(edgeDistX, edgeDistY);
       
-      // Smooth falloff from edges
-      const edgeFade = smoothstep(0.0, 0.3, edgeDist);
+      // For banners, don't apply edge fade (fill entire rectangle)
+      const edgeFade = applyHeroBannerFade ? 1.0 : smoothstep(0.0, 0.3, edgeDist);
       
-      // Multi-octave 3D noise (exactly matching shader)
-      const noiseX = u * noiseScale * freq;
-      const noiseY = v * noiseScale * freq;
+      let noise: number;
       
-      const n1 = simplexNoise3D(noiseX, noiseY, time) * 0.5 + 0.5;
-      const n2 = simplexNoise3D(noiseX * 2 + 100, noiseY * 2 + 100, time) * (0.20 + 0.10 * density);
-      const n3 = simplexNoise3D(noiseX * 4 + 200, noiseY * 4 + 200, time) * (0.10 + 0.06 * density);
+      if (gradientType === 0) {
+        // MESH MODE: Multi-octave noise for organic blobs
+        const noiseX = u * noiseScale * freq;
+        const noiseY = v * noiseScale * freq;
+        const n1 = simplexNoise3D(noiseX, noiseY, time) * 0.5 + 0.5;
+        const n2 = simplexNoise3D(noiseX * 2 + 100, noiseY * 2 + 100, time) * (0.20 + 0.10 * density);
+        const n3 = simplexNoise3D(noiseX * 4 + 200, noiseY * 4 + 200, time) * (0.10 + 0.06 * density);
+        noise = (n1 + n2 + n3) / 1.375;
+        
+      } else if (gradientType === 1) {
+        // SPHERE MODE: Classic 3D sphere
+        const dist = Math.sqrt(centeredU * centeredU + centeredV * centeredV);
+        const sphereDist = dist * 1.8;
+        const n1 = simplexNoise3D(u * 2 * freq, v * 2 * freq, time * 0.2) * 0.5 + 0.5;
+        const n2 = simplexNoise3D(u * 3 * freq + 50, v * 3 * freq + 50, time * 0.2) * 0.3;
+        const sphereGrad = smoothstep(0.0, 1.0, sphereDist);
+        const organic = (n1 + n2) * 0.25 * density;
+        noise = sphereGrad * 0.7 + organic + 0.15;
+        noise = Math.max(0, Math.min(1, noise));
+        
+      } else if (gradientType === 2) {
+        // PLANE MODE: Linear or radial gradient with custom angle
+        let baseNoise: number;
+        
+        if (planeRadial) {
+          baseNoise = Math.sqrt(centeredU * centeredU + centeredV * centeredV) * 1.4;
+        } else {
+          const dirX = Math.cos(planeAngle);
+          const dirY = Math.sin(planeAngle);
+          baseNoise = centeredU * dirX + centeredV * dirY + 0.5;
+        }
+        
+        // Add subtle noise for organic feel
+        const organicNoise = simplexNoise3D(u * 2 * freq, v * 2 * freq, time * 0.25) * 0.12 * density;
+        const wave = Math.sin(baseNoise * 6.28 + time * 0.4) * 0.06 * strength;
+        
+        noise = baseNoise + organicNoise + wave;
+        noise = Math.max(0, Math.min(1, noise));
+        
+      } else {
+        // WATER MODE: Smooth flowing liquid
+        const n1 = simplexNoise3D(u * 1.5 * freq, v * 1.5 * freq, time * 0.15) * 0.5 + 0.5;
+        const n2 = simplexNoise3D(u * 1.05 * freq + 30, v * 1.05 * freq + 30, time * 0.15) * 0.4 + 0.5;
+        const n3 = simplexNoise3D(u * 0.75 * freq + 60, v * 0.75 * freq + 60, time * 0.15) * 0.3 + 0.5;
+        const wave = Math.sin(u * 4 + v * 3 + time * 0.3) * 0.1;
+        const baseNoise = n1 * 0.5 + n2 * 0.3 + n3 * 0.2;
+        noise = baseNoise + wave * density;
+        noise = Math.max(0, Math.min(1, noise));
+      }
       
-      // Combine and normalize (matching shader)
-      let noise = (n1 + n2 + n3) / 1.375;
+      // Apply strength for contrast
+      noise = Math.pow(Math.max(0, Math.min(1, noise)), 1.0 + strength * 0.15);
       
-      // Apply strength (matching shader: pow(noise, 1.0 + strength * 0.18))
-      noise = Math.pow(Math.max(0, Math.min(1, noise)), 1.0 + strength * 0.18);
-      
-      // Color mixing with smooth edges (matching shader - 4 colors)
+      // Color mixing with smooth edges (4 colors)
       const edge0 = smoothstep(threshold0 - blurFactor, threshold0 + blurFactor, noise);
       const edge1 = smoothstep(threshold1 - blurFactor, threshold1 + blurFactor, noise);
       const edge2 = smoothstep(threshold2 - blurFactor, threshold2 + blurFactor, noise);
       
-      // Mix colors: noise < threshold0 = color0, threshold0-threshold1 = color1, etc.
+      // Progressive color mixing
       let r = lerp(color0.r, color1.r, edge0);
       let g = lerp(color0.g, color1.g, edge0);
       let b = lerp(color0.b, color1.b, edge0);
@@ -402,12 +458,29 @@ async function renderMeshGradientHighQuality(
       g = lerp(g, color3.g, edge2);
       b = lerp(b, color3.b, edge2);
       
-      // Apply edge fade - corners blend to color0 (black) (matching shader)
+      // Apply edge fade - corners blend to color0
       r = lerp(color0.r, r, edgeFade);
       g = lerp(color0.g, g, edgeFade);
       b = lerp(color0.b, b, edgeFade);
       
-      // Apply grain if enabled (matching shader)
+      // Apply hero banner black fade on left side
+      if (applyHeroBannerFade) {
+        const fadeStart = bannerBlackFade * 0.5 / 100;
+        const fadeEnd = bannerBlackFade / 100;
+        
+        if (u <= fadeStart) {
+          // Full black
+          r = 0; g = 0; b = 0;
+        } else if (u < fadeEnd) {
+          // Fade from black to gradient
+          const fadeProgress = (u - fadeStart) / (fadeEnd - fadeStart);
+          r = lerp(0, r, fadeProgress);
+          g = lerp(0, g, fadeProgress);
+          b = lerp(0, b, fadeProgress);
+        }
+      }
+      
+      // Apply grain if enabled
       if (grainIntensity > 0) {
         const grainNoise = simplexNoise3D(u * 220.0, v * 220.0, time * 1.4);
         const grainAmt = (grainNoise * 0.5) * (grainIntensity * 0.18) * 255;
@@ -782,16 +855,20 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
         return;
       }
 
-      // Check if we're in Mesh mode - use high-quality JS render instead of WebGL capture
+      // Check if we should use high-quality JS render
+      // Use for: Mesh mode, Plane mode, and banner aspect ratios
       const isMeshMode = config.wireframe === true;
+      const isPlaneMode = config.type === 'plane';
+      const isBannerRatio = config.aspectRatio === 'hero-banner' || config.aspectRatio === 'small-banner';
+      const isHeroBanner = config.aspectRatio === 'hero-banner';
+      const useJSRender = isMeshMode || isPlaneMode || isBannerRatio;
 
-      if (isMeshMode) {
-        // ========== Mesh Mode: Render at full resolution using JS ==========
-        // This produces pixel-perfect output that exactly matches the shader
-        // at any resolution, with no scaling artifacts
-        await renderMeshGradientHighQuality(ctx, targetWidth, targetHeight, config);
+      if (useJSRender) {
+        // ========== High-quality JS render ==========
+        // This produces pixel-perfect output at any resolution
+        await render4ColorGradientHighQuality(ctx, targetWidth, targetHeight, config, isHeroBanner);
       } else {
-        // ========== Sphere/Plane/Water Mode: Capture WebGL canvas ==========
+        // ========== Sphere/Water Mode: Capture WebGL canvas ==========
         const gradientStage = document.querySelector('#gradient-stage');
         const sourceCanvas = (gradientStage?.querySelector('canvas') ?? null) as HTMLCanvasElement | null;
 
