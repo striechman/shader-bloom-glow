@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X } from 'lucide-react';
+import { X, Copy, Check } from 'lucide-react';
 import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
 
 const buttonSizes = [
   { id: 'large', label: 'L', width: 240, height: 64 },
@@ -58,6 +59,8 @@ export const WebButtonsPanel = ({ isOpen, onToggle }: WebButtonsPanelProps) => {
   const [selectedSize, setSelectedSize] = useState<'large' | 'medium' | 'small'>('medium');
   const [selectedPreset, setSelectedPreset] = useState(buttonPresets[0]);
   const [isHovering, setIsHovering] = useState(false);
+  const [showCss, setShowCss] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const currentSize = buttonSizes.find(s => s.id === selectedSize) || buttonSizes[1];
   
@@ -65,6 +68,48 @@ export const WebButtonsPanel = ({ isOpen, onToggle }: WebButtonsPanelProps) => {
   const currentColors = isHovering ? selectedPreset.hover : selectedPreset.default;
   const gradientStyle = `linear-gradient(135deg, ${currentColors.color1} 0%, ${currentColors.color2} 50%, ${currentColors.color3} 100%)`;
 
+  // Generate CSS code
+  const generateCss = () => {
+    const defaultGradient = `linear-gradient(135deg, ${selectedPreset.default.color1} 0%, ${selectedPreset.default.color2} 50%, ${selectedPreset.default.color3} 100%)`;
+    const hoverGradient = `linear-gradient(135deg, ${selectedPreset.hover.color1} 0%, ${selectedPreset.hover.color2} 50%, ${selectedPreset.hover.color3} 100%)`;
+    
+    return `.gradient-button {
+  width: ${currentSize.width}px;
+  height: ${currentSize.height}px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: ${selectedSize === 'small' ? '12px' : selectedSize === 'medium' ? '14px' : '16px'};
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  background: ${defaultGradient};
+  transition: background 0.3s ease-in-out;
+  position: relative;
+  overflow: hidden;
+}
+
+.gradient-button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  background: linear-gradient(to bottom, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 50%, rgba(0,0,0,0.15) 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), inset 0 -1px 0 rgba(0,0,0,0.2);
+  pointer-events: none;
+}
+
+.gradient-button:hover {
+  background: ${hoverGradient};
+}`;
+  };
+
+  const handleCopyCss = () => {
+    navigator.clipboard.writeText(generateCss());
+    setCopied(true);
+    toast.success('CSS copied to clipboard!');
+    setTimeout(() => setCopied(false), 2000);
+  };
   return (
     <AnimatePresence>
       {isOpen && (
@@ -169,8 +214,45 @@ export const WebButtonsPanel = ({ isOpen, onToggle }: WebButtonsPanelProps) => {
                     ))}
                   </div>
                 </div>
+
+                {/* Export CSS Button */}
+                <button
+                  onClick={() => setShowCss(!showCss)}
+                  className="w-full py-2.5 px-4 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
+                >
+                  {showCss ? 'Hide CSS' : 'Export CSS'}
+                </button>
               </div>
             </div>
+
+            {/* CSS Code Display */}
+            <AnimatePresence>
+              {showCss && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <div className="mt-6 p-4 rounded-lg bg-secondary/50 border border-border">
+                    <div className="flex items-center justify-between mb-3">
+                      <Label className="text-muted-foreground">CSS Code</Label>
+                      <button
+                        onClick={handleCopyCss}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
+                      >
+                        {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                        {copied ? 'Copied!' : 'Copy'}
+                      </button>
+                    </div>
+                    <pre className="text-xs text-foreground bg-background/50 p-3 rounded-md overflow-x-auto max-h-48 overflow-y-auto font-mono">
+                      {generateCss()}
+                    </pre>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </motion.div>
       )}
