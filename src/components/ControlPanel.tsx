@@ -64,6 +64,34 @@ const colorPresets = [
   { name: 'Electric', color1: '#00C2FF', color2: '#E71989', color3: '#000000' },
 ];
 
+// Effect presets for each gradient type
+const effectPresets: Record<string, Partial<GradientConfig>> = {
+  mesh: {
+    uStrength: 1,
+    uDensity: 1,
+    uFrequency: 1,
+    colorWeight3: 60,
+    colorWeight1: 20,
+    colorWeight2: 20,
+  },
+  plane: {
+    uStrength: 1.5,
+    uDensity: 0.5,
+    uFrequency: 1,
+    colorWeight3: 50,
+    colorWeight1: 25,
+    colorWeight2: 25,
+  },
+  water: {
+    uStrength: 1.5,
+    uDensity: 1.5,
+    uFrequency: 2,
+    colorWeight3: 50,
+    colorWeight1: 25,
+    colorWeight2: 25,
+  },
+};
+
 export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenButtonsPanel }: ControlPanelProps) => {
   const [internalTime, setInternalTime] = useState(0);
   const animationRef = useRef<number | null>(null);
@@ -200,10 +228,29 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
             <div className="grid grid-cols-2 gap-2">
               {shapeOptions.map((shape) => {
                 const isActive = config.type === shape.value && config.wireframe === shape.wireframe;
+                
+                // Get effect preset key based on shape
+                const getPresetKey = () => {
+                  if (shape.label === 'Mesh') return 'mesh';
+                  if (shape.label === 'Plane') return 'plane';
+                  if (shape.label === 'Water') return 'water';
+                  return null;
+                };
+                
+                const handleShapeClick = () => {
+                  const presetKey = getPresetKey();
+                  const effectSettings = presetKey ? effectPresets[presetKey] : {};
+                  onConfigChange({ 
+                    type: shape.value, 
+                    wireframe: shape.wireframe,
+                    ...effectSettings
+                  });
+                };
+                
                 return (
                   <button
                     key={shape.label}
-                    onClick={() => onConfigChange({ type: shape.value, wireframe: shape.wireframe })}
+                    onClick={handleShapeClick}
                     className={`py-2 px-3 rounded-lg text-sm font-medium transition-all ${
                       isActive
                         ? 'bg-primary text-primary-foreground'
