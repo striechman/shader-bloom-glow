@@ -5,30 +5,29 @@ import { Header } from '@/components/Header';
 import { HeroContent } from '@/components/HeroContent';
 import { ExportModal } from '@/components/ExportModal';
 import { WebButtonsPanel } from '@/components/WebButtonsPanel';
-import { GradientConfig, defaultGradientConfig } from '@/types/gradient';
+import { GradientConfig, defaultGradientConfig, getThemeColor0 } from '@/types/gradient';
 import { useTheme } from '@/hooks/useTheme';
 
 const Index = () => {
   const { theme } = useTheme();
-  const [config, setConfig] = useState<GradientConfig>(defaultGradientConfig);
+  const [config, setConfig] = useState<GradientConfig>(() => ({
+    ...defaultGradientConfig,
+    color0: getThemeColor0('dark'), // Start with dark mode color0
+  }));
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isButtonsPanelOpen, setIsButtonsPanelOpen] = useState(false);
 
-  // Update color3 based on theme ONLY on initial load
-  // This prevents theme from overriding preset selections
+  // Update color0 and color3 based on theme
   useEffect(() => {
-    // Only set color3 if it's the default value (not user-selected)
     setConfig(prev => {
+      const newColor0 = getThemeColor0(theme);
+      // Also update color3 if it's the default value
       const isDefaultColor3 = prev.color3 === '#000000' || prev.color3 === '#FFFFFF';
-      if (isDefaultColor3) {
-        const newColor3 = theme === 'dark' ? '#000000' : '#FFFFFF';
-        return { ...prev, color3: newColor3 };
-      }
-      return prev;
+      const newColor3 = isDefaultColor3 ? (theme === 'dark' ? '#000000' : '#FFFFFF') : prev.color3;
+      return { ...prev, color0: newColor0, color3: newColor3 };
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [theme]);
 
   const handleConfigChange = (updates: Partial<GradientConfig>) => {
     setConfig((prev) => ({ ...prev, ...updates }));

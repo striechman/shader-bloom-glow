@@ -4,7 +4,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Play, Pause, Camera, RotateCcw, X, Moon, Sun } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
-import { GradientConfig, isHeroBannerRatio, isButtonRatio } from '@/types/gradient';
+import { GradientConfig, isHeroBannerRatio, isButtonRatio, getThemeColor0 } from '@/types/gradient';
 import { useTheme } from '@/hooks/useTheme';
 
 interface ControlPanelProps {
@@ -402,12 +402,15 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
               </div>
             )}
             <div className="space-y-4">
-              {/* Black Weight Control (always first, fixed color) */}
+              {/* Base Color Weight Control (theme-based: black in dark, white in light) */}
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <Label className="text-muted-foreground flex items-center gap-2">
-                    <span className="w-4 h-4 rounded bg-black border border-border inline-block"></span>
-                    Black
+                    <span 
+                      className="w-4 h-4 rounded border border-border inline-block"
+                      style={{ backgroundColor: getThemeColor0(theme) }}
+                    ></span>
+                    {isDark ? 'Black' : 'White'}
                   </Label>
                   <span className="text-xs text-muted-foreground font-mono">
                     {config.colorWeight0}%
