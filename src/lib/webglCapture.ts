@@ -47,6 +47,16 @@ export async function captureWebGLCanvasTo2D(
   }
   tmpCtx.putImageData(imageData, 0, 0);
 
+  // IMPORTANT: ensure opaque output.
+  // Some gradient canvases render with alpha (transparent background). When exporting PNG,
+  // many viewers show that transparency as white, which looks like a "white haze".
+  // We composite onto an opaque black background (our gradients never intend to be transparent).
+  targetCtx.save();
+  targetCtx.globalCompositeOperation = 'source-over';
+  targetCtx.fillStyle = 'rgb(0,0,0)';
+  targetCtx.fillRect(0, 0, targetWidth, targetHeight);
+  targetCtx.restore();
+
   targetCtx.imageSmoothingEnabled = true;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (targetCtx as any).imageSmoothingQuality = 'high';
