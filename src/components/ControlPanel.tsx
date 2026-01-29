@@ -2,10 +2,11 @@ import { motion } from 'framer-motion';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Play, Pause, Camera, RotateCcw, X, Moon, Sun } from 'lucide-react';
+import { Play, Pause, Camera, RotateCcw, X, Moon, Sun, ChevronDown, ChevronUp, Globe } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { GradientConfig } from '@/types/gradient';
 import { useTheme } from '@/hooks/useTheme';
+import { WebAssetsPanel } from './WebAssetsPanel';
 
 interface ControlPanelProps {
   config: GradientConfig;
@@ -49,6 +50,7 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle }: Contr
   const [internalTime, setInternalTime] = useState(0);
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
+  const [isWebAssetsOpen, setIsWebAssetsOpen] = useState(false);
   
   // Track animation time for freeze frame
   useEffect(() => {
@@ -463,6 +465,32 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle }: Contr
                 />
               </div>
             </div>
+          </div>
+
+          {/* Web Assets Section */}
+          <div className="border-t border-border pt-4">
+            <button
+              onClick={() => setIsWebAssetsOpen(!isWebAssetsOpen)}
+              className="flex items-center justify-between w-full py-2 text-left"
+            >
+              <div className="flex items-center gap-2">
+                <Globe className="w-5 h-5 text-primary" />
+                <h3 className="font-display text-lg font-medium text-foreground">Web Assets</h3>
+              </div>
+              {isWebAssetsOpen ? (
+                <ChevronUp className="w-5 h-5 text-muted-foreground" />
+              ) : (
+                <ChevronDown className="w-5 h-5 text-muted-foreground" />
+              )}
+            </button>
+            <p className="text-xs text-muted-foreground mb-3">
+              Generate banners and gradient buttons
+            </p>
+            {isWebAssetsOpen && (
+              <div className="mt-4">
+                <WebAssetsPanel />
+              </div>
+            )}
           </div>
         </div>
       </motion.div>
