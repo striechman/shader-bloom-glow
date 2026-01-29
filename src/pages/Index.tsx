@@ -4,6 +4,7 @@ import { ControlPanel } from '@/components/ControlPanel';
 import { Header } from '@/components/Header';
 import { HeroContent } from '@/components/HeroContent';
 import { ExportModal } from '@/components/ExportModal';
+import { WebButtonsPanel } from '@/components/WebButtonsPanel';
 import { GradientConfig, defaultGradientConfig } from '@/types/gradient';
 import { useTheme } from '@/hooks/useTheme';
 
@@ -12,6 +13,7 @@ const Index = () => {
   const [config, setConfig] = useState<GradientConfig>(defaultGradientConfig);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
+  const [isButtonsPanelOpen, setIsButtonsPanelOpen] = useState(false);
 
   // Automatically update color3 based on theme
   useEffect(() => {
@@ -55,6 +57,12 @@ const Index = () => {
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
         config={config}
+      />
+
+      {/* Web Buttons Panel */}
+      <WebButtonsPanel
+        isOpen={isButtonsPanelOpen}
+        onToggle={() => setIsButtonsPanelOpen(!isButtonsPanelOpen)}
       />
 
       {/* Main Content */}
