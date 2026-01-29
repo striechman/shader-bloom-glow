@@ -132,19 +132,23 @@ void main() {
     noise = (n1 + n2 + n3) / 1.375;
     
   } else if (uGradientType == 1) {
-    // SPHERE MODE: Radial gradient with 3D-like depth + organic noise
-    float dist = length(centeredUv) * 2.0;
-    float angle = atan(centeredUv.y, centeredUv.x);
+    // SPHERE MODE: Classic 3D sphere with smooth color blending
+    float dist = length(centeredUv);
+    float sphereDist = dist * 1.8;
     
-    // Add organic noise
-    vec3 noisePos = vec3(vUv * 3.0 * freq, uTime * 0.3);
-    float organicNoise = snoise(noisePos) * 0.15 * density;
+    // Smooth 3D-like lighting
+    vec3 noisePos = vec3(vUv * 2.0 * freq, uTime * 0.2);
+    float n1 = snoise(noisePos) * 0.5 + 0.5;
+    float n2 = snoise(noisePos * 1.5 + 50.0) * 0.3;
     
-    // Create sphere-like falloff with angle variation
-    float angleVar = sin(angle * 3.0 + uTime * 0.5) * 0.08 * strength;
+    // Create sphere gradient from center outward with smooth falloff
+    float sphereGrad = smoothstep(0.0, 1.0, sphereDist);
     
-    // Combine: center is color1, edges are color0 (black/white)
-    noise = dist * 0.6 + angleVar + organicNoise + 0.2;
+    // Add organic movement
+    float organic = (n1 + n2) * 0.25 * density;
+    
+    // Combine for rich sphere effect
+    noise = sphereGrad * 0.7 + organic + 0.15;
     noise = clamp(noise, 0.0, 1.0);
     
   } else if (uGradientType == 2) {
@@ -162,22 +166,22 @@ void main() {
     noise = clamp(noise, 0.0, 1.0);
     
   } else {
-    // WATER MODE: Flowing waves with liquid-like movement
-    vec3 noisePos = vec3(vUv * 2.5 * freq, uTime * 0.4);
+    // WATER MODE: Smooth flowing liquid effect like the original
+    vec3 noisePos = vec3(vUv * 1.5 * freq, uTime * 0.15);
     
-    // Multiple wave layers
-    float wave1 = sin(vUv.x * 8.0 + uTime * 1.2) * 0.08;
-    float wave2 = sin(vUv.y * 10.0 + uTime * 0.9) * 0.06;
-    float wave3 = sin((vUv.x + vUv.y) * 6.0 + uTime * 0.7) * 0.05;
+    // Smooth flowing noise layers
+    float n1 = snoise(noisePos) * 0.5 + 0.5;
+    float n2 = snoise(noisePos * 0.7 + 30.0) * 0.4 + 0.5;
+    float n3 = snoise(noisePos * 0.5 + 60.0) * 0.3 + 0.5;
     
-    // Organic noise for water texture
-    float waterNoise = snoise(noisePos) * 0.2 * density;
-    float waterNoise2 = snoise(noisePos * 2.0 + 50.0) * 0.1 * density;
+    // Gentle wave motion
+    float wave = sin(vUv.x * 4.0 + vUv.y * 3.0 + uTime * 0.3) * 0.1;
     
-    // Base diagonal flow
-    float flow = (vUv.x + vUv.y) * 0.4;
+    // Blend noise layers for smooth liquid look
+    float baseNoise = (n1 * 0.5 + n2 * 0.3 + n3 * 0.2);
     
-    noise = flow + wave1 + wave2 + wave3 + waterNoise + waterNoise2 + 0.3;
+    // Add density control
+    noise = baseNoise + wave * density;
     noise = clamp(noise, 0.0, 1.0);
   }
   
