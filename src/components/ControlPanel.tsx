@@ -36,12 +36,12 @@ const aspectRatioOptions: { value: GradientConfig['aspectRatio']; label: string;
   { value: 'small-banner', label: 'Small Banner', category: 'web' },
 ];
 
-// Button color presets
+// Button color presets (hover uses black overlay, not different colors)
 const buttonPresets = [
-  { default: { color1: '#FDB515', color2: '#EC008C', color3: '#000000' }, hover: { color1: '#EC008C', color2: '#6A00F4', color3: '#000000' } },
-  { default: { color1: '#F2665F', color2: '#6A00F4', color3: '#000000' }, hover: { color1: '#6A00F4', color2: '#00C2FF', color3: '#000000' } },
-  { default: { color1: '#00C2FF', color2: '#6A00F4', color3: '#000000' }, hover: { color1: '#6A00F4', color2: '#EC008C', color3: '#000000' } },
-  { default: { color1: '#EC008C', color2: '#FDB515', color3: '#000000' }, hover: { color1: '#FDB515', color2: '#F2665F', color3: '#000000' } },
+  { default: { color1: '#FDB515', color2: '#EC008C', color3: '#000000' } },
+  { default: { color1: '#F2665F', color2: '#6A00F4', color3: '#000000' } },
+  { default: { color1: '#00C2FF', color2: '#6A00F4', color3: '#000000' } },
+  { default: { color1: '#EC008C', color2: '#FDB515', color3: '#000000' } },
 ];
 
 // Brand color palette

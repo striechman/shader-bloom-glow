@@ -16,37 +16,31 @@ const buttonPresets = [
     id: 'royal',
     name: 'Royal', 
     default: { color1: '#6A00F4', color2: '#EC008C', color3: '#000000' }, 
-    hover: { color1: '#EC008C', color2: '#FDB515', color3: '#000000' } 
   },
   { 
     id: 'sunset',
     name: 'Sunset', 
     default: { color1: '#FDB515', color2: '#EC008C', color3: '#000000' }, 
-    hover: { color1: '#EC008C', color2: '#6A00F4', color3: '#000000' } 
   },
   { 
     id: 'ocean',
     name: 'Ocean', 
     default: { color1: '#00C2FF', color2: '#6A00F4', color3: '#000000' }, 
-    hover: { color1: '#6A00F4', color2: '#EC008C', color3: '#000000' } 
   },
   { 
     id: 'coral',
     name: 'Coral', 
     default: { color1: '#F2665F', color2: '#6A00F4', color3: '#000000' }, 
-    hover: { color1: '#6A00F4', color2: '#EC008C', color3: '#000000' } 
   },
   { 
     id: 'neon',
     name: 'Neon', 
     default: { color1: '#EC008C', color2: '#00C2FF', color3: '#000000' }, 
-    hover: { color1: '#00C2FF', color2: '#FDB515', color3: '#000000' } 
   },
   { 
     id: 'electric',
     name: 'Electric', 
     default: { color1: '#00C2FF', color2: '#EC008C', color3: '#000000' }, 
-    hover: { color1: '#EC008C', color2: '#6A00F4', color3: '#000000' } 
   },
 ];
 
@@ -64,14 +58,10 @@ export const WebButtonsPanel = ({ isOpen, onToggle }: WebButtonsPanelProps) => {
 
   const currentSize = buttonSizes.find(s => s.id === selectedSize) || buttonSizes[1];
   
-  // Get current gradient based on hover state
-  const currentColors = isHovering ? selectedPreset.hover : selectedPreset.default;
-  const gradientStyle = `linear-gradient(135deg, ${currentColors.color1} 0%, ${currentColors.color2} 50%, ${currentColors.color3} 100%)`;
 
-  // Generate CSS code
+  // Generate CSS code - hover effect darkens the same colors
   const generateCss = () => {
     const defaultGradient = `linear-gradient(135deg, ${selectedPreset.default.color1} 0%, ${selectedPreset.default.color2} 50%, ${selectedPreset.default.color3} 100%)`;
-    const hoverGradient = `linear-gradient(135deg, ${selectedPreset.hover.color1} 0%, ${selectedPreset.hover.color2} 50%, ${selectedPreset.hover.color3} 100%)`;
     
     return `.gradient-button {
   width: ${currentSize.width}px;
@@ -84,7 +74,7 @@ export const WebButtonsPanel = ({ isOpen, onToggle }: WebButtonsPanelProps) => {
   color: white;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
   background: ${defaultGradient};
-  transition: background 0.3s ease-in-out;
+  transition: all 0.3s ease-in-out;
   position: relative;
   overflow: hidden;
 }
@@ -99,8 +89,18 @@ export const WebButtonsPanel = ({ isOpen, onToggle }: WebButtonsPanelProps) => {
   pointer-events: none;
 }
 
-.gradient-button:hover {
-  background: ${hoverGradient};
+.gradient-button::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0);
+  transition: background 0.3s ease-in-out;
+  pointer-events: none;
+}
+
+.gradient-button:hover::after {
+  background: rgba(0, 0, 0, 0.25);
 }`;
   };
 
@@ -140,8 +140,7 @@ export const WebButtonsPanel = ({ isOpen, onToggle }: WebButtonsPanelProps) => {
                     width: currentSize.width,
                     height: currentSize.height,
                     borderRadius: '8px',
-                    background: gradientStyle,
-                    transition: 'background 0.3s ease-in-out',
+                    background: `linear-gradient(135deg, ${selectedPreset.default.color1} 0%, ${selectedPreset.default.color2} 50%, ${selectedPreset.default.color3} 100%)`,
                     textShadow: '0 1px 2px rgba(0,0,0,0.3)',
                     fontSize: selectedSize === 'small' ? '12px' : selectedSize === 'medium' ? '14px' : '16px',
                   }}
@@ -157,14 +156,23 @@ export const WebButtonsPanel = ({ isOpen, onToggle }: WebButtonsPanelProps) => {
                       boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), inset 0 -1px 0 rgba(0,0,0,0.2)',
                     }}
                   />
-                  Click Here
+                  {/* Black fade hover overlay */}
+                  <div
+                    className="absolute inset-0 pointer-events-none transition-opacity duration-300"
+                    style={{
+                      borderRadius: '8px',
+                      background: 'rgba(0, 0, 0, 0.25)',
+                      opacity: isHovering ? 1 : 0,
+                    }}
+                  />
+                  <span className="relative z-10">Click Here</span>
                 </motion.button>
                 <div className="text-center">
                   <span className="text-xs text-muted-foreground block">
                     {currentSize.width} × {currentSize.height}px
                   </span>
                   <span className="text-xs text-muted-foreground/70">
-                    Hover to see transition
+                    Hover to see dark overlay
                   </span>
                 </div>
               </div>
