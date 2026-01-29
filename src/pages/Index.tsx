@@ -33,7 +33,7 @@ const Index = () => {
           <div className="fixed inset-0 bg-gradient-to-br from-background via-secondary to-background" />
         }
       >
-        <div id="gradient-stage" className="fixed inset-0">
+        <div id="gradient-stage" className="fixed inset-0 overflow-hidden">
           <GradientCanvas config={config} />
         </div>
       </Suspense>
