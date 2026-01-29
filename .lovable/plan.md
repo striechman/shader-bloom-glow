@@ -1,58 +1,98 @@
-# Plan: Fix Export Quality - Match Screen Preview
 
-## ✅ COMPLETED
+# תוכנית: הוספת צבע רביעי (שחור קבוע) לכל הגרדיינטים
 
-**Implementation Date:** 2026-01-29
-
----
-
-## Summary
-
-Implemented high-fidelity export for Mesh mode by porting the exact GLSL shader logic to JavaScript. Exports now render at target resolution with pixel-perfect quality matching the on-screen preview.
+## סיכום
+מעבר ממערכת 3 צבעים למערכת 4 צבעים עם שחור (#000000) כצבע בסיס קבוע (color0) במשקל 30%.
 
 ---
 
-## What Was Implemented
+## שינויים נדרשים
 
-### 1. 3D Simplex Noise in JavaScript
-- Full port of the GLSL `snoise(vec3 v)` function
-- Matching helper functions: `mod289`, `permute`, `taylorInvSqrt`
-- Produces identical noise patterns to the shader
+### קובץ 1: `src/types/gradient.ts`
 
-### 2. High-Quality Mesh Render Function
-- `renderMeshGradientHighQuality()` renders pixel-by-pixel at target resolution
-- Uses exact shader parameters: noise scale, frequency, density, strength
-- Matches multi-octave noise weights: `n1 * 0.5 + n2 * (0.20 + 0.10 * density) + n3 * (0.10 + 0.06 * density)`
-- Applies correct normalization and edge fade
-- Supports grain effect
+**הוספות:**
+- `color0: '#000000'` - צבע שחור קבוע (לא ניתן לשינוי)
+- `colorWeight0: number` - משקל השחור (ברירת מחדל: 30)
 
-### 3. Updated Export Logic
-- Mesh mode: Uses JS render (no WebGL capture, no scaling artifacts)
-- Sphere/Plane/Water modes: Continue using WebGL capture with corner healing
-
----
-
-## Key Code Changes
-
-**File:** `src/components/ExportModal.tsx`
-
-1. Added `simplexNoise3D()` - full 3D Simplex noise implementation
-2. Added `renderMeshGradientHighQuality()` - pixel-perfect mesh gradient renderer
-3. Updated `handleExport()` to choose render path based on mode:
-   ```typescript
-   if (isMeshMode) {
-     await renderMeshGradientHighQuality(ctx, targetWidth, targetHeight, config);
-   } else {
-     // WebGL capture for other modes
-   }
-   ```
+**עדכון ברירות מחדל:**
+```text
+colorWeight0: 30  (שחור - חדש)
+colorWeight1: 23  (צבע 1)
+colorWeight2: 24  (צבע 2)
+colorWeight3: 23  (צבע 3)
+סה"כ: 100%
+```
 
 ---
 
-## Expected Results
+### קובץ 2: `src/components/CustomMeshGradient.tsx`
 
-✅ Mesh Mode exports match screen preview exactly at any resolution
-✅ Smooth color transitions with no banding
-✅ Multi-octave noise detail preserved at all scales
-✅ Grain effect works correctly in export
-✅ Clean edges with proper fade-to-background
+**עדכון השיידר:**
+- הוספת `uColor0` uniform (שחור קבוע)
+- הוספת `uWeight0` uniform
+- עדכון לוגיקת ערבוב הצבעים ל-4 צבעים:
+
+```text
+threshold0 = weight0
+threshold1 = weight0 + weight1
+threshold2 = weight0 + weight1 + weight2
+
+color0 → color1 → color2 → color3
+```
+
+---
+
+### קובץ 3: `src/components/ControlPanel.tsx`
+
+**עדכון UI:**
+1. הוספת סליידר "Black Weight" (משקל שחור) לפני שאר הצבעים
+2. עדכון פונקציית `handleColorWeightChange` לעבוד עם 4 צבעים
+3. עדכון כל הפריסטים ל-4 צבעים:
+
+**פריסטים מעודכנים:**
+```text
+Royal:    30% שחור, 23% סגול, 24% מגנטה, 23% שחור
+Sunset:   30% שחור, 23% צהוב, 24% מגנטה, 23% שחור
+Ocean:    30% שחור, 23% כחול, 24% סגול, 23% שחור
+Coral:    30% שחור, 23% קורל, 24% סגול, 23% שחור
+Neon:     30% שחור, 23% מגנטה, 24% כחול, 23% שחור
+Electric: 30% שחור, 23% כחול, 24% מגנטה, 23% שחור
+Blush:    30% שחור, 32% מגנטה, 31% שחור, 7% לבן
+Violet:   30% שחור, 32% מגנטה, 31% סגול, 7% לבן
+Salmon:   30% שחור, 32% קורל, 31% שחור, 7% לבן
+```
+
+---
+
+### קובץ 4: `src/components/ExportModal.tsx`
+
+**עדכון רנדור:**
+- עדכון `renderMeshGradientHighQuality` ל-4 צבעים
+- עדכון `renderGradientToCanvas` ל-4 צבעים
+- עדכון `generateCSSCode` לכלול 4 צבעים
+
+---
+
+### קובץ 5: `src/components/GradientCanvas.tsx`
+
+**עדכון אוברליי:**
+- עדכון חישוב מעברי הצבעים ל-4 צבעים
+
+---
+
+## תוצאה צפויה
+
+1. **יותר שחור** - כל גרדיאנט יכלול 30% שחור בסיס
+2. **4 צבעים** - מעברים חלקים בין 4 צבעים
+3. **פריסטים מעודכנים** - כל הפריסטים יעבדו עם המערכת החדשה
+4. **ייצוא תקין** - תמונות מיוצאות יכללו את כל 4 הצבעים
+
+---
+
+## סדר ביצוע
+
+1. עדכון `gradient.ts` - הוספת color0 וברירות מחדל
+2. עדכון `CustomMeshGradient.tsx` - עדכון השיידר
+3. עדכון `ControlPanel.tsx` - UI ופריסטים
+4. עדכון `GradientCanvas.tsx` - אוברליי
+5. עדכון `ExportModal.tsx` - רנדור ו-CSS
