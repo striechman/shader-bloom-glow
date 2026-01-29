@@ -56,12 +56,12 @@ const brandColors = [
 ];
 
 const colorPresets = [
-  { color1: '#6A00F4', color2: '#E71989', color3: '#000000' },  // Royal
-  { color1: '#FDB515', color2: '#E71989', color3: '#000000' },  // Sunset
-  { color1: '#00C2FF', color2: '#6A00F4', color3: '#000000' },  // Ocean
-  { color1: '#F25665', color2: '#6A00F4', color3: '#000000' },  // Coral
-  { color1: '#E71989', color2: '#00C2FF', color3: '#000000' },  // Neon
-  { color1: '#00C2FF', color2: '#E71989', color3: '#000000' },  // Electric
+  { name: 'Royal', color1: '#6A00F4', color2: '#E71989', color3: '#000000' },
+  { name: 'Sunset', color1: '#FDB515', color2: '#E71989', color3: '#000000' },
+  { name: 'Ocean', color1: '#00C2FF', color2: '#6A00F4', color3: '#000000' },
+  { name: 'Coral', color1: '#F25665', color2: '#6A00F4', color3: '#000000' },
+  { name: 'Neon', color1: '#E71989', color2: '#00C2FF', color3: '#000000' },
+  { name: 'Electric', color1: '#00C2FF', color2: '#E71989', color3: '#000000' },
 ];
 
 export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenButtonsPanel }: ControlPanelProps) => {
@@ -277,13 +277,13 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label className="text-muted-foreground">Blob Size</Label>
-                    <span className="text-xs text-muted-foreground">{(config.meshNoiseScale ?? 3).toFixed(1)}</span>
+                    <span className="text-xs text-muted-foreground">{(config.meshNoiseScale ?? 1).toFixed(1)}</span>
                   </div>
                   <Slider
-                    value={[config.meshNoiseScale ?? 3]}
+                    value={[config.meshNoiseScale ?? 1]}
                     onValueChange={([value]) => onConfigChange({ meshNoiseScale: value })}
                     min={0.5}
-                    max={8}
+                    max={3}
                     step={0.1}
                     className="w-full"
                   />
@@ -323,12 +323,16 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                 {colorPresets.map((preset, index) => (
                   <button
                     key={index}
-                    onClick={() => onConfigChange(preset)}
-                    className="h-12 rounded-lg overflow-hidden border border-border hover:border-primary transition-colors"
+                    onClick={() => onConfigChange({ color1: preset.color1, color2: preset.color2, color3: preset.color3 })}
+                    className="relative h-12 rounded-lg overflow-hidden border border-border hover:border-primary transition-colors group"
                     style={{
                       background: `linear-gradient(135deg, ${preset.color1} 0%, ${preset.color2} 50%, ${preset.color3} 100%)`,
                     }}
-                  />
+                  >
+                    <span className="absolute inset-0 flex items-center justify-center text-white text-xs font-medium drop-shadow-md">
+                      {preset.name}
+                    </span>
+                  </button>
                 ))}
               </div>
             )}

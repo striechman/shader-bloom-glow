@@ -111,7 +111,7 @@ void main() {
   float freq = max(0.1, uFrequency);
   float density = max(0.0, uDensity);
   float strength = max(0.0, uStrength);
-  vec3 noisePos = vec3(vUv * uNoiseScale * freq, uTime * 0.1);
+  vec3 noisePos = vec3(vUv * uNoiseScale * freq, uTime * 0.5);
   
   float n1 = snoise(noisePos) * 0.5 + 0.5;
   float n2 = snoise(noisePos * 2.0 + 100.0) * (0.20 + 0.10 * density);
