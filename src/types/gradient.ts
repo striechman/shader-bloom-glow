@@ -44,6 +44,10 @@ export interface GradientConfig {
   
   // Banner settings (only applies when aspectRatio is hero-banner)
   bannerBlackFade: number; // Percentage of left side that's black (15-50)
+  
+  // Plane gradient direction
+  planeAngle: number; // 0-360 degrees (direction of the gradient)
+  planeRadial: boolean; // If true, radial gradient from center instead of linear
 }
 
 export const defaultGradientConfig: GradientConfig = {
@@ -73,6 +77,8 @@ export const defaultGradientConfig: GradientConfig = {
   meshBlur: 50,
   aspectRatio: 'free',
   bannerBlackFade: 30,
+  planeAngle: 45, // Default diagonal (45°)
+  planeRadial: false,
 };
 
 // Get theme-based color0 (black for dark mode, white for light mode)
