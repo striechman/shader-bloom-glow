@@ -22,6 +22,30 @@ const buttonSizes = [
   { id: 'small', label: 'S', width: 120, height: 40 },
 ] as const;
 
+// Button color presets
+const buttonPresets = [
+  { 
+    name: 'Sunset', 
+    default: { color1: '#FDB515', color2: '#E71989', color3: '#000000' }, 
+    hover: { color1: '#E71989', color2: '#6A00F4', color3: '#000000' } 
+  },
+  { 
+    name: 'Ocean', 
+    default: { color1: '#00C2FF', color2: '#6A00F4', color3: '#000000' }, 
+    hover: { color1: '#6A00F4', color2: '#E71989', color3: '#000000' } 
+  },
+  { 
+    name: 'Fire', 
+    default: { color1: '#F25665', color2: '#FDB515', color3: '#000000' }, 
+    hover: { color1: '#FDB515', color2: '#E71989', color3: '#000000' } 
+  },
+  { 
+    name: 'Neon', 
+    default: { color1: '#E71989', color2: '#00C2FF', color3: '#000000' }, 
+    hover: { color1: '#00C2FF', color2: '#FDB515', color3: '#000000' } 
+  },
+];
+
 interface WebButtonsPanelProps {
   isOpen: boolean;
   onToggle: () => void;
@@ -45,6 +69,17 @@ export const WebButtonsPanel = ({ isOpen, onToggle }: WebButtonsPanelProps) => {
     setButtonConfig(prev => ({ ...prev, [colorKey]: value }));
   };
 
+  const handlePresetSelect = (preset: typeof buttonPresets[0]) => {
+    setButtonConfig({
+      defaultColor1: preset.default.color1,
+      defaultColor2: preset.default.color2,
+      defaultColor3: preset.default.color3,
+      hoverColor1: preset.hover.color1,
+      hoverColor2: preset.hover.color2,
+      hoverColor3: preset.hover.color3,
+    });
+  };
+
   const currentSize = buttonSizes.find(s => s.id === selectedSize) || buttonSizes[1];
   
   // Create mesh gradient config for the button preview
@@ -65,18 +100,6 @@ export const WebButtonsPanel = ({ isOpen, onToggle }: WebButtonsPanelProps) => {
 
   return (
     <>
-      {/* Toggle Button - always visible */}
-      <motion.button
-        onClick={onToggle}
-        className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full glass flex items-center gap-2 text-foreground hover:bg-secondary/50 transition-colors"
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-      >
-        <Square className="w-4 h-4" />
-        <span className="text-sm font-medium">Buttons</span>
-        {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-      </motion.button>
-
       {/* Panel */}
       <AnimatePresence>
         {isOpen && (
@@ -104,7 +127,7 @@ export const WebButtonsPanel = ({ isOpen, onToggle }: WebButtonsPanelProps) => {
                     style={{
                       width: currentSize.width,
                       height: currentSize.height,
-                      borderRadius: '9999px',
+                      borderRadius: '8px',
                     }}
                   >
                     <Canvas
@@ -118,7 +141,7 @@ export const WebButtonsPanel = ({ isOpen, onToggle }: WebButtonsPanelProps) => {
                     <div
                       className="absolute inset-0 pointer-events-none"
                       style={{
-                        borderRadius: '9999px',
+                        borderRadius: '8px',
                         background: 'linear-gradient(to bottom, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 100%)',
                         boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.1)',
                       }}
@@ -131,6 +154,26 @@ export const WebButtonsPanel = ({ isOpen, onToggle }: WebButtonsPanelProps) => {
 
                 {/* Controls */}
                 <div className="space-y-4">
+                  {/* Presets */}
+                  <div>
+                    <Label className="text-muted-foreground mb-2 block">Presets</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {buttonPresets.map((preset) => (
+                        <button
+                          key={preset.name}
+                          onClick={() => handlePresetSelect(preset)}
+                          className="h-8 rounded-lg overflow-hidden border border-border hover:border-primary transition-colors text-xs font-medium"
+                          style={{
+                            background: `linear-gradient(135deg, ${preset.default.color1} 0%, ${preset.default.color2} 50%, ${preset.default.color3} 100%)`,
+                          }}
+                          title={preset.name}
+                        >
+                          <span className="text-white drop-shadow-md">{preset.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   {/* Size Selection */}
                   <div>
                     <Label className="text-muted-foreground mb-2 block">Size</Label>

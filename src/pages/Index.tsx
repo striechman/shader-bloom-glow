@@ -50,6 +50,7 @@ const Index = () => {
         onConfigChange={handleConfigChange}
         isOpen={isPanelOpen}
         onToggle={() => setIsPanelOpen(!isPanelOpen)}
+        onOpenButtonsPanel={() => setIsButtonsPanelOpen(true)}
       />
 
       {/* Export Modal */}
