@@ -111,6 +111,7 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
               brightness={1.4}
               envPreset="city"
               grain={config.grain ? 'on' : 'off'}
+              grainBlending={config.grain ? (config.grainIntensity ?? 50) / 100 : 0}
               toggleAxis={false}
               zoomOut={false}
             />

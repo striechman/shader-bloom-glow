@@ -20,6 +20,7 @@ export interface GradientConfig {
   
   // Effects
   grain: boolean;
+  grainIntensity: number; // 0-100 (controls grain visibility)
   uStrength: number;
   uDensity: number;
   uFrequency: number;
@@ -44,6 +45,7 @@ export const defaultGradientConfig: GradientConfig = {
   colorWeight2: 34,
   colorWeight3: 33,
   grain: false,
+  grainIntensity: 50,
   uStrength: 4,
   uDensity: 1.3,
   uFrequency: 5.5,
