@@ -33,9 +33,6 @@ const aspectRatioOptions: { value: GradientConfig['aspectRatio']; label: string;
   { value: '4:5', label: '4:5' },
   { value: 'hero-banner', label: 'Hero Banner', category: 'web' },
   { value: 'small-banner', label: 'Small Banner', category: 'web' },
-  { value: 'button-large', label: 'Button L', category: 'button' },
-  { value: 'button-medium', label: 'Button M', category: 'button' },
-  { value: 'button-small', label: 'Button S', category: 'button' },
 ];
 
 // Brand color palette
@@ -251,37 +248,6 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle }: Contr
               </div>
             )}
             
-            {/* Button State Toggle - only for buttons */}
-            {isButtonRatio(config.aspectRatio) && (
-              <div className="mt-4 space-y-3">
-                <Label className="text-muted-foreground">Button State</Label>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => onConfigChange({ buttonPreviewState: 'default' })}
-                    className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
-                      config.buttonPreviewState === 'default'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                    }`}
-                  >
-                    Default
-                  </button>
-                  <button
-                    onClick={() => onConfigChange({ buttonPreviewState: 'hover' })}
-                    className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
-                      config.buttonPreviewState === 'hover'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                    }`}
-                  >
-                    Hover
-                  </button>
-                </div>
-                <p className="text-xs text-muted-foreground/70">
-                  Design both states, then export CSS with transitions
-                </p>
-              </div>
-            )}
           </div>
 
           {/* Mesh Controls (only visible when Mesh is selected) */}

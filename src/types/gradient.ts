@@ -82,7 +82,7 @@ export const aspectRatioValues: Record<string, number> = {
   '3:4': 3 / 4,
   'free': 0,
   'hero-banner': 1280 / 400, // ~3.2:1
-  'small-banner': 300 / 100, // 3:1 - compact small banner
+  'small-banner': 600 / 300, // 2:1 - 600x300 small banner
   'button-large': 200 / 60, // ~3.3:1
   'button-medium': 150 / 50, // 3:1
   'button-small': 100 / 40, // 2.5:1

@@ -171,7 +171,7 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
         {/* Static-mode weights overlay: softened (no hard banding) + doesn't kill shader effects */}
         {isStaticMode && !isWireframe && !isButton && (
           <div
-            className="absolute inset-0 pointer-events-none rounded-lg"
+            className="absolute inset-0 pointer-events-none"
             style={{
               background: `linear-gradient(135deg,
                 ${currentColors.color1} 0%,
@@ -193,7 +193,7 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
         {/* Hero Banner black fade overlay - only for hero-banner */}
         {isHeroBanner && (
           <div
-            className="absolute inset-0 pointer-events-none z-10 rounded-lg"
+            className="absolute inset-0 pointer-events-none z-10"
             style={{
               background: `linear-gradient(to right,
                 rgba(0, 0, 0, 1) 0%,
@@ -219,7 +219,7 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
         {/* Grain overlay - controllable + visible across all modes (incl. Mesh) */}
         {config.grain && grainOpacity > 0 && (
           <div
-            className="absolute inset-0 pointer-events-none z-10 rounded-lg"
+            className="absolute inset-0 pointer-events-none z-10"
             style={{
               opacity: grainOpacity,
               backgroundImage:
