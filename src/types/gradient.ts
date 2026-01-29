@@ -3,7 +3,7 @@ export interface GradientConfig {
   type: 'sphere' | 'plane' | 'waterPlane';
   wireframe: boolean;
   
-  // Colors
+  // Colors (Default state)
   color1: string;
   color2: string;
   color3: string;
@@ -12,6 +12,14 @@ export interface GradientConfig {
   colorWeight1: number;
   colorWeight2: number;
   colorWeight3: number;
+  
+  // Hover Colors (for buttons)
+  hoverColor1: string;
+  hoverColor2: string;
+  hoverColor3: string;
+  
+  // Button state preview
+  buttonPreviewState: 'default' | 'hover';
   
   // Animation
   animate: boolean;
@@ -47,6 +55,10 @@ export const defaultGradientConfig: GradientConfig = {
   colorWeight1: 33,
   colorWeight2: 34,
   colorWeight3: 33,
+  hoverColor1: '#E71989',
+  hoverColor2: '#6A00F4',
+  hoverColor3: '#000000',
+  buttonPreviewState: 'default',
   grain: false,
   grainIntensity: 50,
   uStrength: 4,
