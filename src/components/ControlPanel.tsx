@@ -394,12 +394,31 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle }: Contr
           <div>
             <h3 className="font-display text-lg font-medium mb-4 text-foreground">Effects</h3>
             <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <Label className="text-muted-foreground">Grain</Label>
-                <Switch
-                  checked={config.grain}
-                  onCheckedChange={(checked) => onConfigChange({ grain: checked })}
-                />
+              {/* Grain with intensity slider */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-muted-foreground">Grain</Label>
+                  <Switch
+                    checked={config.grain}
+                    onCheckedChange={(checked) => onConfigChange({ grain: checked })}
+                  />
+                </div>
+                {config.grain && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-muted-foreground text-xs">Intensity</Label>
+                      <span className="text-xs text-muted-foreground">{config.grainIntensity ?? 50}%</span>
+                    </div>
+                    <Slider
+                      value={[config.grainIntensity ?? 50]}
+                      onValueChange={([value]) => onConfigChange({ grainIntensity: value })}
+                      min={5}
+                      max={100}
+                      step={5}
+                      className="w-full"
+                    />
+                  </div>
+                )}
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
