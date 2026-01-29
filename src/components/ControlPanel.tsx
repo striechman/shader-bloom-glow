@@ -12,6 +12,7 @@ interface ControlPanelProps {
   onConfigChange: (config: Partial<GradientConfig>) => void;
   isOpen: boolean;
   onToggle: () => void;
+  onOpenButtonsPanel?: () => void;
 }
 
 const shapeOptions: { value: GradientConfig['type']; wireframe: boolean; label: string }[] = [
@@ -35,6 +36,14 @@ const aspectRatioOptions: { value: GradientConfig['aspectRatio']; label: string;
   { value: 'small-banner', label: 'Small Banner', category: 'web' },
 ];
 
+// Button color presets
+const buttonPresets = [
+  { default: { color1: '#FDB515', color2: '#E71989', color3: '#000000' }, hover: { color1: '#E71989', color2: '#6A00F4', color3: '#000000' } },
+  { default: { color1: '#F25665', color2: '#6A00F4', color3: '#000000' }, hover: { color1: '#6A00F4', color2: '#00C2FF', color3: '#000000' } },
+  { default: { color1: '#00C2FF', color2: '#6A00F4', color3: '#000000' }, hover: { color1: '#6A00F4', color2: '#E71989', color3: '#000000' } },
+  { default: { color1: '#E71989', color2: '#FDB515', color3: '#000000' }, hover: { color1: '#FDB515', color2: '#F25665', color3: '#000000' } },
+];
+
 // Brand color palette
 const brandColors = [
   { name: 'Yellow Orange', hex: '#FDB515' },
@@ -55,7 +64,7 @@ const colorPresets = [
   { color1: '#FDB515', color2: '#F25665', color3: '#000000' },
 ];
 
-export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle }: ControlPanelProps) => {
+export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenButtonsPanel }: ControlPanelProps) => {
   const [internalTime, setInternalTime] = useState(0);
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
@@ -225,6 +234,15 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle }: Contr
                   {option.label}
                 </button>
               ))}
+              {/* Buttons toggle - next to Small Banner */}
+              {onOpenButtonsPanel && (
+                <button
+                  onClick={onOpenButtonsPanel}
+                  className="py-1.5 px-3 rounded-lg text-xs font-medium transition-all bg-accent text-accent-foreground hover:bg-accent/80"
+                >
+                  Buttons
+                </button>
+              )}
             </div>
             
             {/* Hero Banner Black Fade Control - only for hero-banner */}

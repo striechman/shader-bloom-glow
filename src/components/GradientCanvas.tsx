@@ -56,7 +56,7 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
         width: size.maxWidth,
         height: size.maxHeight,
         position: 'relative' as const,
-        borderRadius: '9999px',
+        borderRadius: '8px',
         overflow: 'hidden',
       };
     }
@@ -209,7 +209,7 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
           <div
             className="absolute inset-0 pointer-events-none z-10"
             style={{
-              borderRadius: '9999px',
+              borderRadius: '8px',
               background: 'linear-gradient(to bottom, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 100%)',
               boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.1)',
             }}
