@@ -122,7 +122,7 @@ void main() {
   float edgeDistY = 1.0 - abs(centeredUv.y) * 2.0;
   float edgeDist = min(edgeDistX, edgeDistY);
   
-  // Smooth falloff from edges - corners fade to color0 (black)
+  // Smooth falloff from edges - corners fade to color0
   float edgeFade = smoothstep(0.0, 0.3, edgeDist);
   
   vec3 noisePos = vec3(vUv * uNoiseScale * freq, uTime * 0.5);
@@ -140,7 +140,7 @@ void main() {
   // Apply blur (softness) - higher blur = smoother transitions
   float blurFactor = uBlur * 0.5;
   
-  // Calculate thresholds based on weights (normalized to 0-1)
+  // Calculate cumulative thresholds based on weights (normalized to 0-1)
   // 4 colors: color0 -> color1 -> color2 -> color3
   float w0 = uWeight0 / 100.0;
   float w1 = uWeight1 / 100.0;
@@ -149,19 +149,29 @@ void main() {
   float threshold1 = w0 + w1;
   float threshold2 = w0 + w1 + w2;
   
-  // Smooth color mixing based on noise and weights
+  // COLOR MIXING: Use step-based blending for clearer color dominance
+  // When noise is low -> color0 (black/white based on theme)
+  // As noise increases -> color1 -> color2 -> color3
+  
   vec3 finalColor;
   
-  float edge0 = smoothstep(threshold0 - blurFactor, threshold0 + blurFactor, noise);
-  float edge1 = smoothstep(threshold1 - blurFactor, threshold1 + blurFactor, noise);
-  float edge2 = smoothstep(threshold2 - blurFactor, threshold2 + blurFactor, noise);
+  // Determine which color zone we're in based on noise value
+  // Zone 0: noise < threshold0 -> mostly color0
+  // Zone 1: threshold0 < noise < threshold1 -> mostly color1
+  // Zone 2: threshold1 < noise < threshold2 -> mostly color2
+  // Zone 3: noise > threshold2 -> mostly color3
   
-  // Mix colors: noise < threshold0 = color0, threshold0-threshold1 = color1, etc.
-  finalColor = mix(uColor0, uColor1, edge0);
-  finalColor = mix(finalColor, uColor2, edge1);
-  finalColor = mix(finalColor, uColor3, edge2);
+  float blend01 = smoothstep(threshold0 - blurFactor, threshold0 + blurFactor, noise);
+  float blend12 = smoothstep(threshold1 - blurFactor, threshold1 + blurFactor, noise);
+  float blend23 = smoothstep(threshold2 - blurFactor, threshold2 + blurFactor, noise);
   
-  // Apply edge fade - corners blend to color0 (black) to prevent artifacts
+  // Start with color0 and progressively blend to other colors
+  finalColor = uColor0;
+  finalColor = mix(finalColor, uColor1, blend01);
+  finalColor = mix(finalColor, uColor2, blend12);
+  finalColor = mix(finalColor, uColor3, blend23);
+  
+  // Apply edge fade - corners blend to color0 to prevent artifacts
   finalColor = mix(uColor0, finalColor, edgeFade);
   
   gl_FragColor = vec4(finalColor, 1.0);

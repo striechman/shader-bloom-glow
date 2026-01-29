@@ -51,11 +51,11 @@ export const defaultGradientConfig: GradientConfig = {
   wireframe: false,
   animate: true,
   speed: 0.4,
-  color0: '#000000', // Fixed black
+  color0: '#000000', // Theme-based: black in dark mode, white in light mode
   color1: '#FDB515',
   color2: '#EC008C',
   color3: '#000000',
-  colorWeight0: 30, // Black weight
+  colorWeight0: 30, // Base color weight (black/white based on theme)
   colorWeight1: 23,
   colorWeight2: 24,
   colorWeight3: 23,
@@ -73,6 +73,11 @@ export const defaultGradientConfig: GradientConfig = {
   meshBlur: 50,
   aspectRatio: 'free',
   bannerBlackFade: 30,
+};
+
+// Get theme-based color0 (black for dark mode, white for light mode)
+export const getThemeColor0 = (theme: 'dark' | 'light'): string => {
+  return theme === 'dark' ? '#000000' : '#FFFFFF';
 };
 
 export const aspectRatioValues: Record<string, number> = {
