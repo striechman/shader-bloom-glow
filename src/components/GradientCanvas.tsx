@@ -1,6 +1,6 @@
 import { ShaderGradientCanvas, ShaderGradient } from '@shadergradient/react';
 import { Canvas } from '@react-three/fiber';
-import { GradientConfig, aspectRatioValues, isBannerRatio } from '@/types/gradient';
+import { GradientConfig, aspectRatioValues, isHeroBannerRatio, isButtonRatio } from '@/types/gradient';
 import { CustomMeshGradient } from './CustomMeshGradient';
 import { useMemo } from 'react';
 
@@ -12,7 +12,8 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
   const isWireframe = config.wireframe === true;
   const isFrozen = config.frozenTime !== null;
   const isStaticMode = !config.animate || isFrozen;
-  const isBanner = isBannerRatio(config.aspectRatio);
+  const isHeroBanner = isHeroBannerRatio(config.aspectRatio);
+  const isButton = isButtonRatio(config.aspectRatio);
   
   // NOTE: Avoid forcing remounts on every slider move (can cause WebGL context loss).
   
@@ -143,8 +144,8 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
           />
         )}
         
-        {/* Banner black fade overlay - left side black gradient */}
-        {isBanner && (
+        {/* Hero Banner black fade overlay - only for hero-banner */}
+        {isHeroBanner && (
           <div
             className="absolute inset-0 pointer-events-none z-10 rounded-lg"
             style={{
@@ -153,6 +154,17 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
                 rgba(0, 0, 0, 1) ${config.bannerBlackFade * 0.5}%,
                 rgba(0, 0, 0, 0) ${config.bannerBlackFade}%
               )`,
+            }}
+          />
+        )}
+        
+        {/* Button rounded corners overlay */}
+        {isButton && (
+          <div
+            className="absolute inset-0 pointer-events-none z-10"
+            style={{
+              borderRadius: '9999px',
+              boxShadow: 'inset 0 0 0 2px rgba(255,255,255,0.2)',
             }}
           />
         )}
