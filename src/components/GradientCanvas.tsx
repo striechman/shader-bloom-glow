@@ -1,4 +1,5 @@
 import { Canvas } from '@react-three/fiber';
+import { ShaderGradientCanvas, ShaderGradient } from '@shadergradient/react';
 import { GradientConfig, aspectRatioValues, isHeroBannerRatio, isButtonRatio } from '@/types/gradient';
 import { Custom4ColorGradient } from './Custom4ColorGradient';
 import { useMemo } from 'react';
@@ -12,6 +13,9 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
   const isFrozen = config.frozenTime !== null;
   const isStaticMode = isButton ? true : (!config.animate || isFrozen);
   const isHeroBanner = isHeroBannerRatio(config.aspectRatio);
+  
+  // Check if we should use 4-color mode (Mesh or Plane)
+  const use4ColorMode = config.type === 'plane' || config.wireframe;
   
   // Get current colors based on button preview state
   const currentColors = useMemo(() => {
@@ -73,7 +77,7 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
   
   const grainOpacity = config.grain ? (config.grainIntensity ?? 50) / 100 : 0;
   
-  // Create config with current colors for the gradient
+  // Create config with current colors for the 4-color gradient
   const gradientConfig = useMemo(() => ({
     ...config,
     color0: config.color0,
@@ -89,19 +93,46 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
         style={getContainerStyle()}
         className="relative flex items-center justify-center"
       >
-        {/* Custom 4-color gradient for ALL modes */}
-        <Canvas
-          style={{
-            width: '100%',
-            height: '100%',
-            position: 'absolute',
-            borderRadius: isButton ? '9999px' : undefined,
-          }}
-          camera={{ position: [0, 0, 5], fov: 50 }}
-          gl={{ preserveDrawingBuffer: true, alpha: true }}
-        >
-          <Custom4ColorGradient config={gradientConfig} />
-        </Canvas>
+        {use4ColorMode ? (
+          /* 4-color gradient for Mesh and Plane modes */
+          <Canvas
+            style={{
+              width: '100%',
+              height: '100%',
+              position: 'absolute',
+              borderRadius: isButton ? '9999px' : undefined,
+            }}
+            camera={{ position: [0, 0, 5], fov: 50 }}
+            gl={{ preserveDrawingBuffer: true, alpha: true }}
+          >
+            <Custom4ColorGradient config={gradientConfig} />
+          </Canvas>
+        ) : (
+          /* Original ShaderGradient for Sphere and Water modes (3 colors) */
+          <ShaderGradientCanvas
+            style={{
+              width: '100%',
+              height: '100%',
+              position: 'absolute',
+              borderRadius: isButton ? '9999px' : undefined,
+            }}
+          >
+            <ShaderGradient
+              type={config.type}
+              animate={isButton ? 'off' : (isStaticMode ? 'off' : 'on')}
+              uTime={isFrozen && config.frozenTime !== null ? config.frozenTime : 0}
+              uSpeed={config.speed}
+              uStrength={config.uStrength}
+              uDensity={config.uDensity}
+              uFrequency={config.uFrequency}
+              color1={currentColors.color1}
+              color2={currentColors.color2}
+              color3={currentColors.color3}
+              wireframe={false}
+              grain={isButton ? 'off' : (config.grain ? 'on' : 'off')}
+            />
+          </ShaderGradientCanvas>
+        )}
         
         {/* Hero Banner black fade overlay */}
         {isHeroBanner && (
@@ -129,8 +160,8 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
           />
         )}
         
-        {/* Grain overlay */}
-        {config.grain && grainOpacity > 0 && (
+        {/* Grain overlay for 4-color modes */}
+        {use4ColorMode && config.grain && grainOpacity > 0 && (
           <div
             className="absolute inset-0 pointer-events-none z-10"
             style={{
