@@ -56,12 +56,12 @@ const brandColors = [
 ];
 
 const colorPresets = [
-  { color1: '#FDB515', color2: '#E71989', color3: '#000000' },
-  { color1: '#F25665', color2: '#6A00F4', color3: '#000000' },
-  { color1: '#E71989', color2: '#00C2FF', color3: '#000000' },
-  { color1: '#6A00F4', color2: '#FDB515', color3: '#000000' },
-  { color1: '#00C2FF', color2: '#F25665', color3: '#000000' },
-  { color1: '#FDB515', color2: '#F25665', color3: '#000000' },
+  { color1: '#6A00F4', color2: '#E71989', color3: '#000000' },  // Royal
+  { color1: '#FDB515', color2: '#E71989', color3: '#000000' },  // Sunset
+  { color1: '#00C2FF', color2: '#6A00F4', color3: '#000000' },  // Ocean
+  { color1: '#F25665', color2: '#6A00F4', color3: '#000000' },  // Coral
+  { color1: '#E71989', color2: '#00C2FF', color3: '#000000' },  // Neon
+  { color1: '#00C2FF', color2: '#E71989', color3: '#000000' },  // Electric
 ];
 
 export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenButtonsPanel }: ControlPanelProps) => {
