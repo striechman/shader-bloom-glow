@@ -25,6 +25,9 @@ const effectTypes: { value: BannerEffectType; label: string }[] = [
   { value: 'waterPlane', label: 'Water' },
 ];
 
+// ============================================================================
+// High-Quality Banner Renderer - Matches WebGL shader output
+// ============================================================================
 function renderBannerHighQuality(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -34,7 +37,7 @@ function renderBannerHighQuality(
   const imageData = ctx.createImageData(width, height);
   const data = imageData.data;
   
-  // Parse colors with fallback
+  // Parse colors
   const color1 = parseColor(config.gradientColors[0] || '#FDB515');
   const color2 = parseColor(config.gradientColors[1] || '#EC008C');
   const color3 = parseColor(config.gradientColors[2] || '#6A00F4');
@@ -58,47 +61,51 @@ function renderBannerHighQuality(
   const isPlane = config.effectType === 'plane';
   const isWater = config.effectType === 'waterPlane';
   
-  // Debug: Log some sample noise values
   console.log('[BannerExport] Rendering', width, 'x', height, 'effect:', config.effectType);
-  console.log('[BannerExport] Sample noise at (0.5, 0.5):', noise3D(0.5 * freq, 0.5 * freq, time));
   
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const u = x / width;
       const v = y / height;
       
-      let noise: number;
+      let noiseVal: number;
       
       if (isMesh) {
+        // Match shader: noisePos = vec3(vUv * uNoiseScale * freq, uTime * 0.1)
         const noiseX = u * noiseScale * freq;
         const noiseY = v * noiseScale * freq;
-        const n1 = noise3D(noiseX, noiseY, time);
-        const n2 = noise3D(noiseX * 2 + 100, noiseY * 2 + 100, time) * (0.20 + 0.10 * density);
-        const n3 = noise3D(noiseX * 4 + 200, noiseY * 4 + 200, time) * (0.10 + 0.06 * density);
-        noise = (n1 + n2 + n3) / 1.375;
+        const noiseZ = time * 0.1;
+        
+        // n1 = snoise(noisePos) * 0.5 + 0.5
+        const n1 = noise3D(noiseX, noiseY, noiseZ);
+        // n2 = snoise(noisePos * 2.0 + 100.0) * (0.20 + 0.10 * density)
+        const n2 = noise3D(noiseX * 2.0 + 100.0, noiseY * 2.0 + 100.0, noiseZ * 2.0 + 100.0) * (0.20 + 0.10 * density);
+        // n3 = snoise(noisePos * 4.0 + 200.0) * (0.10 + 0.06 * density)
+        const n3 = noise3D(noiseX * 4.0 + 200.0, noiseY * 4.0 + 200.0, noiseZ * 4.0 + 200.0) * (0.10 + 0.06 * density);
+        
+        noiseVal = (n1 + n2 + n3) / 1.375;
       } else if (isPlane) {
         const centeredU = u - 0.5;
         const centeredV = v - 0.5;
         const baseNoise = centeredU * 0.707 + centeredV * 0.707 + 0.5;
         const organicNoise = noise3D(u * 2 * freq, v * 2 * freq, time * 0.25) * 0.12 * density;
-        noise = baseNoise + organicNoise;
-        noise = Math.max(0, Math.min(1, noise));
+        noiseVal = Math.max(0, Math.min(1, baseNoise + organicNoise));
       } else if (isWater) {
         const n1 = noise3D(u * 1.5 * freq, v * 1.5 * freq, time * 0.15);
         const n2 = noise3D(u * 1.05 * freq + 30, v * 1.05 * freq + 30, time * 0.15) * 0.4 + 0.5;
         const n3 = noise3D(u * 0.75 * freq + 60, v * 0.75 * freq + 60, time * 0.15) * 0.3 + 0.5;
         const wave = Math.sin(u * 4 + v * 3 + time * 0.3) * 0.1;
-        noise = n1 * 0.5 + n2 * 0.3 + n3 * 0.2 + wave * density;
-        noise = Math.max(0, Math.min(1, noise));
+        noiseVal = Math.max(0, Math.min(1, n1 * 0.5 + n2 * 0.3 + n3 * 0.2 + wave * density));
       } else {
-        // Fallback: simple diagonal gradient
-        noise = (u + v) / 2;
+        noiseVal = (u + v) / 2;
       }
       
-      noise = Math.pow(Math.max(0, Math.min(1, noise)), 1.0 + strength * 0.15);
+      // Apply strength: pow(clamp(noise, 0.0, 1.0), 1.0 + strength * 0.18)
+      noiseVal = Math.pow(Math.max(0, Math.min(1, noiseVal)), 1.0 + strength * 0.18);
       
-      const edge1 = smoothstep(threshold1 - blurFactor, threshold1 + blurFactor, noise);
-      const edge2 = smoothstep(threshold2 - blurFactor, threshold2 + blurFactor, noise);
+      // Color mixing with smoothstep edges
+      const edge1 = smoothstep(threshold1 - blurFactor, threshold1 + blurFactor, noiseVal);
+      const edge2 = smoothstep(threshold2 - blurFactor, threshold2 + blurFactor, noiseVal);
       
       let r = lerp(color1.r, color2.r, edge1);
       let g = lerp(color1.g, color2.g, edge1);
@@ -165,7 +172,7 @@ export const BannerPreview = ({ config: externalConfig, onConfigChange }: Banner
         return;
       }
       
-      // Use high-quality JS renderer (pixel-perfect at any resolution)
+      // Use high-quality JS renderer that matches the shader
       renderBannerHighQuality(ctx, config.width, config.height, config);
 
       const blob = await new Promise<Blob | null>((resolve) =>
@@ -186,7 +193,7 @@ export const BannerPreview = ({ config: externalConfig, onConfigChange }: Banner
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      toast.success(`${config.type === 'hero' ? 'Hero' : 'Small'} banner exported!`);
+      toast.success(`${config.type === 'hero' ? 'Hero' : 'Small'} banner exported at ${config.width}x${config.height}!`);
     } catch (error) {
       console.error('Export error:', error);
       toast.error('Export failed');
