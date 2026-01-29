@@ -1,166 +1,153 @@
 
-# Web Assets Generator - Banners & Button Gradients
+# Shader-Based Banners with Animation Toggle
 
-## Overview
-Adding a new section to generate web assets including Hero Banners, Small Banners, and Gradient Buttons with hover states.
+## Summary
+
+The current banner implementation uses simple CSS `linear-gradient` which doesn't match the rich visual effects available in the main gradient editor (Mesh, Plane, Water). This plan upgrades the banner generator to use the same WebGL shader effects with an option for static or animated output.
 
 ---
 
-## Feature 1: Banner Generator
+## Current vs. Target Comparison
 
-### Banner Types
+| Feature | Current | Target |
+|---------|---------|--------|
+| Visual Style | Simple CSS gradient | Shader effects (Mesh/Plane/Water) |
+| Animation | None | Toggle: Static or Animated |
+| Export | Canvas 2D gradient | WebGL capture (like main export) |
+| Preview | CSS div | Live WebGL canvas |
 
-| Type | Width | Height | Special Requirements |
-|------|-------|--------|---------------------|
-| Hero Banner | Min 1280px | Auto (min 300px) | Left 30% must start black and blend into other colors |
-| Small Banner | 600px | Auto (min 300px) | Standard gradient |
+---
 
-### Technical Approach
+## Technical Architecture
 
-**New Component: `BannerGenerator.tsx`**
-- Canvas-based rendering for precise control
-- Separate preview panel with live gradient
-- Export to PNG/JPG at specified dimensions
-
-**Hero Banner Gradient Logic:**
 ```text
-+------------------+---------------------------+
-|   BLACK (30%)    |  Color Blend (70%)        |
-|   Solid start    |  Gradient transition      |
-+------------------+---------------------------+
-     ^                    ^
-   0-15%             15-30% blend zone    →    Full gradient
++-------------------------------------------+
+|           BannerPreview Component         |
++-------------------------------------------+
+|  Effect Type: [Mesh] [Plane] [Water]      |
+|  Animation:   [Static] [Animated]         |
+|                                           |
+|  +-------------------------------------+  |
+|  |   WebGL Canvas (ShaderGradient or   |  |
+|  |   CustomMeshGradient component)     |  |
+|  +-------------------------------------+  |
+|                                           |
+|  Hero Banner: Left 30% Black Overlay      |
+|  (CSS overlay on top of shader)           |
+|                                           |
+|  [Export PNG] [Export Video] (if animated)|
++-------------------------------------------+
 ```
-
-**CSS Gradient Pattern for Hero:**
-```
-linear-gradient(to right, 
-  #000000 0%, 
-  #000000 15%, 
-  [blend zone 15-30%], 
-  color1 30%, 
-  color2 65%, 
-  color3 100%
-)
-```
-
----
-
-## Feature 2: Gradient Buttons
-
-### Button Specifications
-- Shape: Rectangular with slightly rounded corners (8px border-radius)
-- Default State: Primary gradient
-- Hover/Active State: Secondary gradient (different colors or direction)
-
-### User Controls
-- Select colors for default gradient (2-3 colors)
-- Select colors for hover gradient (2-3 colors)  
-- Gradient direction (horizontal, diagonal, radial)
-- Border radius adjustment (4-16px)
-- Button size presets (Small, Medium, Large)
-
-### Export Options
-- CSS code for button styles
-- Preview component with live interaction
-- Copy-paste ready code
 
 ---
 
 ## Implementation Plan
 
-### Phase 1: Data Structures
+### Phase 1: Extend BannerConfig Type
 
-**File: `src/types/gradient.ts`**
+**File: `src/types/webAssets.ts`**
 
-Add new types:
-```text
-BannerConfig {
-  type: 'hero' | 'small'
-  width: number
-  height: number
-  blackFadePercentage: number (for hero)
-  gradientColors: string[]
-  gradientWeights: number[]
-}
+Add new properties to support shader-based rendering:
 
-ButtonGradientConfig {
-  defaultGradient: {
-    colors: string[]
-    direction: 'horizontal' | 'vertical' | 'diagonal' | 'radial'
-  }
-  hoverGradient: {
-    colors: string[]
-    direction: 'horizontal' | 'vertical' | 'diagonal' | 'radial'
-  }
-  borderRadius: number
-  size: 'sm' | 'md' | 'lg'
+```typescript
+export interface BannerConfig {
+  type: 'hero' | 'small';
+  width: number;
+  height: number;
+  blackFadePercentage: number;
+  
+  // NEW: Shader effect settings
+  effectType: 'mesh' | 'plane' | 'water';
+  animate: boolean;
+  speed: number;
+  
+  // Colors (existing)
+  gradientColors: string[];
+  gradientWeights: number[];
+  
+  // NEW: Effect parameters (like main gradient)
+  uStrength: number;
+  uDensity: number;
+  uFrequency: number;
+  meshNoiseScale: number;
+  meshBlur: number;
 }
 ```
 
-### Phase 2: New Components
+### Phase 2: Create Banner Canvas Component
 
-**1. `src/components/WebAssetsPanel.tsx`** - Main container with tabs
-   - Tab: Banners
-   - Tab: Buttons
-   
-**2. `src/components/BannerPreview.tsx`** - Live banner preview
-   - Canvas rendering with black-to-gradient fade
-   - Dimension controls
-   - Export button
+**New File: `src/components/BannerCanvas.tsx`**
 
-**3. `src/components/ButtonPreview.tsx`** - Interactive button preview
-   - Live default/hover state demo
-   - CSS code generation
-   - Copy button
+A reusable WebGL canvas component for banner preview and export:
 
-### Phase 3: UI Integration
-
-**Option A: New Page Route**
-- Add `/web-assets` route
-- Accessible from main navigation
-
-**Option B: Expandable Section in Control Panel** (Recommended)
-- Add new accordion section in existing ControlPanel
-- Keeps everything in one place
-- Can still use current gradient colors
-
-### Phase 4: Export Modal Updates
-
-**File: `src/components/ExportModal.tsx`**
-
-Add new tabs:
-- "Banner" tab - export generated banners
-- "Button CSS" tab - copy button gradient CSS
-
----
-
-## UI Wireframe
+- Accepts banner dimensions and effect configuration
+- Renders ShaderGradient (Plane/Water) or CustomMeshGradient (Mesh)
+- Supports static or animated mode
+- For Hero banners: Applies a CSS overlay for the black-to-transparent fade on the left side
 
 ```text
-+------------------------------------------+
-|  Settings Panel                     [X]  |
-+------------------------------------------+
-|  [Shape] [Colors] [Animation] [Effects]  |
-|                                          |
-|  ▼ Web Assets (NEW)                      |
-|  +--------------------------------------+|
-|  |  [Banners]  [Buttons]               ||
-|  |                                      ||
-|  |  Banner Type:  ○ Hero  ○ Small      ||
-|  |                                      ||
-|  |  +----------------------------+     ||
-|  |  |  [PREVIEW]                 |     ||
-|  |  |  Black fade → Gradient     |     ||
-|  |  +----------------------------+     ||
-|  |                                      ||
-|  |  Width: [1280] px                   ||
-|  |  Height: [300] px (min)             ||
-|  |                                      ||
-|  |  [Export Banner]                    ||
-|  +--------------------------------------+|
-+------------------------------------------+
+Banner Canvas Structure:
++--------------------------------------------------+
+|  Canvas (WebGL shader effect)                    |
++--------------------------------------------------+
+|  [Black Fade Overlay - Hero only]                |
+|  gradient: linear-gradient(                      |
+|    to right,                                     |
+|    rgba(0,0,0,1) 0%,                             |
+|    rgba(0,0,0,1) 15%,                            |
+|    rgba(0,0,0,0) 30%                             |
+|  )                                               |
++--------------------------------------------------+
 ```
+
+### Phase 3: Update BannerPreview Component
+
+**File: `src/components/BannerPreview.tsx`**
+
+Replace the CSS gradient preview with the new BannerCanvas:
+
+1. Add effect type selector (Mesh / Plane / Water buttons)
+2. Add animation toggle (Static / Animated switch)
+3. Add speed slider (when animated)
+4. Integrate BannerCanvas for live preview
+5. Update export to capture WebGL canvas (using existing `captureVisibleWebGLCanvasToCanvas` logic from ExportModal)
+6. Add video export option for animated banners
+
+UI Layout:
+```text
++-----------------------------------------------+
+| [Hero Banner] [Small Banner]                   |
++-----------------------------------------------+
+| Effect: [Mesh] [Plane] [Water]                 |
++-----------------------------------------------+
+| [Live WebGL Preview]                           |
+| +-------------------------------------------+ |
+| |  Shader Effect with Black Fade (if Hero)  | |
+| +-------------------------------------------+ |
++-----------------------------------------------+
+| Animation: [Static] [Animated]                 |
+| Speed: [====o====] 0.4                         |
++-----------------------------------------------+
+| Width: [1280px]  Height: [400px]               |
+| Black Fade: [30%] (Hero only)                  |
++-----------------------------------------------+
+| Colors: [picker] [picker] [picker]             |
++-----------------------------------------------+
+| [Export Image]  [Export Video] (if animated)   |
++-----------------------------------------------+
+```
+
+### Phase 4: Export Logic
+
+**Image Export (Static/Animated):**
+- Use WebGL `readPixels` to capture the current frame
+- Apply black fade overlay in 2D canvas before export
+- Same high-quality export as main ExportModal
+
+**Video Export (Animated only):**
+- Use MediaRecorder to capture canvas stream
+- Include black fade overlay in the recording
+- Export as MP4/WebM (similar to main export)
 
 ---
 
@@ -168,87 +155,81 @@ Add new tabs:
 
 | File | Action | Description |
 |------|--------|-------------|
-| `src/types/gradient.ts` | Modify | Add BannerConfig, ButtonGradientConfig types |
-| `src/types/webAssets.ts` | Create | New types file for web assets |
-| `src/components/WebAssetsPanel.tsx` | Create | Main panel with tabs |
-| `src/components/BannerPreview.tsx` | Create | Banner preview and generation |
-| `src/components/ButtonPreview.tsx` | Create | Button preview with hover demo |
-| `src/components/ControlPanel.tsx` | Modify | Add Web Assets accordion section |
-| `src/components/ExportModal.tsx` | Modify | Add banner/button export tabs |
+| `src/types/webAssets.ts` | Modify | Add effectType, animate, speed, shader params to BannerConfig |
+| `src/components/BannerCanvas.tsx` | Create | WebGL canvas component for banner rendering |
+| `src/components/BannerPreview.tsx` | Modify | Replace CSS preview with BannerCanvas, add controls |
 
 ---
 
-## Technical Details
+## Hero Banner Black Fade Implementation
 
-### Hero Banner Black Fade Algorithm
-
-```typescript
-function generateHeroBannerGradient(
-  colors: string[], 
-  blackPercentage: number = 30
-): string {
-  const fadeStart = blackPercentage * 0.5;  // 15%
-  const fadeEnd = blackPercentage;           // 30%
-  
-  return `linear-gradient(to right,
-    #000000 0%,
-    #000000 ${fadeStart}%,
-    ${colors[0]} ${fadeEnd}%,
-    ${colors[1] || colors[0]} ${50 + fadeEnd/2}%,
-    ${colors[2] || colors[1] || colors[0]} 100%
-  )`;
-}
-```
-
-### Button CSS Generation
+The black fade will be a CSS overlay on top of the WebGL canvas:
 
 ```typescript
-function generateButtonCSS(config: ButtonGradientConfig): string {
-  const sizeMap = { sm: '8px 16px', md: '12px 24px', lg: '16px 32px' };
-  const dirMap = { 
-    horizontal: '90deg', 
-    vertical: '180deg', 
-    diagonal: '135deg',
-    radial: 'radial-gradient'
-  };
-  
-  return `
-.gradient-button {
-  padding: ${sizeMap[config.size]};
-  border-radius: ${config.borderRadius}px;
-  border: none;
-  background: linear-gradient(
-    ${dirMap[config.defaultGradient.direction]},
-    ${config.defaultGradient.colors.join(', ')}
-  );
-  transition: all 0.3s ease;
-}
-
-.gradient-button:hover,
-.gradient-button:active {
-  background: linear-gradient(
-    ${dirMap[config.hoverGradient.direction]},
-    ${config.hoverGradient.colors.join(', ')}
-  );
-}`;
-}
+// Overlay style for Hero banners
+const blackFadeOverlay = {
+  background: `linear-gradient(to right,
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, 1) ${blackFadePercentage * 0.5}%,
+    rgba(0, 0, 0, 0) ${blackFadePercentage}%
+  )`,
+  position: 'absolute',
+  inset: 0,
+  pointerEvents: 'none',
+};
 ```
 
-### Banner Canvas Export
-
-The banner export will use a similar approach to the existing `renderGradientToCanvas` function in ExportModal, but with the special left-to-right black fade logic for Hero banners.
+For export, this overlay will be composited onto the captured WebGL frame using 2D canvas drawing operations.
 
 ---
 
-## Brand Colors Integration
+## Key Technical Details
 
-Using the existing brand color palette:
-- Yellow Orange (#FDB515)
-- Coral (#F25665)
-- Magenta (#E71989)
-- Deep Violet (#6A00F4)
-- Electric Blue (#00C2FF)
-- Black (#000000)
-- White (#FFFFFF)
+### Shader Integration
 
-The banner and button generators will use the same color picker component from the Control Panel for consistency.
+The banner will reuse the existing shader components:
+
+1. **Mesh Mode**: Uses `CustomMeshGradient` component (Simplex noise-based)
+2. **Plane/Water Mode**: Uses `ShaderGradient` from @shadergradient/react
+
+### Animation Control
+
+```typescript
+// In BannerCanvas
+<ShaderGradient
+  animate={config.animate ? 'on' : 'off'}
+  uSpeed={config.animate ? config.speed : 0}
+  uTime={config.animate ? undefined : 0}
+  // ... other props
+/>
+```
+
+### Export with Black Fade Compositing
+
+```typescript
+async function exportBannerWithBlackFade(
+  sourceCanvas: HTMLCanvasElement,
+  config: BannerConfig
+): Promise<Blob> {
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = config.width;
+  tempCanvas.height = config.height;
+  const ctx = tempCanvas.getContext('2d');
+  
+  // 1. Draw WebGL content
+  await captureVisibleWebGLCanvasToCanvas(sourceCanvas, ctx, width, height);
+  
+  // 2. Draw black fade overlay for Hero banners
+  if (config.type === 'hero') {
+    const gradient = ctx.createLinearGradient(0, 0, width, 0);
+    gradient.addColorStop(0, 'rgba(0, 0, 0, 1)');
+    gradient.addColorStop(blackFadePercentage * 0.5 / 100, 'rgba(0, 0, 0, 1)');
+    gradient.addColorStop(blackFadePercentage / 100, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
+  }
+  
+  // 3. Export as PNG
+  return await new Promise(resolve => tempCanvas.toBlob(resolve, 'image/png'));
+}
+```
