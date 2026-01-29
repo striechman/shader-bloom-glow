@@ -106,6 +106,8 @@ uniform float uDensity;
 uniform float uFrequency;
 uniform float uGrain;
 uniform int uGradientType; // 0=mesh, 1=sphere, 2=plane, 3=water
+uniform float uPlaneAngle; // Plane gradient angle in radians
+uniform bool uPlaneRadial; // If true, radial gradient from center
 
 varying vec2 vUv;
 varying vec3 vPosition;
@@ -152,17 +154,26 @@ void main() {
     noise = clamp(noise, 0.0, 1.0);
     
   } else if (uGradientType == 2) {
-    // PLANE MODE: Diagonal gradient with subtle organic movement
-    float diagonal = (vUv.x + vUv.y) * 0.5;
+    // PLANE MODE: Linear or radial gradient with custom angle
+    float baseNoise;
+    
+    if (uPlaneRadial) {
+      // Radial gradient from center outward
+      baseNoise = length(centeredUv) * 1.4;
+    } else {
+      // Linear gradient with custom angle
+      vec2 direction = vec2(cos(uPlaneAngle), sin(uPlaneAngle));
+      baseNoise = dot(centeredUv, direction) + 0.5;
+    }
     
     // Add subtle noise for organic feel
     vec3 noisePos = vec3(vUv * 2.0 * freq, uTime * 0.25);
     float organicNoise = snoise(noisePos) * 0.12 * density;
     
-    // Add gentle wave
-    float wave = sin(diagonal * 6.28 + uTime * 0.4) * 0.06 * strength;
+    // Add gentle wave along gradient direction
+    float wave = sin(baseNoise * 6.28 + uTime * 0.4) * 0.06 * strength;
     
-    noise = diagonal + organicNoise + wave;
+    noise = baseNoise + organicNoise + wave;
     noise = clamp(noise, 0.0, 1.0);
     
   } else {
@@ -255,6 +266,8 @@ export function Custom4ColorGradient({ config }: Custom4ColorGradientProps) {
     uFrequency: { value: config.uFrequency },
     uGrain: { value: config.grain ? (config.grainIntensity ?? 50) / 100 : 0 },
     uGradientType: { value: typeToInt[gradientType] ?? 0 },
+    uPlaneAngle: { value: (config.planeAngle ?? 45) * Math.PI / 180 }, // Convert to radians
+    uPlaneRadial: { value: config.planeRadial ?? false },
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), []);
   
@@ -280,6 +293,10 @@ export function Custom4ColorGradient({ config }: Custom4ColorGradientProps) {
     // Update gradient type
     const currentType = config.wireframe ? 'mesh' : config.type;
     mat.uniforms.uGradientType.value = typeToInt[currentType] ?? 0;
+    
+    // Update plane direction uniforms
+    mat.uniforms.uPlaneAngle.value = (config.planeAngle ?? 45) * Math.PI / 180;
+    mat.uniforms.uPlaneRadial.value = config.planeRadial ?? false;
     
     const isFrozen = config.frozenTime !== null;
     const shouldAnimate = config.animate && !isFrozen;

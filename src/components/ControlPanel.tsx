@@ -2,10 +2,19 @@ import { motion } from 'framer-motion';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Play, Pause, Camera, RotateCcw, X, Moon, Sun } from 'lucide-react';
+import { Play, Pause, Camera, RotateCcw, X, Moon, Sun, ArrowRight, ArrowDown, ArrowDownRight, ArrowDownLeft, Circle } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { GradientConfig, isHeroBannerRatio, isButtonRatio, getThemeColor0 } from '@/types/gradient';
 import { useTheme } from '@/hooks/useTheme';
+
+// Plane direction presets
+const planeDirectionPresets = [
+  { angle: 0, label: 'Horizontal', icon: ArrowRight },
+  { angle: 90, label: 'Vertical', icon: ArrowDown },
+  { angle: 45, label: 'Diagonal', icon: ArrowDownRight },
+  { angle: 135, label: 'Diagonal Rev', icon: ArrowDownLeft },
+  { angle: -1, label: 'Radial', icon: Circle, isRadial: true },
+];
 
 interface ControlPanelProps {
   config: GradientConfig;
@@ -324,6 +333,63 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
             )}
             
           </div>
+
+          {/* Plane Direction Controls (only visible when Plane is selected) */}
+          {config.type === 'plane' && !config.wireframe && (
+            <div>
+              <h3 className="font-display text-lg font-medium mb-4 text-foreground">Plane Direction</h3>
+              <div className="space-y-4">
+                {/* Direction Preset Buttons */}
+                <div className="flex gap-2">
+                  {planeDirectionPresets.map((preset) => {
+                    const Icon = preset.icon;
+                    const isActive = preset.isRadial 
+                      ? config.planeRadial 
+                      : !config.planeRadial && config.planeAngle === preset.angle;
+                    
+                    return (
+                      <button
+                        key={preset.label}
+                        onClick={() => {
+                          if (preset.isRadial) {
+                            onConfigChange({ planeRadial: true });
+                          } else {
+                            onConfigChange({ planeAngle: preset.angle, planeRadial: false });
+                          }
+                        }}
+                        className={`flex-1 py-2 px-2 rounded-lg text-xs font-medium transition-all flex flex-col items-center gap-1 ${
+                          isActive
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                        }`}
+                        title={preset.label}
+                      >
+                        <Icon className="w-4 h-4" />
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                {/* Angle Slider (only when not radial) */}
+                {!config.planeRadial && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-muted-foreground">Angle</Label>
+                      <span className="text-xs text-muted-foreground">{config.planeAngle ?? 45}°</span>
+                    </div>
+                    <Slider
+                      value={[config.planeAngle ?? 45]}
+                      onValueChange={([value]) => onConfigChange({ planeAngle: value })}
+                      min={0}
+                      max={360}
+                      step={5}
+                      className="w-full"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Mesh Controls (only visible when Mesh is selected) */}
           {isWireframeMode && (
