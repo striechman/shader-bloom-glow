@@ -54,14 +54,13 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
   const f3 = Math.max(0, w2 - feather);
   const f4 = Math.min(100, w2 + feather);
   
-  // Generate grain noise pattern URL
   const grainOpacity = config.grain ? (config.grainIntensity ?? 50) / 100 : 0;
   
   return (
     <div className="absolute inset-0 z-0 flex items-center justify-center overflow-hidden p-4">
-      <div 
-        style={getContainerStyle()} 
-        className="flex items-center justify-center"
+      <div
+        style={getContainerStyle()}
+        className="relative flex items-center justify-center"
       >
         {/* Use custom mesh gradient for wireframe mode, ShaderGradient for others */}
         {isWireframe ? (
@@ -87,7 +86,6 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
             pointerEvents="none"
           >
             <ShaderGradient
-              key={`${config.uStrength}-${config.uDensity}-${config.uFrequency}`}
               animate={isFrozen ? 'off' : (config.animate ? 'on' : 'off')}
               type={config.type}
               wireframe={false}
@@ -144,15 +142,17 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
           />
         )}
         
-        {/* Grain overlay - Fine film grain effect with controllable intensity */}
+        {/* Grain overlay - controllable + visible across all modes (incl. Mesh) */}
         {config.grain && grainOpacity > 0 && (
           <div
-            className="absolute inset-0 pointer-events-none z-10"
+            className="absolute inset-0 pointer-events-none z-10 rounded-lg"
             style={{
-              opacity: grainOpacity * 0.4,
-              backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
-              backgroundSize: '256px 256px',
-              mixBlendMode: 'overlay',
+              opacity: grainOpacity,
+              backgroundImage:
+                "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.35' numOctaves='5' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
+              backgroundSize: '160px 160px',
+              mixBlendMode: 'soft-light',
+              filter: 'contrast(150%) brightness(110%)',
             }}
           />
         )}
