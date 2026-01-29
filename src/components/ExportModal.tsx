@@ -4,7 +4,6 @@ import { useRef, useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { GradientConfig, exportCategories, ExportCategory } from '@/types/gradient';
 import { Slider } from '@/components/ui/slider';
-import { ExportPreview } from '@/components/ExportPreview';
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -484,9 +483,6 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
   const [videoDuration, setVideoDuration] = useState(5);
   const [videoResolution, setVideoResolution] = useState(videoResolutions[1]);
   const [videoProgress, setVideoProgress] = useState(0);
-  
-  // Export offset for panning the gradient
-  const [exportOffset, setExportOffset] = useState({ x: 0, y: 0 });
 
   // Cleanup on close
   useEffect(() => {
@@ -1053,17 +1049,6 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
 
                   {activeTab === 'image' ? (
                     <div className="space-y-6">
-                      {/* Preview */}
-                      {config && (
-                        <ExportPreview
-                          config={config}
-                          width={useCustomSize ? customWidth : selectedSize.width}
-                          height={useCustomSize ? customHeight : selectedSize.height}
-                          offset={exportOffset}
-                          onOffsetChange={setExportOffset}
-                        />
-                      )}
-                      
                       {/* Category Selection */}
                       <div>
                         <label className="text-sm text-muted-foreground mb-3 block lowercase">use case</label>
@@ -1187,17 +1172,6 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
                     </div>
                   ) : activeTab === 'video' ? (
                     <div className="space-y-6">
-                      {/* Preview */}
-                      {config && (
-                        <ExportPreview
-                          config={config}
-                          width={videoResolution.width}
-                          height={videoResolution.height}
-                          offset={exportOffset}
-                          onOffsetChange={setExportOffset}
-                        />
-                      )}
-                      
                       {/* Resolution */}
                       <div>
                         <label className="text-sm text-muted-foreground mb-3 block lowercase">resolution</label>
