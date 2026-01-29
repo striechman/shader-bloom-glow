@@ -506,6 +506,45 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
 
       await captureVisibleWebGLCanvasToCanvas(sourceCanvas, ctx, targetWidth, targetHeight);
 
+      // Apply edge-fade mask to prevent corner artifacts
+      // This replicates the shader's edge falloff logic in 2D
+      if (config) {
+        const color3 = config.color3;
+        const fadeSize = Math.min(targetWidth, targetHeight) * 0.12; // 12% fade zone
+        
+        ctx.save();
+        ctx.globalCompositeOperation = 'source-over';
+        
+        // Create corner fade masks using radial gradients
+        const corners = [
+          { x: targetWidth, y: 0 },      // Top-right
+          { x: 0, y: 0 },                 // Top-left
+          { x: targetWidth, y: targetHeight }, // Bottom-right
+          { x: 0, y: targetHeight },      // Bottom-left
+        ];
+        
+        for (const corner of corners) {
+          const gradient = ctx.createRadialGradient(
+            corner.x, corner.y, 0,
+            corner.x, corner.y, fadeSize
+          );
+          gradient.addColorStop(0, color3);
+          gradient.addColorStop(0.5, color3.replace(')', ', 0.5)').replace('#', 'rgba(').replace(/([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})/, (_, r, g, b) => 
+            `${parseInt(r, 16)}, ${parseInt(g, 16)}, ${parseInt(b, 16)}, 0.5)`));
+          gradient.addColorStop(1, 'transparent');
+          
+          ctx.fillStyle = gradient;
+          ctx.fillRect(
+            corner.x === 0 ? 0 : targetWidth - fadeSize,
+            corner.y === 0 ? 0 : targetHeight - fadeSize,
+            fadeSize,
+            fadeSize
+          );
+        }
+        
+        ctx.restore();
+      }
+
       // Add weight overlay for static mode (matches on-screen behavior)
       const isFrozen = config.frozenTime !== null;
       const isStaticMode = !config.animate || isFrozen;
