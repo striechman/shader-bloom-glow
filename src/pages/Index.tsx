@@ -15,11 +15,20 @@ const Index = () => {
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isButtonsPanelOpen, setIsButtonsPanelOpen] = useState(false);
 
-  // Automatically update color3 based on theme
+  // Update color3 based on theme ONLY on initial load
+  // This prevents theme from overriding preset selections
   useEffect(() => {
-    const newColor3 = theme === 'dark' ? '#000000' : '#FFFFFF';
-    setConfig(prev => ({ ...prev, color3: newColor3 }));
-  }, [theme]);
+    // Only set color3 if it's the default value (not user-selected)
+    setConfig(prev => {
+      const isDefaultColor3 = prev.color3 === '#000000' || prev.color3 === '#FFFFFF';
+      if (isDefaultColor3) {
+        const newColor3 = theme === 'dark' ? '#000000' : '#FFFFFF';
+        return { ...prev, color3: newColor3 };
+      }
+      return prev;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleConfigChange = (updates: Partial<GradientConfig>) => {
     setConfig((prev) => ({ ...prev, ...updates }));

@@ -56,12 +56,12 @@ const brandColors = [
 ];
 
 const colorPresets = [
-  { name: 'Royal', color1: '#6A00F4', color2: '#EC008C', color3: '#000000' },
-  { name: 'Sunset', color1: '#FDB515', color2: '#EC008C', color3: '#000000' },
-  { name: 'Ocean', color1: '#00C2FF', color2: '#6A00F4', color3: '#000000' },
-  { name: 'Coral', color1: '#F2665F', color2: '#6A00F4', color3: '#000000' },
-  { name: 'Neon', color1: '#EC008C', color2: '#00C2FF', color3: '#000000' },
-  { name: 'Electric', color1: '#00C2FF', color2: '#EC008C', color3: '#000000' },
+  { name: 'Royal', color1: '#6A00F4', color2: '#EC008C', color3: '#000000', weight1: 33, weight2: 34, weight3: 33 },
+  { name: 'Sunset', color1: '#FDB515', color2: '#EC008C', color3: '#000000', weight1: 33, weight2: 34, weight3: 33 },
+  { name: 'Ocean', color1: '#00C2FF', color2: '#6A00F4', color3: '#000000', weight1: 33, weight2: 34, weight3: 33 },
+  { name: 'Coral', color1: '#F2665F', color2: '#6A00F4', color3: '#000000', weight1: 33, weight2: 34, weight3: 33 },
+  { name: 'Neon', color1: '#EC008C', color2: '#00C2FF', color3: '#000000', weight1: 33, weight2: 34, weight3: 33 },
+  { name: 'Electric', color1: '#00C2FF', color2: '#EC008C', color3: '#000000', weight1: 33, weight2: 34, weight3: 33 },
   // Presets with white (10%)
   { name: 'Blush', color1: '#EC008C', color2: '#000000', color3: '#FFFFFF', weight1: 45, weight2: 45, weight3: 10 },
   { name: 'Violet', color1: '#EC008C', color2: '#6A00F4', color3: '#FFFFFF', weight1: 45, weight2: 45, weight3: 10 },
@@ -378,11 +378,9 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                       color1: preset.color1, 
                       color2: preset.color2, 
                       color3: preset.color3,
-                      ...(preset.weight1 !== undefined && {
-                        colorWeight1: preset.weight1,
-                        colorWeight2: preset.weight2,
-                        colorWeight3: preset.weight3,
-                      })
+                      colorWeight1: preset.weight1,
+                      colorWeight2: preset.weight2,
+                      colorWeight3: preset.weight3,
                     })}
                     className="relative h-12 rounded-lg overflow-hidden border border-border hover:border-primary transition-colors group"
                     style={{
