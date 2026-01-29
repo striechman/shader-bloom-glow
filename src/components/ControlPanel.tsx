@@ -4,7 +4,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Play, Pause, Camera, RotateCcw, X, Moon, Sun } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
-import { GradientConfig, isHeroBannerRatio } from '@/types/gradient';
+import { GradientConfig, isHeroBannerRatio, isButtonRatio } from '@/types/gradient';
 import { useTheme } from '@/hooks/useTheme';
 
 interface ControlPanelProps {
@@ -250,6 +250,38 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle }: Contr
                 </p>
               </div>
             )}
+            
+            {/* Button State Toggle - only for buttons */}
+            {isButtonRatio(config.aspectRatio) && (
+              <div className="mt-4 space-y-3">
+                <Label className="text-muted-foreground">Button State</Label>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => onConfigChange({ buttonPreviewState: 'default' })}
+                    className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                      config.buttonPreviewState === 'default'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                    }`}
+                  >
+                    Default
+                  </button>
+                  <button
+                    onClick={() => onConfigChange({ buttonPreviewState: 'hover' })}
+                    className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                      config.buttonPreviewState === 'hover'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                    }`}
+                  >
+                    Hover
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground/70">
+                  Design both states, then export CSS with transitions
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Mesh Controls (only visible when Mesh is selected) */}
@@ -296,53 +328,69 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle }: Contr
 
           {/* Colors */}
           <div>
-            <h3 className="font-display text-lg font-medium mb-4 text-foreground">Colors</h3>
-            <div className="grid grid-cols-3 gap-3 mb-4">
-              {colorPresets.map((preset, index) => (
-                <button
-                  key={index}
-                  onClick={() => onConfigChange(preset)}
-                  className="h-12 rounded-lg overflow-hidden border border-border hover:border-primary transition-colors"
-                  style={{
-                    background: `linear-gradient(135deg, ${preset.color1} 0%, ${preset.color2} 50%, ${preset.color3} 100%)`,
-                  }}
-                />
-              ))}
-            </div>
-            <div className="space-y-4">
-              {(['color1', 'color2', 'color3'] as const).map((colorKey, index) => (
-                <div key={colorKey}>
-                  <div className="flex items-center justify-between mb-2">
-                    <Label className="text-muted-foreground">Color {index + 1}</Label>
-                    <span className="text-xs text-muted-foreground font-mono">
-                      {[config.colorWeight1, config.colorWeight2, config.colorWeight3][index]}%
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {brandColors.map((color) => (
-                      <button
-                        key={color.hex}
-                        onClick={() => onConfigChange({ [colorKey]: color.hex })}
-                        className={`w-8 h-8 rounded-lg transition-all border-2 ${
-                          config[colorKey] === color.hex
-                            ? 'border-primary scale-110 ring-2 ring-primary ring-offset-2 ring-offset-background'
-                            : 'border-border hover:scale-105 hover:border-muted-foreground'
-                        }`}
-                        style={{ backgroundColor: color.hex }}
-                        title={color.name}
-                      />
-                    ))}
-                  </div>
-                  <Slider
-                    value={[[config.colorWeight1, config.colorWeight2, config.colorWeight3][index]]}
-                    onValueChange={([value]) => handleColorWeightChange(index, value)}
-                    min={5}
-                    max={90}
-                    step={1}
-                    className="w-full"
+            <h3 className="font-display text-lg font-medium mb-4 text-foreground">
+              {isButtonRatio(config.aspectRatio) 
+                ? (config.buttonPreviewState === 'hover' ? 'Hover Colors' : 'Default Colors')
+                : 'Colors'
+              }
+            </h3>
+            {!isButtonRatio(config.aspectRatio) && (
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                {colorPresets.map((preset, index) => (
+                  <button
+                    key={index}
+                    onClick={() => onConfigChange(preset)}
+                    className="h-12 rounded-lg overflow-hidden border border-border hover:border-primary transition-colors"
+                    style={{
+                      background: `linear-gradient(135deg, ${preset.color1} 0%, ${preset.color2} 50%, ${preset.color3} 100%)`,
+                    }}
                   />
-                </div>
-              ))}
+                ))}
+              </div>
+            )}
+            <div className="space-y-4">
+              {(() => {
+                // Determine which color keys to use based on button state
+                const isButton = isButtonRatio(config.aspectRatio);
+                const isHoverState = isButton && config.buttonPreviewState === 'hover';
+                const colorKeys = isHoverState 
+                  ? (['hoverColor1', 'hoverColor2', 'hoverColor3'] as const)
+                  : (['color1', 'color2', 'color3'] as const);
+                
+                return colorKeys.map((colorKey, index) => (
+                  <div key={colorKey}>
+                    <div className="flex items-center justify-between mb-2">
+                      <Label className="text-muted-foreground">Color {index + 1}</Label>
+                      <span className="text-xs text-muted-foreground font-mono">
+                        {[config.colorWeight1, config.colorWeight2, config.colorWeight3][index]}%
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {brandColors.map((color) => (
+                        <button
+                          key={color.hex}
+                          onClick={() => onConfigChange({ [colorKey]: color.hex })}
+                          className={`w-8 h-8 rounded-lg transition-all border-2 ${
+                            config[colorKey] === color.hex
+                              ? 'border-primary scale-110 ring-2 ring-primary ring-offset-2 ring-offset-background'
+                              : 'border-border hover:scale-105 hover:border-muted-foreground'
+                          }`}
+                          style={{ backgroundColor: color.hex }}
+                          title={color.name}
+                        />
+                      ))}
+                    </div>
+                    <Slider
+                      value={[[config.colorWeight1, config.colorWeight2, config.colorWeight3][index]]}
+                      onValueChange={([value]) => handleColorWeightChange(index, value)}
+                      min={5}
+                      max={90}
+                      step={1}
+                      className="w-full"
+                    />
+                  </div>
+                ));
+              })()}
             </div>
           </div>
 
