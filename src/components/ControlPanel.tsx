@@ -38,17 +38,17 @@ const aspectRatioOptions: { value: GradientConfig['aspectRatio']; label: string;
 
 // Button color presets
 const buttonPresets = [
-  { default: { color1: '#FDB515', color2: '#E71989', color3: '#000000' }, hover: { color1: '#E71989', color2: '#6A00F4', color3: '#000000' } },
-  { default: { color1: '#F25665', color2: '#6A00F4', color3: '#000000' }, hover: { color1: '#6A00F4', color2: '#00C2FF', color3: '#000000' } },
-  { default: { color1: '#00C2FF', color2: '#6A00F4', color3: '#000000' }, hover: { color1: '#6A00F4', color2: '#E71989', color3: '#000000' } },
-  { default: { color1: '#E71989', color2: '#FDB515', color3: '#000000' }, hover: { color1: '#FDB515', color2: '#F25665', color3: '#000000' } },
+  { default: { color1: '#FDB515', color2: '#EC008C', color3: '#000000' }, hover: { color1: '#EC008C', color2: '#6A00F4', color3: '#000000' } },
+  { default: { color1: '#F2665F', color2: '#6A00F4', color3: '#000000' }, hover: { color1: '#6A00F4', color2: '#00C2FF', color3: '#000000' } },
+  { default: { color1: '#00C2FF', color2: '#6A00F4', color3: '#000000' }, hover: { color1: '#6A00F4', color2: '#EC008C', color3: '#000000' } },
+  { default: { color1: '#EC008C', color2: '#FDB515', color3: '#000000' }, hover: { color1: '#FDB515', color2: '#F2665F', color3: '#000000' } },
 ];
 
 // Brand color palette
 const brandColors = [
   { name: 'Yellow Orange', hex: '#FDB515' },
-  { name: 'Coral', hex: '#F25665' },
-  { name: 'Magenta', hex: '#E71989' },
+  { name: 'Coral', hex: '#F2665F' },
+  { name: 'Magenta', hex: '#EC008C' },
   { name: 'Deep Violet', hex: '#6A00F4' },
   { name: 'Electric Blue', hex: '#00C2FF' },
   { name: 'Black', hex: '#000000' },
@@ -56,16 +56,16 @@ const brandColors = [
 ];
 
 const colorPresets = [
-  { name: 'Royal', color1: '#6A00F4', color2: '#E71989', color3: '#000000' },
-  { name: 'Sunset', color1: '#FDB515', color2: '#E71989', color3: '#000000' },
+  { name: 'Royal', color1: '#6A00F4', color2: '#EC008C', color3: '#000000' },
+  { name: 'Sunset', color1: '#FDB515', color2: '#EC008C', color3: '#000000' },
   { name: 'Ocean', color1: '#00C2FF', color2: '#6A00F4', color3: '#000000' },
-  { name: 'Coral', color1: '#F25665', color2: '#6A00F4', color3: '#000000' },
-  { name: 'Neon', color1: '#E71989', color2: '#00C2FF', color3: '#000000' },
-  { name: 'Electric', color1: '#00C2FF', color2: '#E71989', color3: '#000000' },
+  { name: 'Coral', color1: '#F2665F', color2: '#6A00F4', color3: '#000000' },
+  { name: 'Neon', color1: '#EC008C', color2: '#00C2FF', color3: '#000000' },
+  { name: 'Electric', color1: '#00C2FF', color2: '#EC008C', color3: '#000000' },
   // Presets with white (10%)
-  { name: 'Blush', color1: '#E71989', color2: '#000000', color3: '#FFFFFF', weight1: 45, weight2: 45, weight3: 10 },
-  { name: 'Violet', color1: '#E71989', color2: '#6A00F4', color3: '#FFFFFF', weight1: 45, weight2: 45, weight3: 10 },
-  { name: 'Salmon', color1: '#F25665', color2: '#000000', color3: '#FFFFFF', weight1: 45, weight2: 45, weight3: 10 },
+  { name: 'Blush', color1: '#EC008C', color2: '#000000', color3: '#FFFFFF', weight1: 45, weight2: 45, weight3: 10 },
+  { name: 'Violet', color1: '#EC008C', color2: '#6A00F4', color3: '#FFFFFF', weight1: 45, weight2: 45, weight3: 10 },
+  { name: 'Salmon', color1: '#F2665F', color2: '#000000', color3: '#FFFFFF', weight1: 45, weight2: 45, weight3: 10 },
 ];
 
 // Effect presets for each gradient type
