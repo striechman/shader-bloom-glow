@@ -264,6 +264,7 @@ async function renderMeshGradientHighQuality(
   const imageData = ctx.createImageData(width, height);
   const data = imageData.data;
   
+  const color0 = parseColor(config.color0 ?? '#000000');
   const color1 = parseColor(config.color1);
   const color2 = parseColor(config.color2);
   const color3 = parseColor(config.color3);
@@ -278,11 +279,13 @@ async function renderMeshGradientHighQuality(
   const grainEnabled = config.grain;
   const grainIntensity = grainEnabled ? (config.grainIntensity ?? 50) / 100 : 0;
   
-  // Color weight thresholds
-  const w1 = config.colorWeight1 / 100;
-  const w2 = config.colorWeight2 / 100;
-  const threshold1 = w1;
-  const threshold2 = w1 + w2;
+  // Color weight thresholds (4 colors)
+  const w0 = (config.colorWeight0 ?? 30) / 100;
+  const w1 = (config.colorWeight1 ?? 23) / 100;
+  const w2 = (config.colorWeight2 ?? 24) / 100;
+  const threshold0 = w0;
+  const threshold1 = w0 + w1;
+  const threshold2 = w0 + w1 + w2;
   
   // Process each pixel
   for (let y = 0; y < height; y++) {
@@ -316,23 +319,28 @@ async function renderMeshGradientHighQuality(
       // Apply strength (matching shader: pow(noise, 1.0 + strength * 0.18))
       noise = Math.pow(Math.max(0, Math.min(1, noise)), 1.0 + strength * 0.18);
       
-      // Color mixing with smooth edges (matching shader)
+      // Color mixing with smooth edges (matching shader - 4 colors)
+      const edge0 = smoothstep(threshold0 - blurFactor, threshold0 + blurFactor, noise);
       const edge1 = smoothstep(threshold1 - blurFactor, threshold1 + blurFactor, noise);
       const edge2 = smoothstep(threshold2 - blurFactor, threshold2 + blurFactor, noise);
       
-      // Mix colors: noise < threshold1 = color1, threshold1-threshold2 = color2, > threshold2 = color3
-      let r = lerp(color1.r, color2.r, edge1);
-      let g = lerp(color1.g, color2.g, edge1);
-      let b = lerp(color1.b, color2.b, edge1);
+      // Mix colors: noise < threshold0 = color0, threshold0-threshold1 = color1, etc.
+      let r = lerp(color0.r, color1.r, edge0);
+      let g = lerp(color0.g, color1.g, edge0);
+      let b = lerp(color0.b, color1.b, edge0);
+      
+      r = lerp(r, color2.r, edge1);
+      g = lerp(g, color2.g, edge1);
+      b = lerp(b, color2.b, edge1);
       
       r = lerp(r, color3.r, edge2);
       g = lerp(g, color3.g, edge2);
       b = lerp(b, color3.b, edge2);
       
-      // Apply edge fade - corners blend to color3 (matching shader)
-      r = lerp(color3.r, r, edgeFade);
-      g = lerp(color3.g, g, edgeFade);
-      b = lerp(color3.b, b, edgeFade);
+      // Apply edge fade - corners blend to color0 (black) (matching shader)
+      r = lerp(color0.r, r, edgeFade);
+      g = lerp(color0.g, g, edgeFade);
+      b = lerp(color0.b, b, edgeFade);
       
       // Apply grain if enabled (matching shader)
       if (grainIntensity > 0) {
@@ -364,14 +372,17 @@ async function renderGradientToCanvas(
   const imageData = ctx.createImageData(width, height);
   const data = imageData.data;
   
+  const color0 = parseColor(config.color0 ?? '#000000');
   const color1 = parseColor(config.color1);
   const color2 = parseColor(config.color2);
   const color3 = parseColor(config.color3);
   
-  const w1 = config.colorWeight1 / 100;
-  const w2 = config.colorWeight2 / 100;
-  const threshold1 = w1;
-  const threshold2 = w1 + w2;
+  const w0 = (config.colorWeight0 ?? 30) / 100;
+  const w1 = (config.colorWeight1 ?? 23) / 100;
+  const w2 = (config.colorWeight2 ?? 24) / 100;
+  const threshold0 = w0;
+  const threshold1 = w0 + w1;
+  const threshold2 = w0 + w1 + w2;
   
   const time = config.frozenTime ?? 0;
   
@@ -420,16 +431,21 @@ async function renderGradientToCanvas(
       
       blendValue = Math.max(0, Math.min(1, blendValue));
       
-      // Apply color weights with soft transitions
-      const blur = 0.15;
+      // Apply color weights with soft transitions (4 colors)
+      const blur = 0.12;
       
+      const edge0 = smoothstep(threshold0 - blur, threshold0 + blur, blendValue);
       const edge1 = smoothstep(threshold1 - blur, threshold1 + blur, blendValue);
       const edge2 = smoothstep(threshold2 - blur, threshold2 + blur, blendValue);
       
-      // Mix colors based on edges
-      let r = lerp(color1.r, color2.r, edge1);
-      let g = lerp(color1.g, color2.g, edge1);
-      let b = lerp(color1.b, color2.b, edge1);
+      // Mix colors based on edges (4 colors)
+      let r = lerp(color0.r, color1.r, edge0);
+      let g = lerp(color0.g, color1.g, edge0);
+      let b = lerp(color0.b, color1.b, edge0);
+      
+      r = lerp(r, color2.r, edge1);
+      g = lerp(g, color2.g, edge1);
+      b = lerp(b, color2.b, edge1);
       
       r = lerp(r, color3.r, edge2);
       g = lerp(g, color3.g, edge2);
@@ -497,15 +513,18 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
   const generateCSSCode = () => {
     if (!config) return '';
     
-    const w1 = config.colorWeight1 ?? 33;
-    const w2 = w1 + (config.colorWeight2 ?? 34);
+    const w0 = config.colorWeight0 ?? 30;
+    const w1 = w0 + (config.colorWeight1 ?? 23);
+    const w2 = w1 + (config.colorWeight2 ?? 24);
     const animDuration = Math.round(10 / config.speed);
     
-    return `/* Static Gradient */
+    return `/* Static Gradient (4 colors with 30% black base) */
 .gradient-background {
   background: linear-gradient(
     135deg,
-    ${config.color1} 0%,
+    ${config.color0 ?? '#000000'} 0%,
+    ${config.color0 ?? '#000000'} ${w0}%,
+    ${config.color1} ${w0}%,
     ${config.color1} ${w1}%,
     ${config.color2} ${w1}%,
     ${config.color2} ${w2}%,
@@ -518,8 +537,9 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
 .gradient-background-smooth {
   background: linear-gradient(
     135deg,
-    ${config.color1} 0%,
-    ${config.color2} 50%,
+    ${config.color0 ?? '#000000'} 0%,
+    ${config.color1} 33%,
+    ${config.color2} 66%,
     ${config.color3} 100%
   );
 }
@@ -529,8 +549,8 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
   background: radial-gradient(
     ellipse at center,
     ${config.color1} 0%,
-    ${config.color2} 50%,
-    ${config.color3} 100%
+    ${config.color2} 40%,
+    ${config.color0 ?? '#000000'} 100%
   );
 }
 
@@ -538,10 +558,11 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
 .gradient-background-conic {
   background: conic-gradient(
     from 0deg,
+    ${config.color0 ?? '#000000'},
     ${config.color1},
     ${config.color2},
     ${config.color3},
-    ${config.color1}
+    ${config.color0 ?? '#000000'}
   );
 }
 
@@ -563,11 +584,13 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
 .gradient-animated {
   background: linear-gradient(
     135deg,
+    ${config.color0 ?? '#000000'},
     ${config.color1},
     ${config.color2},
     ${config.color3},
     ${config.color2},
-    ${config.color1}
+    ${config.color1},
+    ${config.color0 ?? '#000000'}
   );
   background-size: 400% 400%;
   animation: gradient-shift ${animDuration}s ease infinite;
@@ -594,10 +617,11 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
   inset: -50%;
   background: conic-gradient(
     from 0deg,
+    ${config.color0 ?? '#000000'},
     ${config.color1},
     ${config.color2},
     ${config.color3},
-    ${config.color1}
+    ${config.color0 ?? '#000000'}
   );
   animation: gradient-rotate ${animDuration}s linear infinite;
 }
