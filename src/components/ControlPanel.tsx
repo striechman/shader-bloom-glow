@@ -62,6 +62,10 @@ const colorPresets = [
   { name: 'Coral', color1: '#F25665', color2: '#6A00F4', color3: '#000000' },
   { name: 'Neon', color1: '#E71989', color2: '#00C2FF', color3: '#000000' },
   { name: 'Electric', color1: '#00C2FF', color2: '#E71989', color3: '#000000' },
+  // Presets with white (10%)
+  { name: 'Blush', color1: '#E71989', color2: '#000000', color3: '#FFFFFF', weight1: 45, weight2: 45, weight3: 10 },
+  { name: 'Violet', color1: '#E71989', color2: '#6A00F4', color3: '#FFFFFF', weight1: 45, weight2: 45, weight3: 10 },
+  { name: 'Salmon', color1: '#F25665', color2: '#000000', color3: '#FFFFFF', weight1: 45, weight2: 45, weight3: 10 },
 ];
 
 // Effect presets for each gradient type
@@ -370,7 +374,16 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                 {colorPresets.map((preset, index) => (
                   <button
                     key={index}
-                    onClick={() => onConfigChange({ color1: preset.color1, color2: preset.color2, color3: preset.color3 })}
+                    onClick={() => onConfigChange({ 
+                      color1: preset.color1, 
+                      color2: preset.color2, 
+                      color3: preset.color3,
+                      ...(preset.weight1 !== undefined && {
+                        colorWeight1: preset.weight1,
+                        colorWeight2: preset.weight2,
+                        colorWeight3: preset.weight3,
+                      })
+                    })}
                     className="relative h-12 rounded-lg overflow-hidden border border-border hover:border-primary transition-colors group"
                     style={{
                       background: `linear-gradient(135deg, ${preset.color1} 0%, ${preset.color2} 50%, ${preset.color3} 100%)`,
