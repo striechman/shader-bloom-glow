@@ -507,20 +507,24 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
       await captureVisibleWebGLCanvasToCanvas(sourceCanvas, ctx, targetWidth, targetHeight);
 
       // Apply edge-fade mask to prevent corner artifacts
-      // This replicates the shader's edge falloff logic in 2D
+      // This covers the shader's corner noise with smooth color3 fade
       if (config) {
-        const color3 = config.color3;
-        const fadeSize = Math.min(targetWidth, targetHeight) * 0.12; // 12% fade zone
+        const c3 = parseColor(config.color3);
+        const color3Solid = `rgb(${c3.r}, ${c3.g}, ${c3.b})`;
+        const color3Half = `rgba(${c3.r}, ${c3.g}, ${c3.b}, 0.7)`;
+        const color3Trans = `rgba(${c3.r}, ${c3.g}, ${c3.b}, 0)`;
+        
+        // Larger fade zone to fully cover corner artifacts
+        const fadeSize = Math.min(targetWidth, targetHeight) * 0.18;
         
         ctx.save();
-        ctx.globalCompositeOperation = 'source-over';
         
-        // Create corner fade masks using radial gradients
+        // Draw corner fades using radial gradients
         const corners = [
-          { x: targetWidth, y: 0 },      // Top-right
-          { x: 0, y: 0 },                 // Top-left
+          { x: 0, y: 0 },                      // Top-left
+          { x: targetWidth, y: 0 },            // Top-right
+          { x: 0, y: targetHeight },           // Bottom-left
           { x: targetWidth, y: targetHeight }, // Bottom-right
-          { x: 0, y: targetHeight },      // Bottom-left
         ];
         
         for (const corner of corners) {
@@ -528,18 +532,16 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
             corner.x, corner.y, 0,
             corner.x, corner.y, fadeSize
           );
-          gradient.addColorStop(0, color3);
-          gradient.addColorStop(0.5, color3.replace(')', ', 0.5)').replace('#', 'rgba(').replace(/([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})/, (_, r, g, b) => 
-            `${parseInt(r, 16)}, ${parseInt(g, 16)}, ${parseInt(b, 16)}, 0.5)`));
-          gradient.addColorStop(1, 'transparent');
+          gradient.addColorStop(0, color3Solid);
+          gradient.addColorStop(0.4, color3Half);
+          gradient.addColorStop(1, color3Trans);
           
           ctx.fillStyle = gradient;
-          ctx.fillRect(
-            corner.x === 0 ? 0 : targetWidth - fadeSize,
-            corner.y === 0 ? 0 : targetHeight - fadeSize,
-            fadeSize,
-            fadeSize
-          );
+          
+          // Draw in a region around the corner
+          const rectX = corner.x === 0 ? 0 : targetWidth - fadeSize;
+          const rectY = corner.y === 0 ? 0 : targetHeight - fadeSize;
+          ctx.fillRect(rectX, rectY, fadeSize, fadeSize);
         }
         
         ctx.restore();
