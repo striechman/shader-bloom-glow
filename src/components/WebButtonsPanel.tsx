@@ -30,8 +30,8 @@ const buttonPresets = [
     hover: { color1: '#6A00F4', color2: '#E71989', color3: '#000000' } 
   },
   { 
-    id: 'fire',
-    name: 'Fire', 
+    id: 'coral',
+    name: 'Coral', 
     default: { color1: '#F25665', color2: '#6A00F4', color3: '#000000' }, 
     hover: { color1: '#6A00F4', color2: '#E71989', color3: '#000000' } 
   },
@@ -44,8 +44,8 @@ const buttonPresets = [
   { 
     id: 'electric',
     name: 'Electric', 
-    default: { color1: '#6A00F4', color2: '#FDB515', color3: '#000000' }, 
-    hover: { color1: '#FDB515', color2: '#E71989', color3: '#000000' } 
+    default: { color1: '#00C2FF', color2: '#E71989', color3: '#000000' }, 
+    hover: { color1: '#E71989', color2: '#6A00F4', color3: '#000000' } 
   },
 ];
 
