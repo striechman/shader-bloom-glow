@@ -12,6 +12,7 @@ import {
   webAssetsBrandColors,
 } from '@/types/webAssets';
 import { BannerCanvas } from './BannerCanvas';
+import { noise3D, smoothstep, lerp, parseColor } from '@/lib/noise';
 
 interface BannerPreviewProps {
   config?: BannerConfig;
@@ -24,121 +25,6 @@ const effectTypes: { value: BannerEffectType; label: string }[] = [
   { value: 'waterPlane', label: 'Water' },
 ];
 
-// ============================================================================
-// High-Quality Banner Renderer (JS-based, pixel-perfect at any resolution)
-// ============================================================================
-
-function mod289(x: number): number {
-  return x - Math.floor(x / 289.0) * 289.0;
-}
-
-function permute(x: number): number {
-  return mod289(((x * 34.0) + 1.0) * x);
-}
-
-function taylorInvSqrt(r: number): number {
-  return 1.79284291400159 - 0.85373472095314 * r;
-}
-
-function simplexNoise3D(x: number, y: number, z: number): number {
-  const C_x = 1.0 / 6.0;
-  const C_y = 1.0 / 3.0;
-  
-  const dot_v_Cyyy = x * C_y + y * C_y + z * C_y;
-  const i = Math.floor(x + dot_v_Cyyy);
-  const j = Math.floor(y + dot_v_Cyyy);
-  const k = Math.floor(z + dot_v_Cyyy);
-  
-  const dot_ijk_Cxxx = (i + j + k) * C_x;
-  const x0 = x - (i - dot_ijk_Cxxx);
-  const y0 = y - (j - dot_ijk_Cxxx);
-  const z0 = z - (k - dot_ijk_Cxxx);
-  
-  let i1: number, j1: number, k1: number;
-  let i2: number, j2: number, k2: number;
-  
-  if (x0 >= y0) {
-    if (y0 >= z0) { i1 = 1; j1 = 0; k1 = 0; i2 = 1; j2 = 1; k2 = 0; }
-    else if (x0 >= z0) { i1 = 1; j1 = 0; k1 = 0; i2 = 1; j2 = 0; k2 = 1; }
-    else { i1 = 0; j1 = 0; k1 = 1; i2 = 1; j2 = 0; k2 = 1; }
-  } else {
-    if (y0 < z0) { i1 = 0; j1 = 0; k1 = 1; i2 = 0; j2 = 1; k2 = 1; }
-    else if (x0 < z0) { i1 = 0; j1 = 1; k1 = 0; i2 = 0; j2 = 1; k2 = 1; }
-    else { i1 = 0; j1 = 1; k1 = 0; i2 = 1; j2 = 1; k2 = 0; }
-  }
-  
-  const x1 = x0 - i1 + C_x;
-  const y1 = y0 - j1 + C_x;
-  const z1 = z0 - k1 + C_x;
-  const x2 = x0 - i2 + C_y;
-  const y2 = y0 - j2 + C_y;
-  const z2 = z0 - k2 + C_y;
-  const x3 = x0 - 0.5;
-  const y3 = y0 - 0.5;
-  const z3 = z0 - 0.5;
-  
-  const ii = mod289(i);
-  const jj = mod289(j);
-  const kk = mod289(k);
-  
-  const p0 = permute(permute(permute(kk) + jj) + ii);
-  const p1 = permute(permute(permute(kk + k1) + jj + j1) + ii + i1);
-  const p2 = permute(permute(permute(kk + k2) + jj + j2) + ii + i2);
-  const p3 = permute(permute(permute(kk + 1) + jj + 1) + ii + 1);
-  
-  const n_ = 0.142857142857;
-  const ns_x = n_ * 2.0 - 1.0;
-  const ns_y = n_ * 0.5 - 0.0;
-  const ns_z = n_ * n_;
-  
-  const calcGrad = (p: number) => {
-    const j = p - 49.0 * Math.floor(p * ns_z * ns_z);
-    const x_ = Math.floor(j * ns_z);
-    const y_ = Math.floor(j - 7.0 * x_);
-    const gx = x_ * ns_x + ns_y;
-    const gy = y_ * ns_x + ns_y;
-    const gz = 1.0 - Math.abs(gx) - Math.abs(gy);
-    const len = Math.sqrt(gx * gx + gy * gy + gz * gz);
-    const invLen = len > 0 ? taylorInvSqrt(gx * gx + gy * gy + gz * gz) : 0;
-    return { x: gx * invLen, y: gy * invLen, z: gz * invLen };
-  };
-  
-  const g0 = calcGrad(p0);
-  const g1 = calcGrad(p1);
-  const g2 = calcGrad(p2);
-  const g3 = calcGrad(p3);
-  
-  let n0 = 0, n1 = 0, n2 = 0, n3 = 0;
-  
-  let t0 = 0.6 - x0 * x0 - y0 * y0 - z0 * z0;
-  if (t0 >= 0) { t0 *= t0; n0 = t0 * t0 * (g0.x * x0 + g0.y * y0 + g0.z * z0); }
-  
-  let t1 = 0.6 - x1 * x1 - y1 * y1 - z1 * z1;
-  if (t1 >= 0) { t1 *= t1; n1 = t1 * t1 * (g1.x * x1 + g1.y * y1 + g1.z * z1); }
-  
-  let t2 = 0.6 - x2 * x2 - y2 * y2 - z2 * z2;
-  if (t2 >= 0) { t2 *= t2; n2 = t2 * t2 * (g2.x * x2 + g2.y * y2 + g2.z * z2); }
-  
-  let t3 = 0.6 - x3 * x3 - y3 * y3 - z3 * z3;
-  if (t3 >= 0) { t3 *= t3; n3 = t3 * t3 * (g3.x * x3 + g3.y * y3 + g3.z * z3); }
-  
-  return 32.0 * (n0 + n1 + n2 + n3);
-}
-
-function parseColor(hex: string) {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return { r, g, b };
-}
-
-const smoothstep = (edge0: number, edge1: number, x: number) => {
-  const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
-  return t * t * (3 - 2 * t);
-};
-
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-
 function renderBannerHighQuality(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -148,6 +34,7 @@ function renderBannerHighQuality(
   const imageData = ctx.createImageData(width, height);
   const data = imageData.data;
   
+  // Parse colors with fallback
   const color1 = parseColor(config.gradientColors[0] || '#FDB515');
   const color2 = parseColor(config.gradientColors[1] || '#EC008C');
   const color3 = parseColor(config.gradientColors[2] || '#6A00F4');
@@ -155,9 +42,9 @@ function renderBannerHighQuality(
   const noiseScale = config.meshNoiseScale ?? 1.0;
   const blurFactor = ((config.meshBlur ?? 50) / 100) * 0.5;
   const time = 0; // Static export
-  const freq = Math.max(0.1, config.uFrequency);
-  const density = Math.max(0, config.uDensity);
-  const strength = Math.max(0, config.uStrength);
+  const freq = Math.max(0.1, config.uFrequency ?? 1);
+  const density = Math.max(0, config.uDensity ?? 1);
+  const strength = Math.max(0, config.uStrength ?? 0.3);
   
   const w1 = (config.gradientWeights[0] ?? 33) / 100;
   const w2 = (config.gradientWeights[1] ?? 34) / 100;
@@ -165,11 +52,15 @@ function renderBannerHighQuality(
   const threshold2 = w1 + w2;
   
   const isHero = config.type === 'hero';
-  const blackFade = config.blackFadePercentage;
+  const blackFade = config.blackFadePercentage ?? 30;
   
   const isMesh = config.effectType === 'mesh';
   const isPlane = config.effectType === 'plane';
   const isWater = config.effectType === 'waterPlane';
+  
+  // Debug: Log some sample noise values
+  console.log('[BannerExport] Rendering', width, 'x', height, 'effect:', config.effectType);
+  console.log('[BannerExport] Sample noise at (0.5, 0.5):', noise3D(0.5 * freq, 0.5 * freq, time));
   
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
@@ -181,25 +72,26 @@ function renderBannerHighQuality(
       if (isMesh) {
         const noiseX = u * noiseScale * freq;
         const noiseY = v * noiseScale * freq;
-        const n1 = simplexNoise3D(noiseX, noiseY, time) * 0.5 + 0.5;
-        const n2 = simplexNoise3D(noiseX * 2 + 100, noiseY * 2 + 100, time) * (0.20 + 0.10 * density);
-        const n3 = simplexNoise3D(noiseX * 4 + 200, noiseY * 4 + 200, time) * (0.10 + 0.06 * density);
+        const n1 = noise3D(noiseX, noiseY, time);
+        const n2 = noise3D(noiseX * 2 + 100, noiseY * 2 + 100, time) * (0.20 + 0.10 * density);
+        const n3 = noise3D(noiseX * 4 + 200, noiseY * 4 + 200, time) * (0.10 + 0.06 * density);
         noise = (n1 + n2 + n3) / 1.375;
       } else if (isPlane) {
         const centeredU = u - 0.5;
         const centeredV = v - 0.5;
         const baseNoise = centeredU * 0.707 + centeredV * 0.707 + 0.5;
-        const organicNoise = simplexNoise3D(u * 2 * freq, v * 2 * freq, time * 0.25) * 0.12 * density;
+        const organicNoise = noise3D(u * 2 * freq, v * 2 * freq, time * 0.25) * 0.12 * density;
         noise = baseNoise + organicNoise;
         noise = Math.max(0, Math.min(1, noise));
       } else if (isWater) {
-        const n1 = simplexNoise3D(u * 1.5 * freq, v * 1.5 * freq, time * 0.15) * 0.5 + 0.5;
-        const n2 = simplexNoise3D(u * 1.05 * freq + 30, v * 1.05 * freq + 30, time * 0.15) * 0.4 + 0.5;
-        const n3 = simplexNoise3D(u * 0.75 * freq + 60, v * 0.75 * freq + 60, time * 0.15) * 0.3 + 0.5;
+        const n1 = noise3D(u * 1.5 * freq, v * 1.5 * freq, time * 0.15);
+        const n2 = noise3D(u * 1.05 * freq + 30, v * 1.05 * freq + 30, time * 0.15) * 0.4 + 0.5;
+        const n3 = noise3D(u * 0.75 * freq + 60, v * 0.75 * freq + 60, time * 0.15) * 0.3 + 0.5;
         const wave = Math.sin(u * 4 + v * 3 + time * 0.3) * 0.1;
         noise = n1 * 0.5 + n2 * 0.3 + n3 * 0.2 + wave * density;
         noise = Math.max(0, Math.min(1, noise));
       } else {
+        // Fallback: simple diagonal gradient
         noise = (u + v) / 2;
       }
       
@@ -240,6 +132,7 @@ function renderBannerHighQuality(
   }
   
   ctx.putImageData(imageData, 0, 0);
+  console.log('[BannerExport] Render complete');
 }
 
 export const BannerPreview = ({ config: externalConfig, onConfigChange }: BannerPreviewProps) => {
