@@ -1,8 +1,8 @@
 import { motion, AnimatePresence, useDragControls } from 'framer-motion';
-import { X, Download, Image, FileImage, Code, Copy, Check, Monitor, Printer, LayoutGrid, Share2, Video, Play } from 'lucide-react';
-import { useRef, useState, useEffect } from 'react';
+import { X, Download, Image, FileImage, Code, Copy, Check, Monitor, Printer, LayoutGrid, Share2, Video, Play, Maximize } from 'lucide-react';
+import { useRef, useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
-import { GradientConfig, exportCategories, ExportCategory } from '@/types/gradient';
+import { GradientConfig, exportCategories, ExportCategory, aspectRatioValues } from '@/types/gradient';
 import { Slider } from '@/components/ui/slider';
 
 interface ExportModalProps {
@@ -13,18 +13,83 @@ interface ExportModalProps {
 
 type ExportTab = 'image' | 'video' | 'css';
 
-const categoryIcons: Record<ExportCategory, React.ReactNode> = {
+const categoryIcons: Record<ExportCategory | 'canvas', React.ReactNode> = {
+  canvas: <Maximize className="w-4 h-4" />,
   social: <Share2 className="w-4 h-4" />,
   web: <Monitor className="w-4 h-4" />,
   print: <Printer className="w-4 h-4" />,
   banner: <LayoutGrid className="w-4 h-4" />,
 };
 
-const categoryLabels: Record<ExportCategory, string> = {
+const categoryLabels: Record<ExportCategory | 'canvas', string> = {
+  canvas: 'Canvas',
   social: 'Social',
   web: 'Web',
   print: 'Print',
   banner: 'Banner',
+};
+
+// Map aspect ratios to export resolutions
+const aspectRatioExportSizes: Record<string, { label: string; width: number; height: number }[]> = {
+  '1:1': [
+    { label: 'Small', width: 1080, height: 1080 },
+    { label: 'Medium', width: 2048, height: 2048 },
+    { label: 'Large', width: 4096, height: 4096 },
+  ],
+  '16:9': [
+    { label: 'HD', width: 1920, height: 1080 },
+    { label: '4K', width: 3840, height: 2160 },
+  ],
+  '9:16': [
+    { label: 'Story', width: 1080, height: 1920 },
+    { label: 'Large', width: 1440, height: 2560 },
+  ],
+  '2:3': [
+    { label: 'Medium', width: 1200, height: 1800 },
+    { label: 'Large', width: 2400, height: 3600 },
+  ],
+  '3:2': [
+    { label: 'Medium', width: 1800, height: 1200 },
+    { label: 'Large', width: 3600, height: 2400 },
+  ],
+  '4:5': [
+    { label: 'Instagram', width: 1080, height: 1350 },
+    { label: 'Large', width: 2160, height: 2700 },
+  ],
+  '4:3': [
+    { label: 'Medium', width: 1600, height: 1200 },
+    { label: 'Large', width: 3200, height: 2400 },
+  ],
+  '3:4': [
+    { label: 'Medium', width: 1200, height: 1600 },
+    { label: 'Large', width: 2400, height: 3200 },
+  ],
+  'hero-banner': [
+    { label: 'Standard', width: 1280, height: 400 },
+    { label: 'Large', width: 1920, height: 600 },
+    { label: 'XL', width: 2560, height: 800 },
+  ],
+  'small-banner': [
+    { label: 'Standard', width: 600, height: 300 },
+    { label: 'Medium', width: 900, height: 450 },
+    { label: 'Large', width: 1200, height: 600 },
+  ],
+  'button-large': [
+    { label: 'Standard', width: 200, height: 60 },
+    { label: '2x', width: 400, height: 120 },
+  ],
+  'button-medium': [
+    { label: 'Standard', width: 150, height: 50 },
+    { label: '2x', width: 300, height: 100 },
+  ],
+  'button-small': [
+    { label: 'Standard', width: 100, height: 40 },
+    { label: '2x', width: 200, height: 80 },
+  ],
+  'free': [
+    { label: 'HD', width: 1920, height: 1080 },
+    { label: '4K', width: 3840, height: 2160 },
+  ],
 };
 
 const videoResolutions = [
@@ -469,8 +534,15 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
   const recordingIntervalRef = useRef<number | null>(null);
   const recordingTimeoutRef = useRef<number | null>(null);
 
-  const [selectedCategory, setSelectedCategory] = useState<ExportCategory>('social');
-  const [selectedSize, setSelectedSize] = useState(exportCategories.social[0]);
+  const [selectedCategory, setSelectedCategory] = useState<ExportCategory | 'canvas'>('canvas');
+  
+  // Get canvas sizes based on current aspect ratio
+  const canvasSizes = useMemo(() => {
+    if (!config) return aspectRatioExportSizes['free'];
+    return aspectRatioExportSizes[config.aspectRatio] || aspectRatioExportSizes['free'];
+  }, [config?.aspectRatio]);
+  
+  const [selectedSize, setSelectedSize] = useState(canvasSizes[0]);
   const [customWidth, setCustomWidth] = useState(1920);
   const [customHeight, setCustomHeight] = useState(1080);
   const [useCustomSize, setUseCustomSize] = useState(false);
@@ -478,6 +550,13 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
   const [isExporting, setIsExporting] = useState(false);
   const [activeTab, setActiveTab] = useState<ExportTab>('image');
   const [copied, setCopied] = useState(false);
+  
+  // Update selected size when canvas sizes change (aspect ratio changed)
+  useEffect(() => {
+    if (selectedCategory === 'canvas' && canvasSizes.length > 0) {
+      setSelectedSize(canvasSizes[0]);
+    }
+  }, [canvasSizes, selectedCategory]);
   
   // Video export settings
   const [videoDuration, setVideoDuration] = useState(5);
@@ -504,9 +583,13 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
     }
   }, [isOpen]);
 
-  const handleCategoryChange = (category: ExportCategory) => {
+  const handleCategoryChange = (category: ExportCategory | 'canvas') => {
     setSelectedCategory(category);
-    setSelectedSize(exportCategories[category][0]);
+    if (category === 'canvas') {
+      setSelectedSize(canvasSizes[0]);
+    } else {
+      setSelectedSize(exportCategories[category][0]);
+    }
     setUseCustomSize(false);
   };
 
@@ -1052,7 +1135,21 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
                       {/* Category Selection */}
                       <div>
                         <label className="text-sm text-muted-foreground mb-3 block lowercase">use case</label>
-                        <div className="grid grid-cols-4 gap-2">
+                        <div className="grid grid-cols-5 gap-2">
+                          {/* Canvas option first - matches selected aspect ratio */}
+                          <button
+                            onClick={() => handleCategoryChange('canvas')}
+                            className={`py-2 px-3 rounded-lg text-xs font-medium transition-all flex flex-col items-center gap-1 lowercase ${
+                              selectedCategory === 'canvas'
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                            }`}
+                          >
+                            {categoryIcons.canvas}
+                            <span className="truncate w-full text-center">
+                              {config?.aspectRatio === 'free' ? 'canvas' : config?.aspectRatio || 'canvas'}
+                            </span>
+                          </button>
                           {(Object.keys(exportCategories) as ExportCategory[]).map((category) => (
                             <button
                               key={category}
@@ -1074,7 +1171,7 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
                       <div>
                         <label className="text-sm text-muted-foreground mb-3 block lowercase">size</label>
                         <div className="grid grid-cols-2 gap-2">
-                          {exportCategories[selectedCategory].map((size) => (
+                          {(selectedCategory === 'canvas' ? canvasSizes : exportCategories[selectedCategory]).map((size) => (
                             <button
                               key={size.label}
                               onClick={() => {
