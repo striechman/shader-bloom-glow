@@ -82,14 +82,17 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
     }
   };
   
-  // Calculate color weight percentages for the gradient overlay
-  const w1 = config.colorWeight1;
+  // Calculate color weight percentages for the gradient overlay (4 colors)
+  const w0 = config.colorWeight0;
+  const w1 = w0 + config.colorWeight1;
   const w2 = w1 + config.colorWeight2;
   const feather = 6; // soft transition band (in %)
-  const f1 = Math.max(0, w1 - feather);
-  const f2 = Math.min(100, w1 + feather);
-  const f3 = Math.max(0, w2 - feather);
-  const f4 = Math.min(100, w2 + feather);
+  const f0 = Math.max(0, w0 - feather);
+  const f1 = Math.min(100, w0 + feather);
+  const f2 = Math.max(0, w1 - feather);
+  const f3 = Math.min(100, w1 + feather);
+  const f4 = Math.max(0, w2 - feather);
+  const f5 = Math.min(100, w2 + feather);
   
   const grainOpacity = config.grain ? (config.grainIntensity ?? 50) / 100 : 0;
   
@@ -178,11 +181,13 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
               className="absolute inset-[-8%] pointer-events-none"
               style={{
                 background: `linear-gradient(135deg,
-                  ${currentColors.color1} 0%,
+                  ${config.color0} 0%,
+                  ${config.color0} ${f0}%,
                   ${currentColors.color1} ${f1}%,
-                  ${currentColors.color2} ${f2}%,
+                  ${currentColors.color1} ${f2}%,
                   ${currentColors.color2} ${f3}%,
-                  ${currentColors.color3} ${f4}%,
+                  ${currentColors.color2} ${f4}%,
+                  ${currentColors.color3} ${f5}%,
                   ${currentColors.color3} 100%
                 )`,
                 // Make weights clearly visible in static mode (especially dark colors)

@@ -3,12 +3,14 @@ export interface GradientConfig {
   type: 'sphere' | 'plane' | 'waterPlane';
   wireframe: boolean;
   
-  // Colors (Default state)
+  // Colors (Default state) - color0 is always black (fixed)
+  color0: string; // Fixed black color - not editable
   color1: string;
   color2: string;
   color3: string;
   
   // Color Weights (percentages that sum to 100)
+  colorWeight0: number; // Black weight
   colorWeight1: number;
   colorWeight2: number;
   colorWeight3: number;
@@ -49,12 +51,14 @@ export const defaultGradientConfig: GradientConfig = {
   wireframe: false,
   animate: true,
   speed: 0.4,
+  color0: '#000000', // Fixed black
   color1: '#FDB515',
   color2: '#EC008C',
   color3: '#000000',
-  colorWeight1: 33,
-  colorWeight2: 34,
-  colorWeight3: 33,
+  colorWeight0: 30, // Black weight
+  colorWeight1: 23,
+  colorWeight2: 24,
+  colorWeight3: 23,
   hoverColor1: '#EC008C',
   hoverColor2: '#6A00F4',
   hoverColor3: '#000000',

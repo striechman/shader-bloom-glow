@@ -55,17 +55,18 @@ const brandColors = [
   { name: 'White', hex: '#FFFFFF' },
 ];
 
+// Color presets with 4 colors (color0 is always black)
 const colorPresets = [
-  { name: 'Royal', color1: '#6A00F4', color2: '#EC008C', color3: '#000000', weight1: 33, weight2: 34, weight3: 33 },
-  { name: 'Sunset', color1: '#FDB515', color2: '#EC008C', color3: '#000000', weight1: 33, weight2: 34, weight3: 33 },
-  { name: 'Ocean', color1: '#00C2FF', color2: '#6A00F4', color3: '#000000', weight1: 33, weight2: 34, weight3: 33 },
-  { name: 'Coral', color1: '#F2665F', color2: '#6A00F4', color3: '#000000', weight1: 33, weight2: 34, weight3: 33 },
-  { name: 'Neon', color1: '#EC008C', color2: '#00C2FF', color3: '#000000', weight1: 33, weight2: 34, weight3: 33 },
-  { name: 'Electric', color1: '#00C2FF', color2: '#EC008C', color3: '#000000', weight1: 33, weight2: 34, weight3: 33 },
-  // Presets with white (10%)
-  { name: 'Blush', color1: '#EC008C', color2: '#000000', color3: '#FFFFFF', weight1: 45, weight2: 45, weight3: 10 },
-  { name: 'Violet', color1: '#EC008C', color2: '#6A00F4', color3: '#FFFFFF', weight1: 45, weight2: 45, weight3: 10 },
-  { name: 'Salmon', color1: '#F2665F', color2: '#000000', color3: '#FFFFFF', weight1: 45, weight2: 45, weight3: 10 },
+  { name: 'Royal', color1: '#6A00F4', color2: '#EC008C', color3: '#000000', weight0: 30, weight1: 23, weight2: 24, weight3: 23 },
+  { name: 'Sunset', color1: '#FDB515', color2: '#EC008C', color3: '#000000', weight0: 30, weight1: 23, weight2: 24, weight3: 23 },
+  { name: 'Ocean', color1: '#00C2FF', color2: '#6A00F4', color3: '#000000', weight0: 30, weight1: 23, weight2: 24, weight3: 23 },
+  { name: 'Coral', color1: '#F2665F', color2: '#6A00F4', color3: '#000000', weight0: 30, weight1: 23, weight2: 24, weight3: 23 },
+  { name: 'Neon', color1: '#EC008C', color2: '#00C2FF', color3: '#000000', weight0: 30, weight1: 23, weight2: 24, weight3: 23 },
+  { name: 'Electric', color1: '#00C2FF', color2: '#EC008C', color3: '#000000', weight0: 30, weight1: 23, weight2: 24, weight3: 23 },
+  // Presets with white accent (7%)
+  { name: 'Blush', color1: '#EC008C', color2: '#000000', color3: '#FFFFFF', weight0: 30, weight1: 32, weight2: 31, weight3: 7 },
+  { name: 'Violet', color1: '#EC008C', color2: '#6A00F4', color3: '#FFFFFF', weight0: 30, weight1: 32, weight2: 31, weight3: 7 },
+  { name: 'Salmon', color1: '#F2665F', color2: '#000000', color3: '#FFFFFF', weight0: 30, weight1: 32, weight2: 31, weight3: 7 },
 ];
 
 // Effect presets for each gradient type
@@ -74,25 +75,28 @@ const effectPresets: Record<string, Partial<GradientConfig>> = {
     uStrength: 1,
     uDensity: 1,
     uFrequency: 1,
-    colorWeight3: 60,
+    colorWeight0: 30,
     colorWeight1: 20,
-    colorWeight2: 20,
+    colorWeight2: 25,
+    colorWeight3: 25,
   },
   plane: {
     uStrength: 1.5,
     uDensity: 0.5,
     uFrequency: 1,
-    colorWeight3: 50,
-    colorWeight1: 25,
-    colorWeight2: 25,
+    colorWeight0: 30,
+    colorWeight1: 23,
+    colorWeight2: 24,
+    colorWeight3: 23,
   },
   water: {
     uStrength: 1.5,
     uDensity: 1.5,
     uFrequency: 2,
-    colorWeight3: 50,
-    colorWeight1: 25,
-    colorWeight2: 25,
+    colorWeight0: 30,
+    colorWeight1: 23,
+    colorWeight2: 24,
+    colorWeight3: 23,
   },
 };
 
@@ -123,12 +127,13 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
   }, [config.animate, config.frozenTime, config.speed]);
 
   const handleColorWeightChange = (colorIndex: number, newValue: number) => {
-    const weights = [config.colorWeight1, config.colorWeight2, config.colorWeight3];
+    // 4 color weights: [0]=black, [1]=color1, [2]=color2, [3]=color3
+    const weights = [config.colorWeight0, config.colorWeight1, config.colorWeight2, config.colorWeight3];
     const oldValue = weights[colorIndex];
     const diff = newValue - oldValue;
     
-    const otherIndices = [0, 1, 2].filter(i => i !== colorIndex);
-    const adjustment = diff / 2;
+    const otherIndices = [0, 1, 2, 3].filter(i => i !== colorIndex);
+    const adjustment = diff / 3; // Distribute among 3 other colors
     
     const newWeights = weights.map((w, i) => {
       if (i === colorIndex) return newValue;
@@ -151,9 +156,10 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
     }
     
     onConfigChange({
-      colorWeight1: Math.round(newWeights[0]),
-      colorWeight2: Math.round(newWeights[1]),
-      colorWeight3: Math.round(newWeights[2])
+      colorWeight0: Math.round(newWeights[0]),
+      colorWeight1: Math.round(newWeights[1]),
+      colorWeight2: Math.round(newWeights[2]),
+      colorWeight3: Math.round(newWeights[3])
     });
   };
 
@@ -378,13 +384,14 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                       color1: preset.color1, 
                       color2: preset.color2, 
                       color3: preset.color3,
+                      colorWeight0: preset.weight0,
                       colorWeight1: preset.weight1,
                       colorWeight2: preset.weight2,
                       colorWeight3: preset.weight3,
                     })}
                     className="relative h-12 rounded-lg overflow-hidden border border-border hover:border-primary transition-colors group"
                     style={{
-                      background: `linear-gradient(135deg, ${preset.color1} 0%, ${preset.color2} 50%, ${preset.color3} 100%)`,
+                      background: `linear-gradient(135deg, #000000 0%, ${preset.color1} 30%, ${preset.color2} 60%, ${preset.color3} 100%)`,
                     }}
                   >
                     <span className="absolute inset-0 flex items-center justify-center text-white text-xs font-medium drop-shadow-md">
@@ -395,6 +402,27 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
               </div>
             )}
             <div className="space-y-4">
+              {/* Black Weight Control (always first, fixed color) */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <Label className="text-muted-foreground flex items-center gap-2">
+                    <span className="w-4 h-4 rounded bg-black border border-border inline-block"></span>
+                    Black
+                  </Label>
+                  <span className="text-xs text-muted-foreground font-mono">
+                    {config.colorWeight0}%
+                  </span>
+                </div>
+                <Slider
+                  value={[config.colorWeight0]}
+                  onValueChange={([value]) => handleColorWeightChange(0, value)}
+                  min={5}
+                  max={60}
+                  step={1}
+                  className="w-full"
+                />
+              </div>
+              
               {(() => {
                 // Determine which color keys to use based on button state
                 const isButton = isButtonRatio(config.aspectRatio);
@@ -428,9 +456,9 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                     </div>
                     <Slider
                       value={[[config.colorWeight1, config.colorWeight2, config.colorWeight3][index]]}
-                      onValueChange={([value]) => handleColorWeightChange(index, value)}
+                      onValueChange={([value]) => handleColorWeightChange(index + 1, value)}
                       min={5}
-                      max={90}
+                      max={60}
                       step={1}
                       className="w-full"
                     />

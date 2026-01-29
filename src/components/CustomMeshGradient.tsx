@@ -89,9 +89,11 @@ void main() {
 const fragmentShader = `
 ${simplexNoiseGLSL}
 
+uniform vec3 uColor0;
 uniform vec3 uColor1;
 uniform vec3 uColor2;
 uniform vec3 uColor3;
+uniform float uWeight0;
 uniform float uWeight1;
 uniform float uWeight2;
 uniform float uWeight3;
@@ -120,7 +122,7 @@ void main() {
   float edgeDistY = 1.0 - abs(centeredUv.y) * 2.0;
   float edgeDist = min(edgeDistX, edgeDistY);
   
-  // Smooth falloff from edges - corners fade to color3 (typically black)
+  // Smooth falloff from edges - corners fade to color0 (black)
   float edgeFade = smoothstep(0.0, 0.3, edgeDist);
   
   vec3 noisePos = vec3(vUv * uNoiseScale * freq, uTime * 0.5);
@@ -139,23 +141,28 @@ void main() {
   float blurFactor = uBlur * 0.5;
   
   // Calculate thresholds based on weights (normalized to 0-1)
+  // 4 colors: color0 -> color1 -> color2 -> color3
+  float w0 = uWeight0 / 100.0;
   float w1 = uWeight1 / 100.0;
   float w2 = uWeight2 / 100.0;
-  float threshold1 = w1;
-  float threshold2 = w1 + w2;
+  float threshold0 = w0;
+  float threshold1 = w0 + w1;
+  float threshold2 = w0 + w1 + w2;
   
   // Smooth color mixing based on noise and weights
   vec3 finalColor;
   
+  float edge0 = smoothstep(threshold0 - blurFactor, threshold0 + blurFactor, noise);
   float edge1 = smoothstep(threshold1 - blurFactor, threshold1 + blurFactor, noise);
   float edge2 = smoothstep(threshold2 - blurFactor, threshold2 + blurFactor, noise);
   
-  // Mix colors: noise < threshold1 = color1, threshold1-threshold2 = color2, > threshold2 = color3
-  finalColor = mix(uColor1, uColor2, edge1);
+  // Mix colors: noise < threshold0 = color0, threshold0-threshold1 = color1, etc.
+  finalColor = mix(uColor0, uColor1, edge0);
+  finalColor = mix(finalColor, uColor2, edge1);
   finalColor = mix(finalColor, uColor3, edge2);
   
-  // Apply edge fade - corners blend to color3 (typically black) to prevent artifacts
-  finalColor = mix(uColor3, finalColor, edgeFade);
+  // Apply edge fade - corners blend to color0 (black) to prevent artifacts
+  finalColor = mix(uColor0, finalColor, edgeFade);
   
   gl_FragColor = vec4(finalColor, 1.0);
 
@@ -174,9 +181,11 @@ export function CustomMeshGradient({ config }: CustomMeshGradientProps) {
   
   // Create uniforms once (avoid allocations every render)
   const uniforms = useMemo(() => ({
+    uColor0: { value: new THREE.Color(config.color0) },
     uColor1: { value: new THREE.Color(config.color1) },
     uColor2: { value: new THREE.Color(config.color2) },
     uColor3: { value: new THREE.Color(config.color3) },
+    uWeight0: { value: config.colorWeight0 },
     uWeight1: { value: config.colorWeight1 },
     uWeight2: { value: config.colorWeight2 },
     uWeight3: { value: config.colorWeight3 },
@@ -195,9 +204,11 @@ export function CustomMeshGradient({ config }: CustomMeshGradientProps) {
     if (!materialRef.current) return;
     
     const mat = materialRef.current;
+    mat.uniforms.uColor0.value.set(config.color0);
     mat.uniforms.uColor1.value.set(config.color1);
     mat.uniforms.uColor2.value.set(config.color2);
     mat.uniforms.uColor3.value.set(config.color3);
+    mat.uniforms.uWeight0.value = config.colorWeight0;
     mat.uniforms.uWeight1.value = config.colorWeight1;
     mat.uniforms.uWeight2.value = config.colorWeight2;
     mat.uniforms.uWeight3.value = config.colorWeight3;
