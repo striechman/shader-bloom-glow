@@ -319,23 +319,22 @@ void main() {
     noise = clamp(noise, 0.0, 1.0);
     
   } else {
-    // WATER MODE: Smooth flowing liquid effect like the original
+    // WATER MODE: Smooth flowing liquid effect with proper color weight support
     vec3 noisePos = vec3(vUv * 1.5 * freq, uTime * 0.15);
     
-    // Smooth flowing noise layers
+    // Smooth flowing noise layers - covering full 0-1 range for proper weight distribution
     float n1 = snoise(noisePos) * 0.5 + 0.5;
-    float n2 = snoise(noisePos * 0.7 + 30.0) * 0.4 + 0.5;
-    float n3 = snoise(noisePos * 0.5 + 60.0) * 0.3 + 0.5;
+    float n2 = snoise(noisePos * 0.7 + 30.0) * 0.25;
+    float n3 = snoise(noisePos * 0.5 + 60.0) * 0.15;
     
     // Gentle wave motion
-    float wave = sin(vUv.x * 4.0 + vUv.y * 3.0 + uTime * 0.3) * 0.1;
+    float wave = sin(vUv.x * 4.0 + vUv.y * 3.0 + uTime * 0.3) * 0.08;
     
-    // Blend noise layers for smooth liquid look
-    float baseNoise = (n1 * 0.5 + n2 * 0.3 + n3 * 0.2);
+    // Blend noise layers for smooth liquid look - ensure full range coverage
+    float baseNoise = n1 + n2 + n3 + wave * density;
     
-    // Add density control
-    noise = baseNoise + wave * density;
-    noise = clamp(noise, 0.0, 1.0);
+    // Normalize to 0-1 range to properly respect color weights
+    noise = clamp(baseNoise, 0.0, 1.0);
   }
   
   // Apply strength for contrast
