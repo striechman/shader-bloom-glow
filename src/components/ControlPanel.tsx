@@ -1,12 +1,15 @@
-import { motion } from 'framer-motion';
-import { Plus, Minus } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Plus, Minus, Save, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Play, Pause, Camera, RotateCcw, X, Moon, Sun, ArrowRight, ArrowDown, ArrowDownRight, ArrowDownLeft, Circle, Waves, Target, Move } from 'lucide-react';
+import { Play, Pause, Camera, RotateCcw, X, Moon, Sun, ArrowRight, ArrowDown, ArrowDownRight, ArrowDownLeft, Circle, Waves, Target, Move, RotateCw } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { GradientConfig, isHeroBannerRatio, isButtonRatio, getThemeColor0 } from '@/types/gradient';
 import { useTheme } from '@/hooks/useTheme';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { usePresets, GradientPreset } from '@/hooks/usePresets';
+import { toast } from 'sonner';
 
 // Plane direction presets
 const planeDirectionPresets = [
@@ -37,6 +40,7 @@ const shapeOptions: { value: GradientConfig['type']; wireframe: boolean; label: 
   { value: 'plane', wireframe: false, label: 'Plane' },
   { value: 'waterPlane', wireframe: false, label: 'Water' },
   { value: 'plane', wireframe: true, label: 'Mesh' },
+  { value: 'conic', wireframe: false, label: 'Conic' },
 ];
 
 const aspectRatioOptions: { value: GradientConfig['aspectRatio']; label: string; category?: string }[] = [
@@ -122,9 +126,23 @@ const effectPresets: Record<string, Partial<GradientConfig>> = {
     colorWeight2: 24,
     colorWeight3: 23,
   },
+  conic: {
+    uStrength: 1,
+    uDensity: 0.5,
+    uFrequency: 1,
+    colorWeight0: 25,
+    colorWeight1: 25,
+    colorWeight2: 25,
+    colorWeight3: 25,
+  },
 };
 
 export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenButtonsPanel }: ControlPanelProps) => {
+  const isMobile = useIsMobile();
+  const { presets, savePreset, loadPreset, deletePreset } = usePresets();
+  const [showPresets, setShowPresets] = useState(false);
+  const [newPresetName, setNewPresetName] = useState('');
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
   const [internalTime, setInternalTime] = useState(0);
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
@@ -259,33 +277,81 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
   };
 
   const isWireframeMode = config.wireframe;
+  const isConicMode = config.type === 'conic';
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === 'dark';
 
+  const toggleSection = (section: string) => {
+    setCollapsedSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
+
+  const handleSavePreset = () => {
+    if (!newPresetName.trim()) {
+      toast.error('Please enter a preset name');
+      return;
+    }
+    savePreset(newPresetName.trim(), config);
+    setNewPresetName('');
+    toast.success(`Preset "${newPresetName}" saved!`);
+  };
+
+  const handleLoadPreset = (preset: GradientPreset) => {
+    const presetConfig = loadPreset(preset);
+    onConfigChange(presetConfig);
+    toast.success(`Loaded "${preset.name}"`);
+  };
+
+  const handleDeletePreset = (id: string, name: string) => {
+    deletePreset(id);
+    toast.success(`Deleted "${name}"`);
+  };
+
+  // Mobile panel animation variants
+  const panelVariants = isMobile ? {
+    hidden: { y: '100%', opacity: 0 },
+    visible: { y: 0, opacity: 1 },
+  } : {
+    hidden: { x: 400, opacity: 0 },
+    visible: { x: 0, opacity: 1 },
+  };
+
   return (
     <>
-      {/* Backdrop overlay for mobile - closes panel on click */}
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={onToggle}
-          className="fixed inset-0 z-30 bg-black/20 md:hidden"
-        />
-      )}
+      {/* Backdrop overlay - closes panel on click */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onToggle}
+            className="fixed inset-0 z-30 bg-black/20"
+          />
+        )}
+      </AnimatePresence>
       
       {/* Panel */}
       <motion.div
-        initial={{ x: 400, opacity: 0 }}
-        animate={{ x: isOpen ? 0 : 400, opacity: isOpen ? 1 : 0 }}
+        initial={panelVariants.hidden}
+        animate={isOpen ? panelVariants.visible : panelVariants.hidden}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        className="fixed right-0 top-0 h-full w-80 z-40 glass overflow-y-auto"
+        className={`fixed z-40 glass overflow-y-auto ${
+          isMobile 
+            ? 'bottom-0 left-0 right-0 h-[75vh] rounded-t-2xl' 
+            : 'right-0 top-0 h-full w-80'
+        }`}
       >
-        <div className="p-6 pt-6 space-y-8">
+        {/* Mobile drag handle */}
+        {isMobile && (
+          <div className="sticky top-0 flex justify-center py-2 bg-inherit z-10">
+            <div className="w-12 h-1 bg-muted-foreground/30 rounded-full" />
+          </div>
+        )}
+        
+        <div className={`p-4 md:p-6 space-y-6 ${isMobile ? 'pb-8' : 'pt-6 space-y-8'}`}>
           {/* Panel Header with close button */}
           <div className="flex items-center justify-between">
-            <h2 className="font-display text-xl font-semibold text-foreground">Settings</h2>
+            <h2 className="font-display text-lg md:text-xl font-semibold text-foreground">Settings</h2>
             <button
               onClick={onToggle}
               className="p-2 rounded-lg hover:bg-secondary/50 transition-colors"
@@ -293,6 +359,81 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
             >
               <X className="w-5 h-5 text-foreground" />
             </button>
+          </div>
+
+          {/* My Presets Section */}
+          <div className="space-y-3">
+            <button
+              onClick={() => setShowPresets(!showPresets)}
+              className="flex items-center justify-between w-full py-2"
+            >
+              <h3 className="font-display text-lg font-medium text-foreground">My Presets</h3>
+              {showPresets ? (
+                <ChevronUp className="w-5 h-5 text-muted-foreground" />
+              ) : (
+                <ChevronDown className="w-5 h-5 text-muted-foreground" />
+              )}
+            </button>
+            
+            <AnimatePresence>
+              {showPresets && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden space-y-3"
+                >
+                  {/* Save new preset */}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newPresetName}
+                      onChange={(e) => setNewPresetName(e.target.value)}
+                      placeholder="Preset name..."
+                      className="flex-1 px-3 py-2 text-sm rounded-lg bg-secondary text-foreground placeholder:text-muted-foreground border border-border focus:outline-none focus:ring-2 focus:ring-primary"
+                      onKeyDown={(e) => e.key === 'Enter' && handleSavePreset()}
+                    />
+                    <button
+                      onClick={handleSavePreset}
+                      className="px-3 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                      title="Save current settings as preset"
+                    >
+                      <Save className="w-4 h-4" />
+                    </button>
+                  </div>
+                  
+                  {/* Preset list */}
+                  {presets.length > 0 ? (
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {presets.map((preset) => (
+                        <div
+                          key={preset.id}
+                          className="flex items-center justify-between p-2 rounded-lg bg-secondary/50 hover:bg-secondary/80 transition-colors group"
+                        >
+                          <button
+                            onClick={() => handleLoadPreset(preset)}
+                            className="flex-1 text-left text-sm font-medium text-foreground truncate"
+                          >
+                            {preset.name}
+                          </button>
+                          <button
+                            onClick={() => handleDeletePreset(preset.id, preset.name)}
+                            className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-all"
+                            title="Delete preset"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-2">
+                      No saved presets yet
+                    </p>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           {/* Theme Toggle */}
@@ -325,6 +466,7 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                   if (shape.label === 'Mesh') return 'mesh';
                   if (shape.label === 'Plane') return 'plane';
                   if (shape.label === 'Water') return 'water';
+                  if (shape.label === 'Conic') return 'conic';
                   return null;
                 };
                 
@@ -805,6 +947,89 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                     </div>
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Conic Gradient Controls (only visible when Conic is selected) */}
+          {isConicMode && (
+            <div>
+              <h3 className="font-display text-lg font-medium mb-4 text-foreground">Conic Gradient</h3>
+              <div className="space-y-4">
+                {/* Start Angle */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-muted-foreground flex items-center gap-2">
+                      <RotateCw className="w-4 h-4" />
+                      Start Angle
+                    </Label>
+                    <span className="text-xs text-muted-foreground">{config.conicStartAngle ?? 0}°</span>
+                  </div>
+                  <Slider
+                    value={[config.conicStartAngle ?? 0]}
+                    onValueChange={([value]) => onConfigChange({ conicStartAngle: value })}
+                    min={0}
+                    max={360}
+                    step={5}
+                    className="w-full"
+                  />
+                </div>
+                
+                {/* Spiral Effect */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-muted-foreground flex items-center gap-2">
+                      <Waves className="w-4 h-4" />
+                      Spiral
+                    </Label>
+                    <span className="text-xs text-muted-foreground">{config.conicSpiral ?? 0}%</span>
+                  </div>
+                  <Slider
+                    value={[config.conicSpiral ?? 0]}
+                    onValueChange={([value]) => onConfigChange({ conicSpiral: value })}
+                    min={0}
+                    max={100}
+                    step={5}
+                    className="w-full"
+                  />
+                  <p className="text-xs text-muted-foreground/70">Add a spiral twist to the gradient</p>
+                </div>
+                
+                {/* Position Offset */}
+                <div className="space-y-3">
+                  <Label className="text-muted-foreground flex items-center gap-2">
+                    <Move className="w-4 h-4" />
+                    Center Offset
+                  </Label>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Horizontal</span>
+                      <span className="text-xs text-muted-foreground">{config.conicOffsetX ?? 0}%</span>
+                    </div>
+                    <Slider
+                      value={[config.conicOffsetX ?? 0]}
+                      onValueChange={([value]) => onConfigChange({ conicOffsetX: value })}
+                      min={-50}
+                      max={50}
+                      step={5}
+                      className="w-full"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Vertical</span>
+                      <span className="text-xs text-muted-foreground">{config.conicOffsetY ?? 0}%</span>
+                    </div>
+                    <Slider
+                      value={[config.conicOffsetY ?? 0]}
+                      onValueChange={([value]) => onConfigChange({ conicOffsetY: value })}
+                      min={-50}
+                      max={50}
+                      step={5}
+                      className="w-full"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           )}

@@ -122,6 +122,8 @@ async function render4ColorGradientHighQuality(
   const color1 = parseColorLinear(config.color1 ?? '#FDB515');
   const color2 = parseColorLinear(config.color2 ?? '#EC008C');
   const color3 = parseColorLinear(config.color3 ?? '#6A00F4');
+  const color4 = config.color4 ? parseColorLinear(config.color4) : null;
+  const hasColor4 = color4 !== null;
   
   // Shader parameters
   const noiseScale = config.meshNoiseScale ?? 1.0;
@@ -133,23 +135,32 @@ async function render4ColorGradientHighQuality(
   const grainEnabled = config.grain;
   const grainIntensity = grainEnabled ? (config.grainIntensity ?? 50) / 100 : 0;
   
-  // Color weight thresholds (4 colors)
+  // Color weight thresholds (supports 4 or 5 colors)
   const w0 = (config.colorWeight0 ?? 30) / 100;
   const w1 = (config.colorWeight1 ?? 23) / 100;
   const w2 = (config.colorWeight2 ?? 24) / 100;
+  const w3 = (config.colorWeight3 ?? 23) / 100;
   const threshold0 = w0;
   const threshold1 = w0 + w1;
   const threshold2 = w0 + w1 + w2;
+  const threshold3 = w0 + w1 + w2 + w3;
   
   // Plane angle in radians
   const planeAngle = (config.planeAngle ?? 45) * Math.PI / 180;
   const planeRadial = config.planeRadial ?? false;
   
-  // Gradient type: 0=mesh, 1=sphere, 2=plane, 3=water
+  // Conic settings
+  const conicStartAngle = (config.conicStartAngle ?? 0) * Math.PI / 180;
+  const conicSpiral = (config.conicSpiral ?? 0) / 100;
+  const conicOffsetX = (config.conicOffsetX ?? 0) / 100;
+  const conicOffsetY = (config.conicOffsetY ?? 0) / 100;
+  
+  // Gradient type: 0=mesh, 1=sphere, 2=plane, 3=water, 4=conic
   const gradientType = config.wireframe ? 0 : 
     config.type === 'sphere' ? 1 : 
     config.type === 'plane' ? 2 : 
-    config.type === 'waterPlane' ? 3 : 0;
+    config.type === 'waterPlane' ? 3 : 
+    config.type === 'conic' ? 4 : 0;
   
   // Hero banner fade settings
   const bannerBlackFade = config.bannerBlackFade ?? 30;
@@ -215,6 +226,30 @@ async function render4ColorGradientHighQuality(
         noise = baseNoise + organicNoise + wave;
         noise = Math.max(0, Math.min(1, noise));
         
+      } else if (gradientType === 4) {
+        // CONIC MODE: Angular gradient with optional spiral
+        const offsetCenterU = centeredU - conicOffsetX;
+        const offsetCenterV = centeredV - conicOffsetY;
+        let angle = Math.atan2(offsetCenterV, offsetCenterU);
+        
+        // Normalize angle from [-PI, PI] to [0, 1]
+        let normalized = (angle + Math.PI) / (2 * Math.PI);
+        
+        // Apply start angle offset
+        normalized = ((normalized + conicStartAngle / (2 * Math.PI)) % 1 + 1) % 1;
+        
+        // Add spiral effect based on distance from center
+        if (conicSpiral > 0.01) {
+          const dist = Math.sqrt(offsetCenterU * offsetCenterU + offsetCenterV * offsetCenterV) * 2.0;
+          normalized = ((normalized + dist * conicSpiral) % 1 + 1) % 1;
+        }
+        
+        // Add subtle noise for organic feel
+        const organicNoise = noise3D(u * 2 * freq, v * 2 * freq, time * 0.2) * 0.05 * density;
+        
+        noise = normalized + organicNoise;
+        noise = Math.max(0, Math.min(1, noise));
+        
       } else {
         // WATER MODE: Smooth flowing liquid
         const n1 = noise3D(u * 1.5 * freq, v * 1.5 * freq, time * 0.15);
@@ -229,10 +264,11 @@ async function render4ColorGradientHighQuality(
       // Apply strength for contrast
       noise = Math.pow(Math.max(0, Math.min(1, noise)), 1.0 + strength * 0.15);
       
-      // Color mixing with smooth edges (4 colors)
+      // Color mixing with smooth edges (supports 4 or 5 colors)
       const edge0 = smoothstep(threshold0 - blurFactor, threshold0 + blurFactor, noise);
       const edge1 = smoothstep(threshold1 - blurFactor, threshold1 + blurFactor, noise);
       const edge2 = smoothstep(threshold2 - blurFactor, threshold2 + blurFactor, noise);
+      const edge3 = hasColor4 ? smoothstep(threshold3 - blurFactor, threshold3 + blurFactor, noise) : 0;
       
       // Progressive color mixing
       let r = lerp(color0.r, color1.r, edge0);
@@ -246,6 +282,13 @@ async function render4ColorGradientHighQuality(
       r = lerp(r, color3.r, edge2);
       g = lerp(g, color3.g, edge2);
       b = lerp(b, color3.b, edge2);
+      
+      // Apply color4 if it exists
+      if (hasColor4 && color4) {
+        r = lerp(r, color4.r, edge3);
+        g = lerp(g, color4.g, edge3);
+        b = lerp(b, color4.b, edge3);
+      }
       
       // Apply edge fade - corners blend to color0
       r = lerp(color0.r, r, edgeFade);
@@ -466,23 +509,81 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
   const generateCSSCode = () => {
     if (!config) return '';
     
+    const hasColor4 = config.color4 !== null;
     const w0 = config.colorWeight0 ?? 30;
     const w1 = w0 + (config.colorWeight1 ?? 23);
     const w2 = w1 + (config.colorWeight2 ?? 24);
+    const w3 = w2 + (config.colorWeight3 ?? 23);
     const animDuration = Math.round(10 / config.speed);
     
-    return `/* Static Gradient (4 colors with 30% black base) */
-.gradient-background {
-  background: linear-gradient(
-    135deg,
-    ${config.color0 ?? '#000000'} 0%,
+    // Build color stops based on whether color4 is present
+    const colorStops = hasColor4 
+      ? `    ${config.color0 ?? '#000000'} 0%,
     ${config.color0 ?? '#000000'} ${w0}%,
     ${config.color1} ${w0}%,
     ${config.color1} ${w1}%,
     ${config.color2} ${w1}%,
     ${config.color2} ${w2}%,
     ${config.color3} ${w2}%,
-    ${config.color3} 100%
+    ${config.color3} ${w3}%,
+    ${config.color4} ${w3}%,
+    ${config.color4} 100%`
+      : `    ${config.color0 ?? '#000000'} 0%,
+    ${config.color0 ?? '#000000'} ${w0}%,
+    ${config.color1} ${w0}%,
+    ${config.color1} ${w1}%,
+    ${config.color2} ${w1}%,
+    ${config.color2} ${w2}%,
+    ${config.color3} ${w2}%,
+    ${config.color3} 100%`;
+    
+    const smoothStops = hasColor4
+      ? `    ${config.color0 ?? '#000000'} 0%,
+    ${config.color1} 25%,
+    ${config.color2} 50%,
+    ${config.color3} 75%,
+    ${config.color4} 100%`
+      : `    ${config.color0 ?? '#000000'} 0%,
+    ${config.color1} 33%,
+    ${config.color2} 66%,
+    ${config.color3} 100%`;
+    
+    const conicColors = hasColor4
+      ? `${config.color0 ?? '#000000'},
+    ${config.color1},
+    ${config.color2},
+    ${config.color3},
+    ${config.color4},
+    ${config.color0 ?? '#000000'}`
+      : `${config.color0 ?? '#000000'},
+    ${config.color1},
+    ${config.color2},
+    ${config.color3},
+    ${config.color0 ?? '#000000'}`;
+    
+    const animatedColors = hasColor4
+      ? `${config.color0 ?? '#000000'},
+    ${config.color1},
+    ${config.color2},
+    ${config.color3},
+    ${config.color4},
+    ${config.color3},
+    ${config.color2},
+    ${config.color1},
+    ${config.color0 ?? '#000000'}`
+      : `${config.color0 ?? '#000000'},
+    ${config.color1},
+    ${config.color2},
+    ${config.color3},
+    ${config.color2},
+    ${config.color1},
+    ${config.color0 ?? '#000000'}`;
+    
+    return `/* Static Gradient (${hasColor4 ? '5' : '4'} colors with ${w0}% base) */
+.gradient-background {
+  background: linear-gradient(
+    135deg,
+${colorStops}
   );
 }
 
@@ -490,10 +591,7 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
 .gradient-background-smooth {
   background: linear-gradient(
     135deg,
-    ${config.color0 ?? '#000000'} 0%,
-    ${config.color1} 33%,
-    ${config.color2} 66%,
-    ${config.color3} 100%
+${smoothStops}
   );
 }
 
@@ -511,11 +609,7 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
 .gradient-background-conic {
   background: conic-gradient(
     from 0deg,
-    ${config.color0 ?? '#000000'},
-    ${config.color1},
-    ${config.color2},
-    ${config.color3},
-    ${config.color0 ?? '#000000'}
+    ${conicColors}
   );
 }
 
@@ -537,13 +631,7 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
 .gradient-animated {
   background: linear-gradient(
     135deg,
-    ${config.color0 ?? '#000000'},
-    ${config.color1},
-    ${config.color2},
-    ${config.color3},
-    ${config.color2},
-    ${config.color1},
-    ${config.color0 ?? '#000000'}
+    ${animatedColors}
   );
   background-size: 400% 400%;
   animation: gradient-shift ${animDuration}s ease infinite;
@@ -570,11 +658,7 @@ export const ExportModal = ({ isOpen, onClose, config }: ExportModalProps) => {
   inset: -50%;
   background: conic-gradient(
     from 0deg,
-    ${config.color0 ?? '#000000'},
-    ${config.color1},
-    ${config.color2},
-    ${config.color3},
-    ${config.color0 ?? '#000000'}
+    ${conicColors}
   );
   animation: gradient-rotate ${animDuration}s linear infinite;
 }
