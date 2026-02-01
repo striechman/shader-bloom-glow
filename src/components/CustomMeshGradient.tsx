@@ -93,10 +93,13 @@ uniform vec3 uColor0;
 uniform vec3 uColor1;
 uniform vec3 uColor2;
 uniform vec3 uColor3;
+uniform vec3 uColor4;
 uniform float uWeight0;
 uniform float uWeight1;
 uniform float uWeight2;
 uniform float uWeight3;
+uniform float uWeight4;
+uniform bool uHasColor4;
 uniform float uTime;
 uniform float uNoiseScale;
 uniform float uBlur;
@@ -155,28 +158,35 @@ void main() {
   float blurFactor = uBlur * 0.5;
   
   // Calculate cumulative thresholds based on weights (normalized to 0-1)
-  // 4 colors: color0 -> color1 -> color2 -> color3
   float w0 = uWeight0 / 100.0;
   float w1 = uWeight1 / 100.0;
   float w2 = uWeight2 / 100.0;
+  float w3 = uWeight3 / 100.0;
+  float w4 = uWeight4 / 100.0;
+  
   float threshold0 = w0;
   float threshold1 = w0 + w1;
   float threshold2 = w0 + w1 + w2;
+  float threshold3 = w0 + w1 + w2 + w3;
   
   // COLOR MIXING in LINEAR space (uColors are already in linear from THREE.Color)
-  // Perform all mixing in linear space for correct blending
-  
   vec3 finalColor;
   
   float blend01 = smoothstep(threshold0 - blurFactor, threshold0 + blurFactor, noise);
   float blend12 = smoothstep(threshold1 - blurFactor, threshold1 + blurFactor, noise);
   float blend23 = smoothstep(threshold2 - blurFactor, threshold2 + blurFactor, noise);
+  float blend34 = smoothstep(threshold3 - blurFactor, threshold3 + blurFactor, noise);
   
   // Start with color0 and progressively blend to other colors (in linear space)
   finalColor = uColor0;
   finalColor = mix(finalColor, uColor1, blend01);
   finalColor = mix(finalColor, uColor2, blend12);
   finalColor = mix(finalColor, uColor3, blend23);
+  
+  // Apply color4 if enabled
+  if (uHasColor4) {
+    finalColor = mix(finalColor, uColor4, blend34);
+  }
   
   // Apply edge fade - corners blend to color0 to prevent artifacts
   finalColor = mix(uColor0, finalColor, edgeFade);
@@ -199,16 +209,21 @@ void main() {
 export function CustomMeshGradient({ config }: CustomMeshGradientProps) {
   const materialRef = useRef<THREE.ShaderMaterial>(null);
   
+  const hasColor4 = config.color4 !== null;
+  
   // Create uniforms once (avoid allocations every render)
   const uniforms = useMemo(() => ({
     uColor0: { value: new THREE.Color(config.color0) },
     uColor1: { value: new THREE.Color(config.color1) },
     uColor2: { value: new THREE.Color(config.color2) },
     uColor3: { value: new THREE.Color(config.color3) },
+    uColor4: { value: new THREE.Color(config.color4 || '#000000') },
     uWeight0: { value: config.colorWeight0 },
     uWeight1: { value: config.colorWeight1 },
     uWeight2: { value: config.colorWeight2 },
     uWeight3: { value: config.colorWeight3 },
+    uWeight4: { value: config.colorWeight4 ?? 0 },
+    uHasColor4: { value: config.color4 !== null },
     uTime: { value: 0 },
     uNoiseScale: { value: config.meshNoiseScale ?? 3.0 },
     uBlur: { value: (config.meshBlur ?? 50) / 100 },
@@ -228,10 +243,15 @@ export function CustomMeshGradient({ config }: CustomMeshGradientProps) {
     mat.uniforms.uColor1.value.set(config.color1);
     mat.uniforms.uColor2.value.set(config.color2);
     mat.uniforms.uColor3.value.set(config.color3);
+    if (config.color4) {
+      mat.uniforms.uColor4.value.set(config.color4);
+    }
     mat.uniforms.uWeight0.value = config.colorWeight0;
     mat.uniforms.uWeight1.value = config.colorWeight1;
     mat.uniforms.uWeight2.value = config.colorWeight2;
     mat.uniforms.uWeight3.value = config.colorWeight3;
+    mat.uniforms.uWeight4.value = config.colorWeight4 ?? 0;
+    mat.uniforms.uHasColor4.value = config.color4 !== null;
     mat.uniforms.uNoiseScale.value = config.meshNoiseScale ?? 3.0;
     mat.uniforms.uBlur.value = (config.meshBlur ?? 50) / 100;
     mat.uniforms.uStrength.value = config.uStrength;

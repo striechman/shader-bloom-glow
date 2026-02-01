@@ -24,14 +24,16 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
         color1: config.hoverColor1,
         color2: config.hoverColor2,
         color3: config.hoverColor3,
+        color4: null, // Buttons don't support color4
       };
     }
     return {
       color1: config.color1,
       color2: config.color2,
       color3: config.color3,
+      color4: config.color4,
     };
-  }, [isButton, config.buttonPreviewState, config.color1, config.color2, config.color3, config.hoverColor1, config.hoverColor2, config.hoverColor3]);
+  }, [isButton, config.buttonPreviewState, config.color1, config.color2, config.color3, config.color4, config.hoverColor1, config.hoverColor2, config.hoverColor3]);
   
   // Calculate aspect ratio container styles
   const getContainerStyle = (): React.CSSProperties => {
@@ -84,6 +86,7 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
     color1: currentColors.color1,
     color2: currentColors.color2,
     color3: currentColors.color3,
+    color4: currentColors.color4,
     animate: isButton ? false : config.animate,
   }), [config, currentColors, isButton]);
   
