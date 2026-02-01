@@ -108,7 +108,7 @@ uniform float uStrength;
 uniform float uDensity;
 uniform float uFrequency;
 uniform float uGrain;
-uniform int uGradientType; // 0=mesh, 1=sphere, 2=plane, 3=water, 4=conic, 5=noiseBlend, 6=diamond, 7=voronoi
+uniform int uGradientType; // 0=mesh, 1=sphere, 2=plane, 3=water, 4=conic
 uniform float uPlaneAngle; // Plane gradient angle in radians
 uniform bool uPlaneRadial; // If true, radial gradient from center
 uniform float uPlaneWave; // Wave distortion amount (0-1)
@@ -121,16 +121,6 @@ uniform bool uMeshCenterInward;
 uniform float uConicStartAngle; // radians
 uniform float uConicSpiral; // 0-1
 uniform vec2 uConicOffset; // Center offset
-// Diamond uniforms
-uniform float uDiamondSharpness;
-uniform vec2 uDiamondOffset;
-uniform float uDiamondRotation;
-// Voronoi uniforms
-uniform float uVoronoiScale;
-uniform float uVoronoiRandomness;
-// Noise Blend uniforms
-uniform float uNoiseBlendScale;
-uniform float uNoiseBlendComplexity;
 
 varying vec2 vUv;
 varying vec3 vPosition;
@@ -276,86 +266,6 @@ void main() {
     noise = normalized + organicNoise;
     noise = clamp(noise, 0.0, 1.0);
     
-  } else if (uGradientType == 5) {
-    // NOISE BLEND MODE: Smooth layered noise for organic transitions
-    float complexity = max(1.0, uNoiseBlendComplexity);
-    float scale = max(0.5, uNoiseBlendScale);
-    
-    vec3 noisePos = vec3(vUv * scale * freq, uTime * 0.3);
-    float n1 = snoise(noisePos) * 0.5 + 0.5;
-    float n2 = snoise(noisePos * 2.0 + 100.0) * 0.25 + 0.25;
-    float n3 = snoise(noisePos * 3.0 + 200.0) * 0.125 + 0.125;
-    float n4 = complexity > 2.0 ? snoise(noisePos * 4.0 + 300.0) * 0.0625 + 0.0625 : 0.0;
-    float n5 = complexity > 4.0 ? snoise(noisePos * 5.0 + 400.0) * 0.03125 + 0.03125 : 0.0;
-    
-    noise = (n1 + n2 + n3 + n4 + n5);
-    noise = noise / (1.0 + 0.25 + 0.125 + (complexity > 2.0 ? 0.0625 : 0.0) + (complexity > 4.0 ? 0.03125 : 0.0));
-    noise = clamp(noise, 0.0, 1.0);
-    
-  } else if (uGradientType == 6) {
-    // DIAMOND MODE: Diamond-shaped gradient from center
-    vec2 rotatedUv = centeredUv;
-    float s = sin(uDiamondRotation);
-    float c = cos(uDiamondRotation);
-    rotatedUv = vec2(centeredUv.x * c - centeredUv.y * s, centeredUv.x * s + centeredUv.y * c);
-    rotatedUv -= uDiamondOffset;
-    
-    // Diamond distance (Manhattan distance)
-    float diamondDist = abs(rotatedUv.x) + abs(rotatedUv.y);
-    
-    // Apply sharpness
-    float sharpness = mix(0.5, 3.0, uDiamondSharpness);
-    noise = pow(diamondDist * 1.4, 1.0 / sharpness);
-    
-    // Add subtle noise for organic feel
-    vec3 noisePos = vec3(vUv * 2.0 * freq, uTime * 0.2);
-    float organicNoise = snoise(noisePos) * 0.05 * density;
-    noise = noise + organicNoise;
-    noise = clamp(noise, 0.0, 1.0);
-    
-  } else if (uGradientType == 7) {
-    // VORONOI MODE: Cell-based pattern
-    vec2 scaledUv = vUv * uVoronoiScale;
-    vec2 cellId = floor(scaledUv);
-    vec2 cellUv = fract(scaledUv);
-    
-    float minDist = 1.0;
-    float secondMinDist = 1.0;
-    
-    // Check 3x3 neighborhood
-    for (int j = -1; j <= 1; j++) {
-      for (int i = -1; i <= 1; i++) {
-        vec2 neighbor = vec2(float(i), float(j));
-        vec2 cellPos = cellId + neighbor;
-        
-        // Random point position within cell using hash
-        vec3 hashInput = vec3(cellPos, 0.0);
-        float rx = fract(sin(dot(cellPos, vec2(127.1, 311.7))) * 43758.5453);
-        float ry = fract(sin(dot(cellPos, vec2(269.5, 183.3))) * 43758.5453);
-        
-        // Add time-based animation and randomness control
-        vec2 pointOffset = vec2(rx, ry) * uVoronoiRandomness;
-        pointOffset += 0.5 * (1.0 - uVoronoiRandomness);
-        
-        // Animate point positions
-        pointOffset += 0.1 * sin(uTime * 0.5 + vec2(rx, ry) * 6.28);
-        
-        vec2 diff = neighbor + pointOffset - cellUv;
-        float dist = length(diff);
-        
-        if (dist < minDist) {
-          secondMinDist = minDist;
-          minDist = dist;
-        } else if (dist < secondMinDist) {
-          secondMinDist = dist;
-        }
-      }
-    }
-    
-    // Use edge distance for interesting patterns
-    noise = minDist;
-    noise = clamp(noise, 0.0, 1.0);
-    
   } else {
     // WATER MODE: Smooth flowing liquid effect like the original
     vec3 noisePos = vec3(vUv * 1.5 * freq, uTime * 0.15);
@@ -435,9 +345,6 @@ const typeToInt: Record<string, number> = {
   'plane': 2,
   'waterPlane': 3,
   'conic': 4,
-  'noiseBlend': 5,
-  'diamond': 6,
-  'voronoi': 7,
 };
 
 export function Custom4ColorGradient({ config }: Custom4ColorGradientProps) {
@@ -480,16 +387,6 @@ export function Custom4ColorGradient({ config }: Custom4ColorGradientProps) {
     uConicStartAngle: { value: (config.conicStartAngle ?? 0) * Math.PI / 180 },
     uConicSpiral: { value: (config.conicSpiral ?? 0) / 100 },
     uConicOffset: { value: new THREE.Vector2((config.conicOffsetX ?? 0) / 100, (config.conicOffsetY ?? 0) / 100) },
-    // Diamond uniforms
-    uDiamondSharpness: { value: (config.diamondSharpness ?? 50) / 100 },
-    uDiamondOffset: { value: new THREE.Vector2((config.diamondOffsetX ?? 0) / 100, (config.diamondOffsetY ?? 0) / 100) },
-    uDiamondRotation: { value: (config.diamondRotation ?? 45) * Math.PI / 180 },
-    // Voronoi uniforms
-    uVoronoiScale: { value: config.voronoiScale ?? 5 },
-    uVoronoiRandomness: { value: (config.voronoiRandomness ?? 80) / 100 },
-    // Noise Blend uniforms
-    uNoiseBlendScale: { value: config.noiseBlendScale ?? 2 },
-    uNoiseBlendComplexity: { value: config.noiseBlendComplexity ?? 3 },
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), []);
   
@@ -538,18 +435,6 @@ export function Custom4ColorGradient({ config }: Custom4ColorGradientProps) {
     mat.uniforms.uConicSpiral.value = (config.conicSpiral ?? 0) / 100;
     mat.uniforms.uConicOffset.value.set((config.conicOffsetX ?? 0) / 100, (config.conicOffsetY ?? 0) / 100);
     
-    // Update diamond uniforms
-    mat.uniforms.uDiamondSharpness.value = (config.diamondSharpness ?? 50) / 100;
-    mat.uniforms.uDiamondOffset.value.set((config.diamondOffsetX ?? 0) / 100, (config.diamondOffsetY ?? 0) / 100);
-    mat.uniforms.uDiamondRotation.value = (config.diamondRotation ?? 45) * Math.PI / 180;
-    
-    // Update voronoi uniforms
-    mat.uniforms.uVoronoiScale.value = config.voronoiScale ?? 5;
-    mat.uniforms.uVoronoiRandomness.value = (config.voronoiRandomness ?? 80) / 100;
-    
-    // Update noise blend uniforms
-    mat.uniforms.uNoiseBlendScale.value = config.noiseBlendScale ?? 2;
-    mat.uniforms.uNoiseBlendComplexity.value = config.noiseBlendComplexity ?? 3;
     
     const isFrozen = config.frozenTime !== null;
     const shouldAnimate = config.animate && !isFrozen;
