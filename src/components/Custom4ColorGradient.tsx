@@ -108,7 +108,7 @@ uniform float uStrength;
 uniform float uDensity;
 uniform float uFrequency;
 uniform float uGrain;
-uniform int uGradientType; // 0=mesh, 1=sphere, 2=plane, 3=water, 4=conic
+uniform int uGradientType; // 0=mesh, 1=sphere, 2=plane, 3=water, 4=conic, 5=radialBurst, 6=spiral, 7=waves, 8=aurora
 uniform float uPlaneAngle; // Plane gradient angle in radians
 uniform bool uPlaneRadial; // If true, radial gradient from center
 uniform float uPlaneWave; // Wave distortion amount (0-1)
@@ -121,6 +121,18 @@ uniform bool uMeshCenterInward;
 uniform float uConicStartAngle; // radians
 uniform float uConicSpiral; // 0-1
 uniform vec2 uConicOffset; // Center offset
+// Radial Burst uniforms
+uniform float uBurstRays;
+uniform float uBurstTwist;
+// Spiral uniforms
+uniform float uSpiralTightness;
+uniform bool uSpiralDirection;
+// Waves uniforms
+uniform float uWavesCount;
+uniform float uWavesAmplitude;
+// Aurora uniforms
+uniform float uAuroraLayers;
+uniform float uAuroraSpeed;
 
 varying vec2 vUv;
 varying vec3 vPosition;
@@ -266,6 +278,91 @@ void main() {
     noise = normalized + organicNoise;
     noise = clamp(noise, 0.0, 1.0);
     
+  } else if (uGradientType == 5) {
+    // RADIAL BURST MODE: Rays emanating from center like sun rays
+    float dist = length(centeredUv);
+    float angle = atan(centeredUv.y, centeredUv.x);
+    
+    // Create rays
+    float rays = sin(angle * uBurstRays + dist * uBurstTwist * 10.0 + uTime * 0.5) * 0.5 + 0.5;
+    
+    // Combine rays with distance for dramatic effect
+    float baseNoise = rays * 0.6 + dist * 0.4;
+    
+    // Add subtle noise for organic feel
+    vec3 noisePos = vec3(vUv * 2.0 * freq, uTime * 0.2);
+    float organicNoise = snoise(noisePos) * 0.08 * density;
+    
+    noise = baseNoise + organicNoise;
+    noise = clamp(noise, 0.0, 1.0);
+    
+  } else if (uGradientType == 6) {
+    // SPIRAL MODE: Hypnotic spiraling gradient
+    float dist = length(centeredUv);
+    float angle = atan(centeredUv.y, centeredUv.x);
+    
+    // Create spiral effect
+    float spiralAngle = angle + dist * uSpiralTightness * 6.28;
+    if (!uSpiralDirection) spiralAngle = -spiralAngle;
+    spiralAngle += uTime * 0.4;
+    
+    // Normalize to 0-1
+    float spiral = fract((spiralAngle + 3.14159265) / 6.28318530);
+    
+    // Add subtle noise for organic feel
+    vec3 noisePos = vec3(vUv * 2.0 * freq, uTime * 0.15);
+    float organicNoise = snoise(noisePos) * 0.06 * density;
+    
+    noise = spiral + organicNoise;
+    noise = clamp(noise, 0.0, 1.0);
+    
+  } else if (uGradientType == 7) {
+    // WAVES MODE: Horizontal/vertical waves like ocean
+    float waveFreq = uWavesCount;
+    float amplitude = uWavesAmplitude;
+    
+    // Create layered waves
+    float wave1 = sin(vUv.y * waveFreq * 3.14159 + uTime * 0.5) * amplitude;
+    float wave2 = sin(vUv.y * waveFreq * 2.0 * 3.14159 + uTime * 0.3 + 1.0) * amplitude * 0.5;
+    float wave3 = sin(vUv.y * waveFreq * 0.5 * 3.14159 + uTime * 0.2 + 2.0) * amplitude * 0.3;
+    
+    // Offset x position by waves
+    float wavyX = vUv.x + (wave1 + wave2 + wave3) * 0.1;
+    
+    // Base gradient on wavy x position
+    float baseNoise = clamp(wavyX, 0.0, 1.0);
+    
+    // Add flowing noise
+    vec3 noisePos = vec3(vUv * 2.0 * freq, uTime * 0.2);
+    float organicNoise = snoise(noisePos) * 0.1 * density;
+    
+    noise = baseNoise + organicNoise;
+    noise = clamp(noise, 0.0, 1.0);
+    
+  } else if (uGradientType == 8) {
+    // AURORA MODE: Northern lights flowing effect
+    float layers = uAuroraLayers;
+    float speedMult = uAuroraSpeed;
+    
+    float aurora = 0.0;
+    for (float i = 0.0; i < 5.0; i++) {
+      if (i >= layers) break;
+      float offset = i * 0.2;
+      vec3 noisePos = vec3(vUv.x * (1.5 + i * 0.3) * freq, vUv.y * 0.5 + offset, uTime * 0.15 * speedMult + i * 10.0);
+      float layerNoise = snoise(noisePos) * 0.5 + 0.5;
+      
+      // Create flowing curtain effect
+      float curtain = sin(vUv.x * 6.0 + uTime * 0.3 * speedMult + i) * 0.3 + 0.7;
+      aurora += layerNoise * curtain / layers;
+    }
+    
+    // Vertical fade - stronger at top
+    float verticalFade = smoothstep(0.0, 0.8, 1.0 - vUv.y);
+    
+    noise = aurora * 0.7 + (1.0 - vUv.y) * 0.3;
+    noise = noise * verticalFade + (1.0 - verticalFade) * 0.1;
+    noise = clamp(noise, 0.0, 1.0);
+    
   } else {
     // WATER MODE: Smooth flowing liquid effect like the original
     vec3 noisePos = vec3(vUv * 1.5 * freq, uTime * 0.15);
@@ -345,6 +442,10 @@ const typeToInt: Record<string, number> = {
   'plane': 2,
   'waterPlane': 3,
   'conic': 4,
+  'radialBurst': 5,
+  'spiral': 6,
+  'waves': 7,
+  'aurora': 8,
 };
 
 export function Custom4ColorGradient({ config }: Custom4ColorGradientProps) {
@@ -387,6 +488,18 @@ export function Custom4ColorGradient({ config }: Custom4ColorGradientProps) {
     uConicStartAngle: { value: (config.conicStartAngle ?? 0) * Math.PI / 180 },
     uConicSpiral: { value: (config.conicSpiral ?? 0) / 100 },
     uConicOffset: { value: new THREE.Vector2((config.conicOffsetX ?? 0) / 100, (config.conicOffsetY ?? 0) / 100) },
+    // Radial Burst uniforms
+    uBurstRays: { value: config.burstRays ?? 12 },
+    uBurstTwist: { value: (config.burstTwist ?? 30) / 100 },
+    // Spiral uniforms
+    uSpiralTightness: { value: config.spiralTightness ?? 3 },
+    uSpiralDirection: { value: config.spiralDirection ?? true },
+    // Waves uniforms
+    uWavesCount: { value: config.wavesCount ?? 5 },
+    uWavesAmplitude: { value: (config.wavesAmplitude ?? 50) / 100 },
+    // Aurora uniforms
+    uAuroraLayers: { value: config.auroraLayers ?? 3 },
+    uAuroraSpeed: { value: (config.auroraSpeed ?? 50) / 100 },
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), []);
   
@@ -435,6 +548,21 @@ export function Custom4ColorGradient({ config }: Custom4ColorGradientProps) {
     mat.uniforms.uConicSpiral.value = (config.conicSpiral ?? 0) / 100;
     mat.uniforms.uConicOffset.value.set((config.conicOffsetX ?? 0) / 100, (config.conicOffsetY ?? 0) / 100);
     
+    // Update radial burst uniforms
+    mat.uniforms.uBurstRays.value = config.burstRays ?? 12;
+    mat.uniforms.uBurstTwist.value = (config.burstTwist ?? 30) / 100;
+    
+    // Update spiral uniforms
+    mat.uniforms.uSpiralTightness.value = config.spiralTightness ?? 3;
+    mat.uniforms.uSpiralDirection.value = config.spiralDirection ?? true;
+    
+    // Update waves uniforms
+    mat.uniforms.uWavesCount.value = config.wavesCount ?? 5;
+    mat.uniforms.uWavesAmplitude.value = (config.wavesAmplitude ?? 50) / 100;
+    
+    // Update aurora uniforms
+    mat.uniforms.uAuroraLayers.value = config.auroraLayers ?? 3;
+    mat.uniforms.uAuroraSpeed.value = (config.auroraSpeed ?? 50) / 100;
     
     const isFrozen = config.frozenTime !== null;
     const shouldAnimate = config.animate && !isFrozen;
