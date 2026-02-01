@@ -111,6 +111,10 @@ uniform float uGrain;
 uniform int uGradientType; // 0=mesh, 1=sphere, 2=plane, 3=water
 uniform float uPlaneAngle; // Plane gradient angle in radians
 uniform bool uPlaneRadial; // If true, radial gradient from center
+uniform float uPlaneWave; // Wave distortion amount (0-1)
+uniform float uPlaneSpread; // Transition sharpness (0-1)
+uniform vec2 uPlaneOffset; // Center offset for radial/linear
+uniform bool uPlaneMultiCenter; // Multiple centers mode
 
 varying vec2 vUv;
 varying vec3 vPosition;
@@ -171,31 +175,55 @@ void main() {
     noise = clamp(noise, 0.0, 1.0);
     
   } else if (uGradientType == 2) {
-    // PLANE MODE: Linear or radial gradient with custom angle
+    // PLANE MODE: Linear or radial gradient with custom angle, wave, spread, offset, and multi-center
     float baseNoise;
     
-    if (uPlaneRadial) {
-      // Radial gradient from center outward
-      baseNoise = length(centeredUv) * 1.4;
+    // Apply offset to center
+    vec2 offsetCenter = centeredUv - uPlaneOffset;
+    
+    if (uPlaneMultiCenter) {
+      // Multi-center mode: create multiple radial gradients
+      float dist1 = length(offsetCenter - vec2(-0.2, -0.15));
+      float dist2 = length(offsetCenter - vec2(0.2, 0.1));
+      float dist3 = length(offsetCenter - vec2(0.0, 0.2));
+      
+      // Blend distances with smooth minimum
+      float minDist = min(min(dist1, dist2), dist3);
+      baseNoise = minDist * 1.4;
+    } else if (uPlaneRadial) {
+      // Radial gradient from offset center outward
+      baseNoise = length(offsetCenter) * 1.4;
     } else {
       // Linear gradient with custom angle
       vec2 direction = vec2(cos(uPlaneAngle), sin(uPlaneAngle));
-      // Map from [-0.5, 0.5] to [0, 1] range properly
-      float dotProduct = dot(centeredUv, direction);
-      // Normalize based on max possible distance in that direction
+      float dotProduct = dot(offsetCenter, direction);
       float maxDist = length(direction * 0.5);
       baseNoise = (dotProduct / maxDist) * 0.5 + 0.5;
     }
     
-    // Add subtle noise for organic feel (reduced to keep colors distinct)
+    // Apply spread (controls transition sharpness)
+    // Low spread = sharp transitions, high spread = soft transitions
+    float spreadFactor = uPlaneSpread;
+    baseNoise = mix(
+      step(0.5, baseNoise), // Sharp (spread = 0)
+      baseNoise,            // Soft (spread = 1)
+      spreadFactor
+    );
+    
+    // Add wave distortion
+    if (uPlaneWave > 0.0) {
+      vec3 wavePos = vec3(vUv * 3.0, uTime * 0.3);
+      float waveNoise = snoise(wavePos) * uPlaneWave * 0.3;
+      baseNoise += waveNoise;
+    }
+    
+    // Add subtle organic noise
     vec3 noisePos = vec3(vUv * 2.0 * freq, uTime * 0.25);
-    float organicNoise = snoise(noisePos) * 0.08 * density;
+    float organicNoise = snoise(noisePos) * 0.06 * density;
     
-    // Add gentle wave along gradient direction (reduced)
-    float wave = sin(baseNoise * 6.28 + uTime * 0.4) * 0.04 * strength;
-    
-    noise = baseNoise + organicNoise + wave;
+    noise = baseNoise + organicNoise;
     noise = clamp(noise, 0.0, 1.0);
+    
     
   } else {
     // WATER MODE: Smooth flowing liquid effect like the original
@@ -307,6 +335,10 @@ export function Custom4ColorGradient({ config }: Custom4ColorGradientProps) {
     uGradientType: { value: typeToInt[gradientType] ?? 0 },
     uPlaneAngle: { value: (config.planeAngle ?? 45) * Math.PI / 180 },
     uPlaneRadial: { value: config.planeRadial ?? false },
+    uPlaneWave: { value: (config.planeWave ?? 0) / 100 },
+    uPlaneSpread: { value: (config.planeSpread ?? 50) / 100 },
+    uPlaneOffset: { value: new THREE.Vector2((config.planeOffsetX ?? 0) / 100, (config.planeOffsetY ?? 0) / 100) },
+    uPlaneMultiCenter: { value: config.planeMultiCenter ?? false },
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), []);
   
@@ -341,6 +373,10 @@ export function Custom4ColorGradient({ config }: Custom4ColorGradientProps) {
     // Update plane direction uniforms
     mat.uniforms.uPlaneAngle.value = (config.planeAngle ?? 45) * Math.PI / 180;
     mat.uniforms.uPlaneRadial.value = config.planeRadial ?? false;
+    mat.uniforms.uPlaneWave.value = (config.planeWave ?? 0) / 100;
+    mat.uniforms.uPlaneSpread.value = (config.planeSpread ?? 50) / 100;
+    mat.uniforms.uPlaneOffset.value.set((config.planeOffsetX ?? 0) / 100, (config.planeOffsetY ?? 0) / 100);
+    mat.uniforms.uPlaneMultiCenter.value = config.planeMultiCenter ?? false;
     
     const isFrozen = config.frozenTime !== null;
     const shouldAnimate = config.animate && !isFrozen;

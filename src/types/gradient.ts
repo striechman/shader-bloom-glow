@@ -53,6 +53,11 @@ export interface GradientConfig {
   // Plane gradient direction
   planeAngle: number; // 0-360 degrees (direction of the gradient)
   planeRadial: boolean; // If true, radial gradient from center instead of linear
+  planeWave: number; // 0-100 wave distortion amount
+  planeSpread: number; // 0-100 how sharp/soft the color transitions are
+  planeOffsetX: number; // -50 to 50 horizontal offset of center
+  planeOffsetY: number; // -50 to 50 vertical offset of center
+  planeMultiCenter: boolean; // If true, creates multiple radial centers
 }
 
 export const defaultGradientConfig: GradientConfig = {
@@ -87,8 +92,13 @@ export const defaultGradientConfig: GradientConfig = {
   meshCenterInward: true,
   aspectRatio: 'free',
   bannerBlackFade: 30,
-  planeAngle: 45, // Default diagonal (45°)
+  planeAngle: 45,
   planeRadial: false,
+  planeWave: 0,
+  planeSpread: 50,
+  planeOffsetX: 0,
+  planeOffsetY: 0,
+  planeMultiCenter: false,
 };
 
 // Get theme-based color0 (black for dark mode, white for light mode)

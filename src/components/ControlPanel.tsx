@@ -3,7 +3,7 @@ import { Plus, Minus } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Play, Pause, Camera, RotateCcw, X, Moon, Sun, ArrowRight, ArrowDown, ArrowDownRight, ArrowDownLeft, Circle, Waves, Target } from 'lucide-react';
+import { Play, Pause, Camera, RotateCcw, X, Moon, Sun, ArrowRight, ArrowDown, ArrowDownRight, ArrowDownLeft, Circle, Waves, Target, Grid3X3, Move } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { GradientConfig, isHeroBannerRatio, isButtonRatio, getThemeColor0 } from '@/types/gradient';
 import { useTheme } from '@/hooks/useTheme';
@@ -713,8 +713,8 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                   })}
                 </div>
                 
-                {/* Angle Slider (only when not radial) */}
-                {!config.planeRadial && (
+                {/* Angle Slider (only when not radial and not multi-center) */}
+                {!config.planeRadial && !config.planeMultiCenter && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <Label className="text-muted-foreground">Angle</Label>
@@ -728,6 +728,92 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                       step={5}
                       className="w-full"
                     />
+                  </div>
+                )}
+                
+                {/* Multi-Center Toggle */}
+                <div className="flex items-center justify-between py-2">
+                  <Label className="text-muted-foreground flex items-center gap-2">
+                    <Grid3X3 className="w-4 h-4" />
+                    Multi-Center
+                  </Label>
+                  <Switch
+                    checked={config.planeMultiCenter ?? false}
+                    onCheckedChange={(checked) => onConfigChange({ planeMultiCenter: checked })}
+                  />
+                </div>
+                
+                {/* Wave Effect */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-muted-foreground flex items-center gap-2">
+                      <Waves className="w-4 h-4" />
+                      Wave
+                    </Label>
+                    <span className="text-xs text-muted-foreground">{config.planeWave ?? 0}%</span>
+                  </div>
+                  <Slider
+                    value={[config.planeWave ?? 0]}
+                    onValueChange={([value]) => onConfigChange({ planeWave: value })}
+                    min={0}
+                    max={100}
+                    step={5}
+                    className="w-full"
+                  />
+                </div>
+                
+                {/* Spread Control */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-muted-foreground">Spread</Label>
+                    <span className="text-xs text-muted-foreground">{config.planeSpread ?? 50}%</span>
+                  </div>
+                  <Slider
+                    value={[config.planeSpread ?? 50]}
+                    onValueChange={([value]) => onConfigChange({ planeSpread: value })}
+                    min={0}
+                    max={100}
+                    step={5}
+                    className="w-full"
+                  />
+                  <p className="text-xs text-muted-foreground/70">Low = sharp edges, High = soft blend</p>
+                </div>
+                
+                {/* Offset Controls (only when radial or multi-center) */}
+                {(config.planeRadial || config.planeMultiCenter) && (
+                  <div className="space-y-3">
+                    <Label className="text-muted-foreground flex items-center gap-2">
+                      <Move className="w-4 h-4" />
+                      Position Offset
+                    </Label>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">Horizontal</span>
+                        <span className="text-xs text-muted-foreground">{config.planeOffsetX ?? 0}%</span>
+                      </div>
+                      <Slider
+                        value={[config.planeOffsetX ?? 0]}
+                        onValueChange={([value]) => onConfigChange({ planeOffsetX: value })}
+                        min={-50}
+                        max={50}
+                        step={5}
+                        className="w-full"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">Vertical</span>
+                        <span className="text-xs text-muted-foreground">{config.planeOffsetY ?? 0}%</span>
+                      </div>
+                      <Slider
+                        value={[config.planeOffsetY ?? 0]}
+                        onValueChange={([value]) => onConfigChange({ planeOffsetY: value })}
+                        min={-50}
+                        max={50}
+                        step={5}
+                        className="w-full"
+                      />
+                    </div>
                   </div>
                 )}
               </div>
