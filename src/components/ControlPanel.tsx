@@ -306,15 +306,6 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
     toast.success(`Deleted "${name}"`);
   };
 
-  // Mobile panel animation variants
-  const panelVariants = isMobile ? {
-    hidden: { y: '100%', opacity: 0 },
-    visible: { y: 0, opacity: 1 },
-  } : {
-    hidden: { x: 400, opacity: 0 },
-    visible: { x: 0, opacity: 1 },
-  };
-
   return (
     <>
       {/* Backdrop overlay - closes panel on click */}
@@ -332,14 +323,23 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
       
       {/* Panel */}
       <motion.div
-        initial={panelVariants.hidden}
-        animate={isOpen ? panelVariants.visible : panelVariants.hidden}
+        initial={false}
+        animate={isOpen ? { 
+          x: isMobile ? 0 : 0, 
+          y: isMobile ? 0 : 0,
+          opacity: 1 
+        } : { 
+          x: isMobile ? 0 : '100%', 
+          y: isMobile ? '100%' : 0,
+          opacity: isMobile ? 1 : 0
+        }}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
         className={`fixed z-40 glass overflow-y-auto ${
           isMobile 
             ? 'bottom-0 left-0 right-0 h-[75vh] rounded-t-2xl' 
-            : 'right-0 top-0 h-full w-80'
+            : 'top-0 right-0 h-full w-80'
         }`}
+        style={!isOpen && !isMobile ? { pointerEvents: 'none' } : undefined}
       >
         {/* Mobile drag handle */}
         {isMobile && (
