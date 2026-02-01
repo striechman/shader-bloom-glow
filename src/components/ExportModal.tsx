@@ -155,12 +155,29 @@ async function render4ColorGradientHighQuality(
   const conicOffsetX = (config.conicOffsetX ?? 0) / 100;
   const conicOffsetY = (config.conicOffsetY ?? 0) / 100;
   
-  // Gradient type: 0=mesh, 1=sphere, 2=plane, 3=water, 4=conic
+  // Diamond settings
+  const diamondSharpness = (config.diamondSharpness ?? 50) / 100;
+  const diamondOffsetX = (config.diamondOffsetX ?? 0) / 100;
+  const diamondOffsetY = (config.diamondOffsetY ?? 0) / 100;
+  const diamondRotation = (config.diamondRotation ?? 45) * Math.PI / 180;
+  
+  // Voronoi settings
+  const voronoiScale = config.voronoiScale ?? 5;
+  const voronoiRandomness = (config.voronoiRandomness ?? 80) / 100;
+  
+  // Noise Blend settings
+  const noiseBlendScale = config.noiseBlendScale ?? 2;
+  const noiseBlendComplexity = config.noiseBlendComplexity ?? 3;
+  
+  // Gradient type: 0=mesh, 1=sphere, 2=plane, 3=water, 4=conic, 5=noiseBlend, 6=diamond, 7=voronoi
   const gradientType = config.wireframe ? 0 : 
     config.type === 'sphere' ? 1 : 
     config.type === 'plane' ? 2 : 
     config.type === 'waterPlane' ? 3 : 
-    config.type === 'conic' ? 4 : 0;
+    config.type === 'conic' ? 4 : 
+    config.type === 'noiseBlend' ? 5 :
+    config.type === 'diamond' ? 6 :
+    config.type === 'voronoi' ? 7 : 0;
   
   // Hero banner fade settings
   const bannerBlackFade = config.bannerBlackFade ?? 30;
@@ -248,6 +265,86 @@ async function render4ColorGradientHighQuality(
         const organicNoise = noise3D(u * 2 * freq, v * 2 * freq, time * 0.2) * 0.05 * density;
         
         noise = normalized + organicNoise;
+        noise = Math.max(0, Math.min(1, noise));
+        
+      } else if (gradientType === 5) {
+        // NOISE BLEND MODE: Layered noise for organic transitions
+        const scale = noiseBlendScale;
+        const complexity = noiseBlendComplexity;
+        
+        const n1 = noise3D(u * scale * freq, v * scale * freq, time * 0.3);
+        const n2 = noise3D(u * scale * 2 * freq + 100, v * scale * 2 * freq + 100, time * 0.3) * 0.25 + 0.25;
+        const n3 = noise3D(u * scale * 3 * freq + 200, v * scale * 3 * freq + 200, time * 0.3) * 0.125 + 0.125;
+        const n4 = complexity > 2 ? noise3D(u * scale * 4 * freq + 300, v * scale * 4 * freq + 300, time * 0.3) * 0.0625 + 0.0625 : 0;
+        const n5 = complexity > 4 ? noise3D(u * scale * 5 * freq + 400, v * scale * 5 * freq + 400, time * 0.3) * 0.03125 + 0.03125 : 0;
+        
+        noise = (n1 + n2 + n3 + n4 + n5);
+        noise = noise / (1.0 + 0.25 + 0.125 + (complexity > 2 ? 0.0625 : 0) + (complexity > 4 ? 0.03125 : 0));
+        noise = Math.max(0, Math.min(1, noise));
+        
+      } else if (gradientType === 6) {
+        // DIAMOND MODE: Diamond-shaped gradient from center
+        const s = Math.sin(diamondRotation);
+        const c = Math.cos(diamondRotation);
+        let rotatedU = centeredU * c - centeredV * s;
+        let rotatedV = centeredU * s + centeredV * c;
+        rotatedU -= diamondOffsetX;
+        rotatedV -= diamondOffsetY;
+        
+        // Diamond distance (Manhattan distance)
+        const diamondDist = Math.abs(rotatedU) + Math.abs(rotatedV);
+        
+        // Apply sharpness
+        const sharpness = 0.5 + diamondSharpness * 2.5;
+        noise = Math.pow(diamondDist * 1.4, 1.0 / sharpness);
+        
+        // Add subtle noise for organic feel
+        const organicNoise = noise3D(u * 2 * freq, v * 2 * freq, time * 0.2) * 0.05 * density;
+        noise = noise + organicNoise;
+        noise = Math.max(0, Math.min(1, noise));
+        
+      } else if (gradientType === 7) {
+        // VORONOI MODE: Cell-based pattern
+        const scaledU = u * voronoiScale;
+        const scaledV = v * voronoiScale;
+        const cellIdX = Math.floor(scaledU);
+        const cellIdY = Math.floor(scaledV);
+        const cellU = scaledU - cellIdX;
+        const cellV = scaledV - cellIdY;
+        
+        let minDist = 1.0;
+        
+        // Check 3x3 neighborhood
+        for (let j = -1; j <= 1; j++) {
+          for (let i = -1; i <= 1; i++) {
+            const cellPosX = cellIdX + i;
+            const cellPosY = cellIdY + j;
+            
+            // Random point position using hash
+            const hash1 = Math.sin(cellPosX * 127.1 + cellPosY * 311.7) * 43758.5453;
+            const hash2 = Math.sin(cellPosX * 269.5 + cellPosY * 183.3) * 43758.5453;
+            const rx = hash1 - Math.floor(hash1);
+            const ry = hash2 - Math.floor(hash2);
+            
+            // Apply randomness control
+            const pointOffsetX = rx * voronoiRandomness + 0.5 * (1 - voronoiRandomness);
+            const pointOffsetY = ry * voronoiRandomness + 0.5 * (1 - voronoiRandomness);
+            
+            // Add time-based animation
+            const animOffsetX = 0.1 * Math.sin(time * 0.5 + rx * 6.28);
+            const animOffsetY = 0.1 * Math.sin(time * 0.5 + ry * 6.28);
+            
+            const diffX = i + pointOffsetX + animOffsetX - cellU;
+            const diffY = j + pointOffsetY + animOffsetY - cellV;
+            const dist = Math.sqrt(diffX * diffX + diffY * diffY);
+            
+            if (dist < minDist) {
+              minDist = dist;
+            }
+          }
+        }
+        
+        noise = minDist;
         noise = Math.max(0, Math.min(1, noise));
         
       } else {
