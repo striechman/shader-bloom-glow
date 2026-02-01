@@ -86,7 +86,7 @@ void main() {
 }
 `;
 
-// Fragment shader that supports all gradient types with 4 colors
+// Fragment shader that supports all gradient types with up to 5 colors (base + 4 optional)
 const fragmentShader = `
 ${simplexNoiseGLSL}
 
@@ -94,10 +94,13 @@ uniform vec3 uColor0;
 uniform vec3 uColor1;
 uniform vec3 uColor2;
 uniform vec3 uColor3;
+uniform vec3 uColor4;
 uniform float uWeight0;
 uniform float uWeight1;
 uniform float uWeight2;
 uniform float uWeight3;
+uniform float uWeight4;
+uniform bool uHasColor4;
 uniform float uTime;
 uniform float uNoiseScale;
 uniform float uBlur;
@@ -216,24 +219,34 @@ void main() {
   // Apply blur (softness)
   float blurFactor = uBlur * 0.5;
   
-  // Calculate cumulative thresholds for 4 colors
+  // Calculate cumulative thresholds for colors (4 or 5 depending on uHasColor4)
   float w0 = uWeight0 / 100.0;
   float w1 = uWeight1 / 100.0;
   float w2 = uWeight2 / 100.0;
+  float w3 = uWeight3 / 100.0;
+  float w4 = uWeight4 / 100.0;
+  
   float threshold0 = w0;
   float threshold1 = w0 + w1;
   float threshold2 = w0 + w1 + w2;
+  float threshold3 = w0 + w1 + w2 + w3;
   
   // Smooth color blending (in linear space - uColors are already linear from THREE.Color)
   float blend01 = smoothstep(threshold0 - blurFactor, threshold0 + blurFactor, noise);
   float blend12 = smoothstep(threshold1 - blurFactor, threshold1 + blurFactor, noise);
   float blend23 = smoothstep(threshold2 - blurFactor, threshold2 + blurFactor, noise);
+  float blend34 = smoothstep(threshold3 - blurFactor, threshold3 + blurFactor, noise);
   
   // Progressive color mixing in linear space
   vec3 finalColor = uColor0;
   finalColor = mix(finalColor, uColor1, blend01);
   finalColor = mix(finalColor, uColor2, blend12);
   finalColor = mix(finalColor, uColor3, blend23);
+  
+  // Only apply color4 if it's enabled
+  if (uHasColor4) {
+    finalColor = mix(finalColor, uColor4, blend34);
+  }
   
   // Edge fade to color0
   finalColor = mix(uColor0, finalColor, edgeFade);
@@ -266,15 +279,20 @@ export function Custom4ColorGradient({ config }: Custom4ColorGradientProps) {
   // Determine the gradient type (mesh uses wireframe flag)
   const gradientType = config.wireframe ? 'mesh' : config.type;
   
+  const hasColor4 = config.color4 !== null;
+  
   const uniforms = useMemo(() => ({
     uColor0: { value: new THREE.Color(config.color0) },
     uColor1: { value: new THREE.Color(config.color1) },
     uColor2: { value: new THREE.Color(config.color2) },
     uColor3: { value: new THREE.Color(config.color3) },
+    uColor4: { value: new THREE.Color(config.color4 || '#000000') },
     uWeight0: { value: config.colorWeight0 },
     uWeight1: { value: config.colorWeight1 },
     uWeight2: { value: config.colorWeight2 },
     uWeight3: { value: config.colorWeight3 },
+    uWeight4: { value: config.colorWeight4 ?? 0 },
+    uHasColor4: { value: config.color4 !== null },
     uTime: { value: 0 },
     uNoiseScale: { value: config.meshNoiseScale ?? 1.0 },
     uBlur: { value: (config.meshBlur ?? 50) / 100 },
@@ -283,7 +301,7 @@ export function Custom4ColorGradient({ config }: Custom4ColorGradientProps) {
     uFrequency: { value: config.uFrequency },
     uGrain: { value: config.grain ? (config.grainIntensity ?? 50) / 100 : 0 },
     uGradientType: { value: typeToInt[gradientType] ?? 0 },
-    uPlaneAngle: { value: (config.planeAngle ?? 45) * Math.PI / 180 }, // Convert to radians
+    uPlaneAngle: { value: (config.planeAngle ?? 45) * Math.PI / 180 },
     uPlaneRadial: { value: config.planeRadial ?? false },
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), []);
@@ -296,10 +314,15 @@ export function Custom4ColorGradient({ config }: Custom4ColorGradientProps) {
     mat.uniforms.uColor1.value.set(config.color1);
     mat.uniforms.uColor2.value.set(config.color2);
     mat.uniforms.uColor3.value.set(config.color3);
+    if (config.color4) {
+      mat.uniforms.uColor4.value.set(config.color4);
+    }
     mat.uniforms.uWeight0.value = config.colorWeight0;
     mat.uniforms.uWeight1.value = config.colorWeight1;
     mat.uniforms.uWeight2.value = config.colorWeight2;
     mat.uniforms.uWeight3.value = config.colorWeight3;
+    mat.uniforms.uWeight4.value = config.colorWeight4 ?? 0;
+    mat.uniforms.uHasColor4.value = config.color4 !== null;
     mat.uniforms.uNoiseScale.value = config.meshNoiseScale ?? 1.0;
     mat.uniforms.uBlur.value = (config.meshBlur ?? 50) / 100;
     mat.uniforms.uStrength.value = config.uStrength;

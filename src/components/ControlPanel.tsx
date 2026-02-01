@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { Plus, Minus } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -64,18 +65,23 @@ const brandColors = [
   { name: 'White', hex: '#FFFFFF' },
 ];
 
-// Color presets with 4 colors (color0 is always black)
+// Brand colors (for UI selection)
+// Rule: Presets must use at least 2 colors from the first 5 (non-black/white)
+const activeBrandColors = brandColors.slice(0, 5); // Yellow, Coral, Magenta, Violet, Blue
+
+// Color presets with 4 colors (color0 is always theme-based black/white)
+// Each preset uses at least 2 brand colors (not counting black/white)
 const colorPresets = [
-  { name: 'Royal', color1: '#6A00F4', color2: '#EC008C', color3: '#000000', weight0: 30, weight1: 23, weight2: 24, weight3: 23 },
-  { name: 'Sunset', color1: '#FDB515', color2: '#EC008C', color3: '#000000', weight0: 30, weight1: 23, weight2: 24, weight3: 23 },
-  { name: 'Ocean', color1: '#00C2FF', color2: '#6A00F4', color3: '#000000', weight0: 30, weight1: 23, weight2: 24, weight3: 23 },
-  { name: 'Coral', color1: '#F2665F', color2: '#6A00F4', color3: '#000000', weight0: 30, weight1: 23, weight2: 24, weight3: 23 },
-  { name: 'Neon', color1: '#EC008C', color2: '#00C2FF', color3: '#000000', weight0: 30, weight1: 23, weight2: 24, weight3: 23 },
-  { name: 'Electric', color1: '#00C2FF', color2: '#EC008C', color3: '#000000', weight0: 30, weight1: 23, weight2: 24, weight3: 23 },
-  // Presets with white accent (7%)
-  { name: 'Blush', color1: '#EC008C', color2: '#000000', color3: '#FFFFFF', weight0: 30, weight1: 32, weight2: 31, weight3: 7 },
-  { name: 'Violet', color1: '#EC008C', color2: '#6A00F4', color3: '#FFFFFF', weight0: 30, weight1: 32, weight2: 31, weight3: 7 },
-  { name: 'Salmon', color1: '#F2665F', color2: '#000000', color3: '#FFFFFF', weight0: 30, weight1: 32, weight2: 31, weight3: 7 },
+  { name: 'Royal', color1: '#6A00F4', color2: '#EC008C', color3: '#000000', color4: null, weight0: 30, weight1: 28, weight2: 28, weight3: 14, weight4: 0 },
+  { name: 'Sunset', color1: '#FDB515', color2: '#EC008C', color3: '#000000', color4: null, weight0: 30, weight1: 28, weight2: 28, weight3: 14, weight4: 0 },
+  { name: 'Ocean', color1: '#00C2FF', color2: '#6A00F4', color3: '#000000', color4: null, weight0: 30, weight1: 28, weight2: 28, weight3: 14, weight4: 0 },
+  { name: 'Coral', color1: '#F2665F', color2: '#6A00F4', color3: '#000000', color4: null, weight0: 30, weight1: 28, weight2: 28, weight3: 14, weight4: 0 },
+  { name: 'Neon', color1: '#EC008C', color2: '#00C2FF', color3: '#000000', color4: null, weight0: 30, weight1: 28, weight2: 28, weight3: 14, weight4: 0 },
+  { name: 'Electric', color1: '#00C2FF', color2: '#EC008C', color3: '#000000', color4: null, weight0: 30, weight1: 28, weight2: 28, weight3: 14, weight4: 0 },
+  // Presets with 3 brand colors (with white accent)
+  { name: 'Blush', color1: '#EC008C', color2: '#F2665F', color3: '#FFFFFF', color4: null, weight0: 30, weight1: 25, weight2: 25, weight3: 20, weight4: 0 },
+  { name: 'Violet', color1: '#EC008C', color2: '#6A00F4', color3: '#00C2FF', color4: null, weight0: 30, weight1: 25, weight2: 25, weight3: 20, weight4: 0 },
+  { name: 'Warm', color1: '#FDB515', color2: '#F2665F', color3: '#EC008C', color4: null, weight0: 30, weight1: 25, weight2: 25, weight3: 20, weight4: 0 },
 ];
 
 // Effect presets for each gradient type
@@ -136,21 +142,32 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
   }, [config.animate, config.frozenTime, config.speed]);
 
   const handleColorWeightChange = (colorIndex: number, newValue: number) => {
-    // 4 color weights: [0]=black, [1]=color1, [2]=color2, [3]=color3
-    const weights = [config.colorWeight0, config.colorWeight1, config.colorWeight2, config.colorWeight3];
+    // Weights array: [0]=base, [1]=color1, [2]=color2, [3]=color3, [4]=color4
+    const hasColor4 = config.color4 !== null;
+    const activeCount = hasColor4 ? 5 : 4;
+    
+    const weights = [
+      config.colorWeight0, 
+      config.colorWeight1, 
+      config.colorWeight2, 
+      config.colorWeight3,
+      hasColor4 ? config.colorWeight4 : 0
+    ];
+    
     const oldValue = weights[colorIndex];
     const diff = newValue - oldValue;
     
-    const otherIndices = [0, 1, 2, 3].filter(i => i !== colorIndex);
-    const adjustment = diff / 3; // Distribute among 3 other colors
+    const otherIndices = Array.from({ length: activeCount }, (_, i) => i).filter(i => i !== colorIndex);
+    const adjustment = diff / otherIndices.length;
     
     const newWeights = weights.map((w, i) => {
       if (i === colorIndex) return newValue;
+      if (i >= activeCount) return 0;
       return Math.max(5, Math.min(90, w - adjustment));
     });
     
     // Normalize to ensure sum = 100
-    const total = newWeights.reduce((a, b) => a + b, 0);
+    const total = newWeights.slice(0, activeCount).reduce((a, b) => a + b, 0);
     if (total !== 100) {
       const correction = (100 - total) / otherIndices.length;
       otherIndices.forEach(i => {
@@ -159,7 +176,7 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
     }
     
     // Final normalization
-    const finalTotal = newWeights.reduce((a, b) => a + b, 0);
+    const finalTotal = newWeights.slice(0, activeCount).reduce((a, b) => a + b, 0);
     if (finalTotal !== 100) {
       newWeights[otherIndices[0]] += 100 - finalTotal;
     }
@@ -168,7 +185,42 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
       colorWeight0: Math.round(newWeights[0]),
       colorWeight1: Math.round(newWeights[1]),
       colorWeight2: Math.round(newWeights[2]),
-      colorWeight3: Math.round(newWeights[3])
+      colorWeight3: Math.round(newWeights[3]),
+      colorWeight4: Math.round(newWeights[4])
+    });
+  };
+
+  // Add 4th color
+  const handleAddColor4 = () => {
+    // Redistribute weights to include color4
+    const currentTotal = config.colorWeight0 + config.colorWeight1 + config.colorWeight2 + config.colorWeight3;
+    const newWeight4 = 15; // Give color4 15%
+    const scale = (100 - newWeight4) / currentTotal;
+    
+    onConfigChange({
+      color4: '#6A00F4', // Default to Deep Violet
+      colorWeight0: Math.round(config.colorWeight0 * scale),
+      colorWeight1: Math.round(config.colorWeight1 * scale),
+      colorWeight2: Math.round(config.colorWeight2 * scale),
+      colorWeight3: Math.round(config.colorWeight3 * scale),
+      colorWeight4: newWeight4
+    });
+  };
+
+  // Remove 4th color
+  const handleRemoveColor4 = () => {
+    // Redistribute color4's weight among other colors
+    const color4Weight = config.colorWeight4;
+    const remaining = config.colorWeight0 + config.colorWeight1 + config.colorWeight2 + config.colorWeight3;
+    const scale = 100 / remaining;
+    
+    onConfigChange({
+      color4: null,
+      colorWeight0: Math.round(config.colorWeight0 * scale),
+      colorWeight1: Math.round(config.colorWeight1 * scale),
+      colorWeight2: Math.round(config.colorWeight2 * scale),
+      colorWeight3: Math.round(config.colorWeight3 * scale),
+      colorWeight4: 0
     });
   };
 
@@ -393,10 +445,12 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                       color1: preset.color1, 
                       color2: preset.color2, 
                       color3: preset.color3,
+                      color4: preset.color4,
                       colorWeight0: preset.weight0,
                       colorWeight1: preset.weight1,
                       colorWeight2: preset.weight2,
                       colorWeight3: preset.weight3,
+                      colorWeight4: preset.weight4,
                     })}
                     className="relative h-12 rounded-lg overflow-hidden border border-border hover:border-primary transition-colors group"
                     style={{
@@ -439,43 +493,108 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                 // Determine which color keys to use based on button state
                 const isButton = isButtonRatio(config.aspectRatio);
                 const isHoverState = isButton && config.buttonPreviewState === 'hover';
+                
+                // For regular gradients, show 3 colors + optional 4th
+                // For buttons, only show 3 hover colors (no 4th color support for buttons)
                 const colorKeys = isHoverState 
                   ? (['hoverColor1', 'hoverColor2', 'hoverColor3'] as const)
                   : (['color1', 'color2', 'color3'] as const);
                 
-                return colorKeys.map((colorKey, index) => (
-                  <div key={colorKey}>
-                    <div className="flex items-center justify-between mb-2">
-                      <Label className="text-muted-foreground">Color {index + 1}</Label>
-                      <span className="text-xs text-muted-foreground font-mono">
-                        {[config.colorWeight1, config.colorWeight2, config.colorWeight3][index]}%
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      {brandColors.map((color) => (
-                        <button
-                          key={color.hex}
-                          onClick={() => onConfigChange({ [colorKey]: color.hex })}
-                          className={`w-8 h-8 rounded-lg transition-all border-2 ${
-                            config[colorKey] === color.hex
-                              ? 'border-primary scale-110 ring-2 ring-primary ring-offset-2 ring-offset-background'
-                              : 'border-border hover:scale-105 hover:border-muted-foreground'
-                          }`}
-                          style={{ backgroundColor: color.hex }}
-                          title={color.name}
+                const weights = [config.colorWeight1, config.colorWeight2, config.colorWeight3];
+                
+                return (
+                  <>
+                    {colorKeys.map((colorKey, index) => (
+                      <div key={colorKey}>
+                        <div className="flex items-center justify-between mb-2">
+                          <Label className="text-muted-foreground">Color {index + 1}</Label>
+                          <span className="text-xs text-muted-foreground font-mono">
+                            {weights[index]}%
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          {brandColors.map((color) => (
+                            <button
+                              key={color.hex}
+                              onClick={() => onConfigChange({ [colorKey]: color.hex })}
+                              className={`w-8 h-8 rounded-lg transition-all border-2 ${
+                                config[colorKey] === color.hex
+                                  ? 'border-primary scale-110 ring-2 ring-primary ring-offset-2 ring-offset-background'
+                                  : 'border-border hover:scale-105 hover:border-muted-foreground'
+                              }`}
+                              style={{ backgroundColor: color.hex }}
+                              title={color.name}
+                            />
+                          ))}
+                        </div>
+                        <Slider
+                          value={[weights[index]]}
+                          onValueChange={([value]) => handleColorWeightChange(index + 1, value)}
+                          min={5}
+                          max={60}
+                          step={1}
+                          className="w-full"
                         />
-                      ))}
-                    </div>
-                    <Slider
-                      value={[[config.colorWeight1, config.colorWeight2, config.colorWeight3][index]]}
-                      onValueChange={([value]) => handleColorWeightChange(index + 1, value)}
-                      min={5}
-                      max={60}
-                      step={1}
-                      className="w-full"
-                    />
-                  </div>
-                ));
+                      </div>
+                    ))}
+                    
+                    {/* Color 4 - Optional (only for non-button modes) */}
+                    {!isButton && (
+                      <>
+                        {config.color4 !== null ? (
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <Label className="text-muted-foreground flex items-center gap-2">
+                                Color 4
+                                <button
+                                  onClick={handleRemoveColor4}
+                                  className="p-1 rounded hover:bg-secondary/80 text-muted-foreground hover:text-foreground transition-colors"
+                                  title="Remove Color 4"
+                                >
+                                  <Minus className="w-3 h-3" />
+                                </button>
+                              </Label>
+                              <span className="text-xs text-muted-foreground font-mono">
+                                {config.colorWeight4}%
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap gap-2 mb-2">
+                              {brandColors.map((color) => (
+                                <button
+                                  key={color.hex}
+                                  onClick={() => onConfigChange({ color4: color.hex })}
+                                  className={`w-8 h-8 rounded-lg transition-all border-2 ${
+                                    config.color4 === color.hex
+                                      ? 'border-primary scale-110 ring-2 ring-primary ring-offset-2 ring-offset-background'
+                                      : 'border-border hover:scale-105 hover:border-muted-foreground'
+                                  }`}
+                                  style={{ backgroundColor: color.hex }}
+                                  title={color.name}
+                                />
+                              ))}
+                            </div>
+                            <Slider
+                              value={[config.colorWeight4]}
+                              onValueChange={([value]) => handleColorWeightChange(4, value)}
+                              min={5}
+                              max={60}
+                              step={1}
+                              className="w-full"
+                            />
+                          </div>
+                        ) : (
+                          <button
+                            onClick={handleAddColor4}
+                            className="w-full py-2 px-3 rounded-lg text-sm font-medium transition-all bg-secondary text-secondary-foreground hover:bg-secondary/80 flex items-center justify-center gap-2"
+                          >
+                            <Plus className="w-4 h-4" />
+                            Add Color 4
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </>
+                );
               })()}
             </div>
           </div>
