@@ -157,10 +157,9 @@ void main() {
   float strength = max(0.0, uStrength);
   
   vec2 centeredUv = vUv - 0.5;
-  float edgeDistX = 1.0 - abs(centeredUv.x) * 2.0;
-  float edgeDistY = 1.0 - abs(centeredUv.y) * 2.0;
-  float edgeDist = min(edgeDistX, edgeDistY);
-  float edgeFade = smoothstep(0.0, 0.3, edgeDist);
+  
+  // No edge fade - fill the entire canvas for consistent exports
+  float edgeFade = 1.0;
   
   float noise;
   

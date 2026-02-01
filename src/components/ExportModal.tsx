@@ -192,13 +192,9 @@ async function render4ColorGradientHighQuality(
       const centeredU = u - 0.5;
       const centeredV = v - 0.5;
       
-      // Edge distance (0 at edges, 1 at center) - for corners only in non-banner mode
-      const edgeDistX = 1.0 - Math.abs(centeredU) * 2.0;
-      const edgeDistY = 1.0 - Math.abs(centeredV) * 2.0;
-      const edgeDist = Math.min(edgeDistX, edgeDistY);
-      
-      // For banners, don't apply edge fade (fill entire rectangle)
-      const edgeFade = applyHeroBannerFade ? 1.0 : smoothstep(0.0, 0.3, edgeDist);
+      // For exports, always fill the entire canvas without edge fading
+      // This ensures the exported image matches the on-screen preview
+      const edgeFade = 1.0;
       
       let noise: number;
       
@@ -815,94 +811,43 @@ ${smoothStops}
 
       if (!captured) {
         await render4ColorGradientHighQuality(ctx, targetWidth, targetHeight, config, isHeroBanner);
-      } else {
-        // Heal corner artifacts for WebGL capture
-        {
-          const fadeSize = Math.min(targetWidth, targetHeight) * 0.18;
-          const sampleSize = Math.max(8, Math.floor(fadeSize * 0.08));
-          const sampleInset = Math.max(6, Math.floor(fadeSize * 0.32));
+      }
+      
+      // Note: Removed corner healing as it was causing visual discrepancies between
+      // the on-screen preview and exported images. The WebGL capture now preserves
+      // the exact appearance from the preview.
 
-          const safeSample = (sx: number, sy: number) => {
-            try {
-              const x = Math.max(0, Math.min(targetWidth - sampleSize, Math.floor(sx)));
-              const y = Math.max(0, Math.min(targetHeight - sampleSize, Math.floor(sy)));
-              const img = ctx.getImageData(x, y, sampleSize, sampleSize).data;
-              let r = 0, g = 0, b = 0;
-              const n = img.length / 4;
-              for (let i = 0; i < img.length; i += 4) {
-                r += img[i];
-                g += img[i + 1];
-                b += img[i + 2];
-              }
-              r = Math.round(r / n);
-              g = Math.round(g / n);
-              b = Math.round(b / n);
-              return { r, g, b };
-            } catch {
-              return config ? parseColor(config.color3) : { r: 0, g: 0, b: 0 };
-            }
-          };
+      // Add weight overlay for static mode (matches on-screen behavior)
+      const isFrozen = config.frozenTime !== null;
+      const isStaticMode = !config.animate || isFrozen;
 
-          const corners = [
-            { cx: 0, cy: 0, rx: 0, ry: 0, sx: sampleInset, sy: sampleInset },
-            { cx: targetWidth, cy: 0, rx: targetWidth - fadeSize, ry: 0, sx: targetWidth - sampleInset - sampleSize, sy: sampleInset },
-            { cx: 0, cy: targetHeight, rx: 0, ry: targetHeight - fadeSize, sx: sampleInset, sy: targetHeight - sampleInset - sampleSize },
-            { cx: targetWidth, cy: targetHeight, rx: targetWidth - fadeSize, ry: targetHeight - fadeSize, sx: targetWidth - sampleInset - sampleSize, sy: targetHeight - sampleInset - sampleSize },
-          ];
+      if (isStaticMode) {
+        const w1 = config.colorWeight1;
+        const w2 = w1 + config.colorWeight2;
+        const feather = 6;
+        const f1 = Math.max(0, w1 - feather) / 100;
+        const f2 = Math.min(100, w1 + feather) / 100;
+        const f3 = Math.max(0, w2 - feather) / 100;
+        const f4 = Math.min(100, w2 + feather) / 100;
 
-          ctx.save();
-          ctx.globalCompositeOperation = 'source-over';
+        const g = ctx.createLinearGradient(0, 0, targetWidth, targetHeight);
+        g.addColorStop(0, config.color1);
+        g.addColorStop(f1, config.color1);
+        g.addColorStop(f2, config.color2);
+        g.addColorStop(f3, config.color2);
+        g.addColorStop(f4, config.color3);
+        g.addColorStop(1, config.color3);
 
-          for (const c of corners) {
-            const rgb = safeSample(c.sx, c.sy);
-            const solid = `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
-            const mid = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.75)`;
-            const trans = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`;
-
-            const g = ctx.createRadialGradient(c.cx, c.cy, 0, c.cx, c.cy, fadeSize);
-            g.addColorStop(0, solid);
-            g.addColorStop(0.35, mid);
-            g.addColorStop(1, trans);
-
-            ctx.fillStyle = g;
-            ctx.fillRect(c.rx, c.ry, fadeSize, fadeSize);
-          }
-
-          ctx.restore();
-        }
-
-        // Add weight overlay for static mode (matches on-screen behavior)
-        const isFrozen = config.frozenTime !== null;
-        const isStaticMode = !config.animate || isFrozen;
-
-        if (isStaticMode) {
-          const w1 = config.colorWeight1;
-          const w2 = w1 + config.colorWeight2;
-          const feather = 6;
-          const f1 = Math.max(0, w1 - feather) / 100;
-          const f2 = Math.min(100, w1 + feather) / 100;
-          const f3 = Math.max(0, w2 - feather) / 100;
-          const f4 = Math.min(100, w2 + feather) / 100;
-
-          const g = ctx.createLinearGradient(0, 0, targetWidth, targetHeight);
-          g.addColorStop(0, config.color1);
-          g.addColorStop(f1, config.color1);
-          g.addColorStop(f2, config.color2);
-          g.addColorStop(f3, config.color2);
-          g.addColorStop(f4, config.color3);
-          g.addColorStop(1, config.color3);
-
-          ctx.save();
-          ctx.globalAlpha = 0.4;
-          ctx.globalCompositeOperation = 'soft-light';
-          ctx.filter = 'blur(48px)';
-          ctx.fillStyle = g;
-          const padX = targetWidth * 0.08;
-          const padY = targetHeight * 0.08;
-          ctx.fillRect(-padX, -padY, targetWidth + padX * 2, targetHeight + padY * 2);
-          ctx.restore();
-        }
-      } // End of else block (Sphere/Plane/Water mode)
+        ctx.save();
+        ctx.globalAlpha = 0.4;
+        ctx.globalCompositeOperation = 'soft-light';
+        ctx.filter = 'blur(48px)';
+        ctx.fillStyle = g;
+        const padX = targetWidth * 0.08;
+        const padY = targetHeight * 0.08;
+        ctx.fillRect(-padX, -padY, targetWidth + padX * 2, targetHeight + padY * 2);
+        ctx.restore();
+      }
 
       // Export
       const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
