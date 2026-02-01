@@ -72,16 +72,18 @@ const activeBrandColors = brandColors.slice(0, 5); // Yellow, Coral, Magenta, Vi
 // Color presets with 4 colors (color0 is always theme-based black/white)
 // Each preset uses at least 2 brand colors (not counting black/white)
 const colorPresets = [
-  { name: 'Royal', color1: '#6A00F4', color2: '#EC008C', color3: '#000000', color4: null, weight0: 30, weight1: 28, weight2: 28, weight3: 14, weight4: 0 },
-  { name: 'Sunset', color1: '#FDB515', color2: '#EC008C', color3: '#000000', color4: null, weight0: 30, weight1: 28, weight2: 28, weight3: 14, weight4: 0 },
-  { name: 'Ocean', color1: '#00C2FF', color2: '#6A00F4', color3: '#000000', color4: null, weight0: 30, weight1: 28, weight2: 28, weight3: 14, weight4: 0 },
-  { name: 'Coral', color1: '#F2665F', color2: '#6A00F4', color3: '#000000', color4: null, weight0: 30, weight1: 28, weight2: 28, weight3: 14, weight4: 0 },
-  { name: 'Neon', color1: '#EC008C', color2: '#00C2FF', color3: '#000000', color4: null, weight0: 30, weight1: 28, weight2: 28, weight3: 14, weight4: 0 },
-  { name: 'Electric', color1: '#00C2FF', color2: '#EC008C', color3: '#000000', color4: null, weight0: 30, weight1: 28, weight2: 28, weight3: 14, weight4: 0 },
-  // Presets with 3 brand colors (with white accent)
-  { name: 'Blush', color1: '#EC008C', color2: '#F2665F', color3: '#FFFFFF', color4: null, weight0: 30, weight1: 25, weight2: 25, weight3: 20, weight4: 0 },
-  { name: 'Violet', color1: '#EC008C', color2: '#6A00F4', color3: '#00C2FF', color4: null, weight0: 30, weight1: 25, weight2: 25, weight3: 20, weight4: 0 },
-  { name: 'Warm', color1: '#FDB515', color2: '#F2665F', color3: '#EC008C', color4: null, weight0: 30, weight1: 25, weight2: 25, weight3: 20, weight4: 0 },
+  // Presets where color0 is the base (black/white based on theme), colors 1-3 are brand colors
+  // Note: color0 is always theme-based (black in dark mode), so we don't need to add black as color3
+  { name: 'Royal', color1: '#6A00F4', color2: '#EC008C', color3: '#00C2FF', color4: null, weight0: 25, weight1: 30, weight2: 30, weight3: 15, weight4: 0 },
+  { name: 'Sunset', color1: '#FDB515', color2: '#EC008C', color3: '#F2665F', color4: null, weight0: 25, weight1: 30, weight2: 30, weight3: 15, weight4: 0 },
+  { name: 'Ocean', color1: '#00C2FF', color2: '#6A00F4', color3: '#EC008C', color4: null, weight0: 25, weight1: 30, weight2: 30, weight3: 15, weight4: 0 },
+  { name: 'Coral', color1: '#F2665F', color2: '#6A00F4', color3: '#FDB515', color4: null, weight0: 25, weight1: 30, weight2: 30, weight3: 15, weight4: 0 },
+  { name: 'Neon', color1: '#EC008C', color2: '#00C2FF', color3: '#6A00F4', color4: null, weight0: 25, weight1: 30, weight2: 30, weight3: 15, weight4: 0 },
+  { name: 'Electric', color1: '#00C2FF', color2: '#EC008C', color3: '#FDB515', color4: null, weight0: 25, weight1: 30, weight2: 30, weight3: 15, weight4: 0 },
+  // Presets with white accent
+  { name: 'Blush', color1: '#EC008C', color2: '#F2665F', color3: '#FFFFFF', color4: null, weight0: 20, weight1: 30, weight2: 30, weight3: 20, weight4: 0 },
+  { name: 'Violet', color1: '#EC008C', color2: '#6A00F4', color3: '#00C2FF', color4: null, weight0: 20, weight1: 30, weight2: 30, weight3: 20, weight4: 0 },
+  { name: 'Warm', color1: '#FDB515', color2: '#F2665F', color3: '#EC008C', color4: null, weight0: 20, weight1: 30, weight2: 30, weight3: 20, weight4: 0 },
 ];
 
 // Effect presets for each gradient type
