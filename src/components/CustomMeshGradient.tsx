@@ -134,16 +134,12 @@ void main() {
   float density = max(0.0, uDensity);
   float strength = max(0.0, uStrength);
   
-  // Center UV coordinates for edge distance calculation
+  // Center UV coordinates (used by Flow/Center mesh styles)
   vec2 centeredUv = vUv - 0.5;
-  
-  // Calculate distance from edges (0 at edges, 1 at center)
-  float edgeDistX = 1.0 - abs(centeredUv.x) * 2.0;
-  float edgeDistY = 1.0 - abs(centeredUv.y) * 2.0;
-  float edgeDist = min(edgeDistX, edgeDistY);
-  
-  // Smooth falloff from edges - corners fade to color0
-  float edgeFade = smoothstep(0.0, 0.3, edgeDist);
+
+  // IMPORTANT: For pixel-perfect export parity we do NOT apply any edge fade/corner healing.
+  // The gradient must fill the entire canvas the same way the export renderer does.
+  float edgeFade = 1.0;
   
   vec3 noisePos = vec3(vUv * uNoiseScale * freq, uTime * 0.5);
   
@@ -208,7 +204,7 @@ void main() {
     finalColor = mix(finalColor, uColor4, blend34);
   }
   
-  // Apply edge fade - corners blend to color0 to prevent artifacts
+  // No edge fade (kept for clarity)
   finalColor = mix(uColor0, finalColor, edgeFade);
   
   // Convert from Linear RGB back to sRGB for correct display
