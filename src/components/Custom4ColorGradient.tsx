@@ -296,7 +296,7 @@ void main() {
     noise = clamp(noise, 0.0, 1.0);
     
   } else if (uGradientType == 6) {
-    // SPIRAL MODE: Hypnotic spiraling gradient
+    // SPIRAL MODE: Hypnotic spiraling gradient with smooth color blending
     float dist = length(centeredUv);
     float angle = atan(centeredUv.y, centeredUv.x);
     
@@ -305,14 +305,18 @@ void main() {
     if (!uSpiralDirection) spiralAngle = -spiralAngle;
     spiralAngle += uTime * 0.4;
     
-    // Normalize to 0-1
-    float spiral = fract((spiralAngle + 3.14159265) / 6.28318530);
+    // Use sin for smooth periodic blending instead of fract for sharp edges
+    float spiral = sin(spiralAngle) * 0.5 + 0.5;
     
-    // Add subtle noise for organic feel
-    vec3 noisePos = vec3(vUv * 2.0 * freq, uTime * 0.15);
-    float organicNoise = snoise(noisePos) * 0.06 * density;
+    // Add multiple octaves of noise for organic, soft transitions
+    vec3 noisePos = vec3(vUv * 1.5 * freq, uTime * 0.15);
+    float organicNoise = snoise(noisePos) * 0.15 * density;
+    float organicNoise2 = snoise(noisePos * 2.0 + 50.0) * 0.08 * density;
     
-    noise = spiral + organicNoise;
+    // Add radial influence for more depth
+    float radialBlend = smoothstep(0.0, 0.7, dist) * 0.2;
+    
+    noise = spiral + organicNoise + organicNoise2 + radialBlend;
     noise = clamp(noise, 0.0, 1.0);
     
   } else if (uGradientType == 7) {

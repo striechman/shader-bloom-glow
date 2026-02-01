@@ -272,15 +272,19 @@ async function render4ColorGradientHighQuality(
         noise = Math.max(0, Math.min(1, noise));
         
       } else if (gradientType === 6) {
-        // SPIRAL MODE
+        // SPIRAL MODE - smooth sine-based blending
         const dist = Math.sqrt(centeredU * centeredU + centeredV * centeredV);
         const angle = Math.atan2(centeredV, centeredU);
         let spiralAngle = angle + dist * spiralTightness * 6.28;
         if (!spiralDirection) spiralAngle = -spiralAngle;
         spiralAngle += time * 0.4;
-        const spiral = ((spiralAngle + Math.PI) / (2 * Math.PI)) % 1;
-        const organicNoise = noise3D(u * 2 * freq, v * 2 * freq, time * 0.15) * 0.06 * density;
-        noise = (spiral + 1) % 1 + organicNoise;
+        
+        // Use sin for smooth periodic blending
+        const spiral = Math.sin(spiralAngle) * 0.5 + 0.5;
+        const organicNoise = noise3D(u * 1.5 * freq, v * 1.5 * freq, time * 0.15) * 0.15 * density;
+        const organicNoise2 = noise3D(u * 3 * freq + 50, v * 3 * freq + 50, time * 0.15) * 0.08 * density;
+        const radialBlend = smoothstep(0.0, 0.7, dist) * 0.2;
+        noise = spiral + organicNoise + organicNoise2 + radialBlend;
         noise = Math.max(0, Math.min(1, noise));
         
       } else if (gradientType === 7) {
