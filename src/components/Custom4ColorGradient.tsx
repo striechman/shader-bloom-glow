@@ -197,8 +197,11 @@ void main() {
     // PLANE MODE: Linear or radial gradient with custom angle, wave, spread, offset, and multi-center
     float baseNoise;
     
-    // Apply offset to center
-    vec2 offsetCenter = centeredUv - uPlaneOffset;
+    // Apply offset to center (only when radial or multi-center)
+    vec2 offsetCenter = centeredUv;
+    if (uPlaneRadial || uPlaneMultiCenter) {
+      offsetCenter = centeredUv - uPlaneOffset;
+    }
     
     if (uPlaneMultiCenter) {
       // Multi-center mode: create multiple radial gradients
@@ -213,30 +216,29 @@ void main() {
       // Radial gradient from offset center outward
       baseNoise = length(offsetCenter) * 1.4;
     } else {
-      // Linear gradient with custom angle
+      // Linear gradient with custom angle (original working logic)
       vec2 direction = vec2(cos(uPlaneAngle), sin(uPlaneAngle));
-      float dotProduct = dot(offsetCenter, direction);
+      float dotProduct = dot(centeredUv, direction);
       float maxDist = length(direction * 0.5);
       baseNoise = (dotProduct / maxDist) * 0.5 + 0.5;
     }
     
-    // Apply spread (controls transition sharpness)
-    // Low spread = sharp transitions, high spread = soft transitions
-    float spreadFactor = uPlaneSpread;
-    baseNoise = mix(
-      step(0.5, baseNoise), // Sharp (spread = 0)
-      baseNoise,            // Soft (spread = 1)
-      spreadFactor
-    );
-    
-    // Add wave distortion
-    if (uPlaneWave > 0.0) {
+    // Add wave distortion (only when enabled)
+    if (uPlaneWave > 0.01) {
       vec3 wavePos = vec3(vUv * 3.0, uTime * 0.3);
-      float waveNoise = snoise(wavePos) * uPlaneWave * 0.3;
+      float waveNoise = snoise(wavePos) * uPlaneWave * 0.25;
       baseNoise += waveNoise;
     }
     
-    // Add subtle organic noise
+    // Apply spread (controls transition sharpness) - only when not at default
+    // Default (0.5) = normal soft gradient, 0 = sharp edges, 1 = very soft
+    if (uPlaneSpread < 0.45) {
+      // Sharpen transitions when spread is low
+      float sharpness = 1.0 - uPlaneSpread * 2.0; // 0-0.45 -> 1.0-0.1
+      baseNoise = mix(baseNoise, step(0.5, baseNoise), sharpness * 0.7);
+    }
+    
+    // Add subtle organic noise for texture
     vec3 noisePos = vec3(vUv * 2.0 * freq, uTime * 0.25);
     float organicNoise = snoise(noisePos) * 0.06 * density;
     
