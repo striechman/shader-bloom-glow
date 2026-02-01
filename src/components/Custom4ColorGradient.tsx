@@ -344,19 +344,46 @@ void main() {
     
   } else if (uGradientType == 8) {
     // AURORA MODE: Northern lights flowing effect
-    float layers = uAuroraLayers;
     float speedMult = uAuroraSpeed;
+    int numLayers = int(uAuroraLayers);
     
     float aurora = 0.0;
-    for (float i = 0.0; i < 5.0; i++) {
-      if (i >= layers) break;
-      float offset = i * 0.2;
-      vec3 noisePos = vec3(vUv.x * (1.5 + i * 0.3) * freq, vUv.y * 0.5 + offset, uTime * 0.15 * speedMult + i * 10.0);
+    float layerWeight = 1.0 / uAuroraLayers;
+    
+    // Layer 0
+    if (numLayers >= 1) {
+      vec3 noisePos = vec3(vUv.x * 1.5 * freq, vUv.y * 0.5, uTime * 0.15 * speedMult);
       float layerNoise = snoise(noisePos) * 0.5 + 0.5;
-      
-      // Create flowing curtain effect
-      float curtain = sin(vUv.x * 6.0 + uTime * 0.3 * speedMult + i) * 0.3 + 0.7;
-      aurora += layerNoise * curtain / layers;
+      float curtain = sin(vUv.x * 6.0 + uTime * 0.3 * speedMult) * 0.3 + 0.7;
+      aurora += layerNoise * curtain * layerWeight;
+    }
+    // Layer 1
+    if (numLayers >= 2) {
+      vec3 noisePos = vec3(vUv.x * 1.8 * freq, vUv.y * 0.5 + 0.2, uTime * 0.15 * speedMult + 10.0);
+      float layerNoise = snoise(noisePos) * 0.5 + 0.5;
+      float curtain = sin(vUv.x * 6.0 + uTime * 0.3 * speedMult + 1.0) * 0.3 + 0.7;
+      aurora += layerNoise * curtain * layerWeight;
+    }
+    // Layer 2
+    if (numLayers >= 3) {
+      vec3 noisePos = vec3(vUv.x * 2.1 * freq, vUv.y * 0.5 + 0.4, uTime * 0.15 * speedMult + 20.0);
+      float layerNoise = snoise(noisePos) * 0.5 + 0.5;
+      float curtain = sin(vUv.x * 6.0 + uTime * 0.3 * speedMult + 2.0) * 0.3 + 0.7;
+      aurora += layerNoise * curtain * layerWeight;
+    }
+    // Layer 3
+    if (numLayers >= 4) {
+      vec3 noisePos = vec3(vUv.x * 2.4 * freq, vUv.y * 0.5 + 0.6, uTime * 0.15 * speedMult + 30.0);
+      float layerNoise = snoise(noisePos) * 0.5 + 0.5;
+      float curtain = sin(vUv.x * 6.0 + uTime * 0.3 * speedMult + 3.0) * 0.3 + 0.7;
+      aurora += layerNoise * curtain * layerWeight;
+    }
+    // Layer 4
+    if (numLayers >= 5) {
+      vec3 noisePos = vec3(vUv.x * 2.7 * freq, vUv.y * 0.5 + 0.8, uTime * 0.15 * speedMult + 40.0);
+      float layerNoise = snoise(noisePos) * 0.5 + 0.5;
+      float curtain = sin(vUv.x * 6.0 + uTime * 0.3 * speedMult + 4.0) * 0.3 + 0.7;
+      aurora += layerNoise * curtain * layerWeight;
     }
     
     // Vertical fade - stronger at top
