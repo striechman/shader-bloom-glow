@@ -4,7 +4,7 @@ import { useRef, useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import { GradientConfig, exportCategories, ExportCategory, aspectRatioValues } from '@/types/gradient';
 import { Slider } from '@/components/ui/slider';
-import { noise3D, perlinNoise3D, smoothstep, lerp, parseColor } from '@/lib/noise';
+import { noise3D, perlinNoise3D, smoothstep, lerp, parseColor, parseColorLinear, linearToSrgb } from '@/lib/noise';
 import { captureWebGLCanvasTo2D } from '@/lib/webglCapture';
 import { downloadBlob } from '@/lib/download';
 
@@ -117,10 +117,11 @@ async function render4ColorGradientHighQuality(
   const imageData = ctx.createImageData(width, height);
   const data = imageData.data;
   
-  const color0 = parseColor(config.color0 ?? '#000000');
-  const color1 = parseColor(config.color1 ?? '#FDB515');
-  const color2 = parseColor(config.color2 ?? '#EC008C');
-  const color3 = parseColor(config.color3 ?? '#6A00F4');
+  // Parse colors to Linear RGB for correct color mixing (matches WebGL shader)
+  const color0 = parseColorLinear(config.color0 ?? '#000000');
+  const color1 = parseColorLinear(config.color1 ?? '#FDB515');
+  const color2 = parseColorLinear(config.color2 ?? '#EC008C');
+  const color3 = parseColorLinear(config.color3 ?? '#6A00F4');
   
   // Shader parameters
   const noiseScale = config.meshNoiseScale ?? 1.0;
@@ -268,19 +269,24 @@ async function render4ColorGradientHighQuality(
         }
       }
       
-      // Apply grain if enabled
+      // Convert from Linear RGB back to sRGB for output
+      let finalR = linearToSrgb(r);
+      let finalG = linearToSrgb(g);
+      let finalB = linearToSrgb(b);
+      
+      // Apply grain if enabled (in sRGB space)
       if (grainIntensity > 0) {
         const grainNoise = perlinNoise3D(u * 220.0, v * 220.0, time * 1.4);
         const grainAmt = (grainNoise * 0.5) * (grainIntensity * 0.18) * 255;
-        r = Math.max(0, Math.min(255, r + grainAmt));
-        g = Math.max(0, Math.min(255, g + grainAmt));
-        b = Math.max(0, Math.min(255, b + grainAmt));
+        finalR = Math.round(Math.max(0, Math.min(255, finalR + grainAmt)));
+        finalG = Math.round(Math.max(0, Math.min(255, finalG + grainAmt)));
+        finalB = Math.round(Math.max(0, Math.min(255, finalB + grainAmt)));
       }
       
       const idx = (y * width + x) * 4;
-      data[idx] = Math.round(r);
-      data[idx + 1] = Math.round(g);
-      data[idx + 2] = Math.round(b);
+      data[idx] = finalR;
+      data[idx + 1] = finalG;
+      data[idx + 2] = finalB;
       data[idx + 3] = 255;
     }
   }
@@ -299,10 +305,11 @@ async function renderGradientToCanvas(
   const imageData = ctx.createImageData(width, height);
   const data = imageData.data;
   
-  const color0 = parseColor(config.color0 ?? '#000000');
-  const color1 = parseColor(config.color1);
-  const color2 = parseColor(config.color2);
-  const color3 = parseColor(config.color3);
+  // Parse colors to Linear RGB for correct color mixing
+  const color0 = parseColorLinear(config.color0 ?? '#000000');
+  const color1 = parseColorLinear(config.color1);
+  const color2 = parseColorLinear(config.color2);
+  const color3 = parseColorLinear(config.color3);
   
   const w0 = (config.colorWeight0 ?? 30) / 100;
   const w1 = (config.colorWeight1 ?? 23) / 100;
@@ -378,10 +385,11 @@ async function renderGradientToCanvas(
       g = lerp(g, color3.g, edge2);
       b = lerp(b, color3.b, edge2);
       
+      // Convert from Linear RGB back to sRGB for output
       const idx = (y * width + x) * 4;
-      data[idx] = Math.round(r);
-      data[idx + 1] = Math.round(g);
-      data[idx + 2] = Math.round(b);
+      data[idx] = linearToSrgb(r);
+      data[idx + 1] = linearToSrgb(g);
+      data[idx + 2] = linearToSrgb(b);
       data[idx + 3] = 255;
     }
   }

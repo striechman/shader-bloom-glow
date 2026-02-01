@@ -275,7 +275,28 @@ export function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
 }
 
-// Parse hex color to RGB
+// ============================================================================
+// Color Space Conversions - sRGB ↔ Linear RGB
+// These ensure exported colors match WebGL shader output exactly
+// ============================================================================
+
+// sRGB to Linear RGB (gamma decoding) - input 0-255, output 0-1
+export function srgbToLinear(c: number): number {
+  const s = c / 255;
+  return s <= 0.04045 
+    ? s / 12.92 
+    : Math.pow((s + 0.055) / 1.055, 2.4);
+}
+
+// Linear RGB to sRGB (gamma encoding) - input 0-1, output 0-255
+export function linearToSrgb(c: number): number {
+  const s = c <= 0.0031308 
+    ? c * 12.92 
+    : 1.055 * Math.pow(c, 1 / 2.4) - 0.055;
+  return Math.round(Math.max(0, Math.min(255, s * 255)));
+}
+
+// Parse hex color to RGB (sRGB 0-255)
 export function parseColor(hex: string): { r: number; g: number; b: number } {
   // Handle shorthand hex (#RGB)
   if (hex.length === 4) {
@@ -297,4 +318,14 @@ export function parseColor(hex: string): { r: number; g: number; b: number } {
   }
   
   return { r, g, b };
+}
+
+// Parse hex color and convert to Linear RGB (0-1 range) for shader-matching calculations
+export function parseColorLinear(hex: string): { r: number; g: number; b: number } {
+  const srgb = parseColor(hex);
+  return {
+    r: srgbToLinear(srgb.r),
+    g: srgbToLinear(srgb.g),
+    b: srgbToLinear(srgb.b)
+  };
 }
