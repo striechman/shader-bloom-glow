@@ -66,12 +66,9 @@ export async function captureWebGLCanvasTo2D(
   }
   tmpCtx.putImageData(imageData, 0, 0);
 
-  // Fill target with opaque background first (prevents white haze from transparency)
-  // Use black for dark gradients - matches what users typically expect
-  targetCtx.save();
-  targetCtx.fillStyle = 'rgb(0,0,0)';
-  targetCtx.fillRect(0, 0, targetWidth, targetHeight);
-  targetCtx.restore();
+  // Clear canvas - we do NOT pre-fill with a color because that would alter
+  // the gradient's actual colors. The gradient itself provides all colors.
+  targetCtx.clearRect(0, 0, targetWidth, targetHeight);
 
   // Draw the captured image scaled to target resolution
   targetCtx.imageSmoothingEnabled = true;
