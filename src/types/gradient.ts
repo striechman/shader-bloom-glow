@@ -40,6 +40,9 @@ export interface GradientConfig {
   // Mesh Gradient settings (noise-based color blending)
   meshNoiseScale: number; // Size of color blobs (1-10, higher = smaller blobs)
   meshBlur: number; // Softness between colors (0-100)
+  meshStyle: 'organic' | 'flow' | 'center'; // Distribution style
+  meshFlowAngle: number; // 0-360 degrees (for flow style)
+  meshCenterInward: boolean; // true = colors flow inward, false = outward
   
   // Aspect Ratio
   aspectRatio: '1:1' | '16:9' | '9:16' | '2:3' | '3:2' | '4:5' | '4:3' | '3:4' | 'free' | 'hero-banner' | 'small-banner' | 'button-large' | 'button-medium' | 'button-small';
@@ -79,6 +82,9 @@ export const defaultGradientConfig: GradientConfig = {
   frozenTime: null,
   meshNoiseScale: 1.0,
   meshBlur: 50,
+  meshStyle: 'organic',
+  meshFlowAngle: 45,
+  meshCenterInward: true,
   aspectRatio: 'free',
   bannerBlackFade: 30,
   planeAngle: 45, // Default diagonal (45°)

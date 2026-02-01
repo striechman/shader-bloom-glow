@@ -3,7 +3,7 @@ import { Plus, Minus } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Play, Pause, Camera, RotateCcw, X, Moon, Sun, ArrowRight, ArrowDown, ArrowDownRight, ArrowDownLeft, Circle } from 'lucide-react';
+import { Play, Pause, Camera, RotateCcw, X, Moon, Sun, ArrowRight, ArrowDown, ArrowDownRight, ArrowDownLeft, Circle, Waves, Target } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { GradientConfig, isHeroBannerRatio, isButtonRatio, getThemeColor0 } from '@/types/gradient';
 import { useTheme } from '@/hooks/useTheme';
@@ -15,6 +15,13 @@ const planeDirectionPresets = [
   { angle: 45, label: 'Diagonal', icon: ArrowDownRight },
   { angle: 135, label: 'Diagonal Rev', icon: ArrowDownLeft },
   { angle: -1, label: 'Radial', icon: Circle, isRadial: true },
+];
+
+// Mesh style presets
+const meshStylePresets = [
+  { value: 'organic' as const, label: 'Organic', icon: Circle },
+  { value: 'flow' as const, label: 'Flow', icon: Waves },
+  { value: 'center' as const, label: 'Center', icon: Target },
 ];
 
 interface ControlPanelProps {
@@ -437,6 +444,64 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                   />
                   <p className="text-xs text-muted-foreground/70">Softness of transitions between colors</p>
                 </div>
+                
+                {/* Mesh Style Selection */}
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Style</Label>
+                  <div className="flex gap-2">
+                    {meshStylePresets.map((style) => {
+                      const Icon = style.icon;
+                      const isActive = config.meshStyle === style.value;
+                      
+                      return (
+                        <button
+                          key={style.value}
+                          onClick={() => onConfigChange({ meshStyle: style.value })}
+                          className={`flex-1 py-2 px-2 rounded-lg text-xs font-medium transition-all flex flex-col items-center gap-1 ${
+                            isActive
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                          }`}
+                          title={style.label}
+                        >
+                          <Icon className="w-4 h-4" />
+                          <span>{style.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                
+                {/* Flow Direction (only when Flow style is selected) */}
+                {config.meshStyle === 'flow' && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-muted-foreground">Flow Direction</Label>
+                      <span className="text-xs text-muted-foreground">{config.meshFlowAngle ?? 45}°</span>
+                    </div>
+                    <Slider
+                      value={[config.meshFlowAngle ?? 45]}
+                      onValueChange={([value]) => onConfigChange({ meshFlowAngle: value })}
+                      min={0}
+                      max={360}
+                      step={15}
+                      className="w-full"
+                    />
+                  </div>
+                )}
+                
+                {/* Center Mode (only when Center style is selected) */}
+                {config.meshStyle === 'center' && (
+                  <div className="flex items-center justify-between py-2">
+                    <Label className="text-muted-foreground">
+                      {config.meshCenterInward ? 'Inward (center dark)' : 'Outward (center bright)'}
+                    </Label>
+                    <Switch
+                      checked={!config.meshCenterInward}
+                      onCheckedChange={(checked) => onConfigChange({ meshCenterInward: !checked })}
+                    />
+                  </div>
+                )}
               </div>
             </div>
           )}

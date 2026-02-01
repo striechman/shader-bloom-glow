@@ -107,6 +107,9 @@ uniform float uStrength;
 uniform float uDensity;
 uniform float uFrequency;
 uniform float uGrain;
+uniform int uMeshStyle; // 0=organic, 1=flow, 2=center
+uniform float uMeshFlowAngle; // radians
+uniform bool uMeshCenterInward;
 
 varying vec2 vUv;
 varying vec3 vPosition;
@@ -144,12 +147,29 @@ void main() {
   
   vec3 noisePos = vec3(vUv * uNoiseScale * freq, uTime * 0.5);
   
+  // Base noise calculation
   float n1 = snoise(noisePos) * 0.5 + 0.5;
   float n2 = snoise(noisePos * 2.0 + 100.0) * (0.20 + 0.10 * density);
   float n3 = snoise(noisePos * 4.0 + 200.0) * (0.10 + 0.06 * density);
   
-  float noise = n1 + n2 + n3;
-  noise = noise / 1.375; // Normalize to 0-1 range
+  float baseNoise = n1 + n2 + n3;
+  baseNoise = baseNoise / 1.375; // Normalize to 0-1 range
+  
+  // Apply mesh style modifications
+  float noise = baseNoise;
+  
+  if (uMeshStyle == 1) {
+    // FLOW: Noise biased by direction
+    vec2 flowDir = vec2(cos(uMeshFlowAngle), sin(uMeshFlowAngle));
+    float directionalBias = dot(centeredUv, flowDir) * 0.5 + 0.5;
+    noise = baseNoise * 0.6 + directionalBias * 0.4;
+  } else if (uMeshStyle == 2) {
+    // CENTER: Noise biased by distance from center
+    float dist = length(centeredUv) * 1.4;
+    if (!uMeshCenterInward) dist = 1.0 - dist;
+    noise = baseNoise * 0.5 + dist * 0.5;
+  }
+  // else uMeshStyle == 0 (ORGANIC): use baseNoise as-is
 
   // Strength = more contrast in the blobs
   noise = pow(clamp(noise, 0.0, 1.0), 1.0 + strength * 0.18);
@@ -231,6 +251,9 @@ export function CustomMeshGradient({ config }: CustomMeshGradientProps) {
     uDensity: { value: config.uDensity },
     uFrequency: { value: config.uFrequency },
     uGrain: { value: config.grain ? (config.grainIntensity ?? 50) / 100 : 0 },
+    uMeshStyle: { value: config.meshStyle === 'flow' ? 1 : config.meshStyle === 'center' ? 2 : 0 },
+    uMeshFlowAngle: { value: (config.meshFlowAngle ?? 45) * Math.PI / 180 },
+    uMeshCenterInward: { value: config.meshCenterInward ?? true },
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), []);
   
@@ -258,6 +281,11 @@ export function CustomMeshGradient({ config }: CustomMeshGradientProps) {
     mat.uniforms.uDensity.value = config.uDensity;
     mat.uniforms.uFrequency.value = config.uFrequency;
     mat.uniforms.uGrain.value = config.grain ? (config.grainIntensity ?? 50) / 100 : 0;
+    
+    // Mesh style uniforms
+    mat.uniforms.uMeshStyle.value = config.meshStyle === 'flow' ? 1 : config.meshStyle === 'center' ? 2 : 0;
+    mat.uniforms.uMeshFlowAngle.value = (config.meshFlowAngle ?? 45) * Math.PI / 180;
+    mat.uniforms.uMeshCenterInward.value = config.meshCenterInward ?? true;
     
     // Check animation state directly from config (not from stale closure)
     const isFrozen = config.frozenTime !== null;
