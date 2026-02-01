@@ -296,6 +296,32 @@ export function linearToSrgb(c: number): number {
   return Math.round(Math.max(0, Math.min(255, s * 255)));
 }
 
+// Linear RGB to sRGB with dithering for smooth exports (no banding)
+// Uses blue noise approximation via position-based dithering
+export function linearToSrgbDithered(c: number, x: number, y: number): number {
+  const s = c <= 0.0031308 
+    ? c * 12.92 
+    : 1.055 * Math.pow(c, 1 / 2.4) - 0.055;
+  const value = s * 255;
+  
+  // Bayer-like dithering pattern for smooth gradients
+  // Use position to create a repeating pattern that breaks up banding
+  const ditherMatrix = [
+    [0, 8, 2, 10],
+    [12, 4, 14, 6],
+    [3, 11, 1, 9],
+    [15, 7, 13, 5]
+  ];
+  const mx = x % 4;
+  const my = y % 4;
+  const threshold = (ditherMatrix[my][mx] / 16.0) - 0.5;
+  
+  // Apply subtle dithering (±0.5 pixel value)
+  const dithered = value + threshold;
+  
+  return Math.max(0, Math.min(255, Math.round(dithered)));
+}
+
 // Parse hex color to RGB (sRGB 0-255)
 export function parseColor(hex: string): { r: number; g: number; b: number } {
   // Handle shorthand hex (#RGB)
