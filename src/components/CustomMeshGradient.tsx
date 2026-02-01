@@ -108,6 +108,20 @@ uniform float uGrain;
 varying vec2 vUv;
 varying vec3 vPosition;
 
+// sRGB to Linear RGB conversion (gamma decoding)
+vec3 srgbToLinear(vec3 srgb) {
+  vec3 low = srgb / 12.92;
+  vec3 high = pow((srgb + 0.055) / 1.055, vec3(2.4));
+  return mix(low, high, step(0.04045, srgb));
+}
+
+// Linear RGB to sRGB conversion (gamma encoding)
+vec3 linearToSrgb(vec3 linear) {
+  vec3 low = linear * 12.92;
+  vec3 high = 1.055 * pow(linear, vec3(1.0 / 2.4)) - 0.055;
+  return mix(low, high, step(0.0031308, linear));
+}
+
 void main() {
   // Multi-octave noise for richer texture
   float freq = max(0.1, uFrequency);
@@ -149,23 +163,16 @@ void main() {
   float threshold1 = w0 + w1;
   float threshold2 = w0 + w1 + w2;
   
-  // COLOR MIXING: Use step-based blending for clearer color dominance
-  // When noise is low -> color0 (black/white based on theme)
-  // As noise increases -> color1 -> color2 -> color3
+  // COLOR MIXING in LINEAR space (uColors are already in linear from THREE.Color)
+  // Perform all mixing in linear space for correct blending
   
   vec3 finalColor;
-  
-  // Determine which color zone we're in based on noise value
-  // Zone 0: noise < threshold0 -> mostly color0
-  // Zone 1: threshold0 < noise < threshold1 -> mostly color1
-  // Zone 2: threshold1 < noise < threshold2 -> mostly color2
-  // Zone 3: noise > threshold2 -> mostly color3
   
   float blend01 = smoothstep(threshold0 - blurFactor, threshold0 + blurFactor, noise);
   float blend12 = smoothstep(threshold1 - blurFactor, threshold1 + blurFactor, noise);
   float blend23 = smoothstep(threshold2 - blurFactor, threshold2 + blurFactor, noise);
   
-  // Start with color0 and progressively blend to other colors
+  // Start with color0 and progressively blend to other colors (in linear space)
   finalColor = uColor0;
   finalColor = mix(finalColor, uColor1, blend01);
   finalColor = mix(finalColor, uColor2, blend12);
@@ -174,9 +181,12 @@ void main() {
   // Apply edge fade - corners blend to color0 to prevent artifacts
   finalColor = mix(uColor0, finalColor, edgeFade);
   
+  // Convert from Linear RGB back to sRGB for correct display
+  finalColor = linearToSrgb(finalColor);
+  
   gl_FragColor = vec4(finalColor, 1.0);
 
-  // Film grain (subtle) for Mesh mode too
+  // Film grain (subtle) for Mesh mode too - apply in sRGB space
   if (uGrain > 0.0) {
     float g = snoise(vec3(vUv * 220.0, uTime * 0.7));
     float grainAmt = (g * 0.5 + 0.5 - 0.5) * (uGrain * 0.18);

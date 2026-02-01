@@ -102,6 +102,13 @@ uniform float uFrequency;
 
 varying vec2 vUv;
 
+// Linear RGB to sRGB conversion (gamma encoding)
+vec3 linearToSrgb(vec3 linear) {
+  vec3 low = linear * 12.92;
+  vec3 high = 1.055 * pow(linear, vec3(1.0 / 2.4)) - 0.055;
+  return mix(low, high, step(0.0031308, linear));
+}
+
 void main() {
   float freq = max(0.1, uFrequency);
   float density = max(0.0, uDensity);
@@ -126,8 +133,12 @@ void main() {
   float edge1 = smoothstep(threshold1 - blurFactor, threshold1 + blurFactor, noise);
   float edge2 = smoothstep(threshold2 - blurFactor, threshold2 + blurFactor, noise);
   
+  // Mix in linear space (uColors are already linear from THREE.Color)
   finalColor = mix(uColor1, uColor2, edge1);
   finalColor = mix(finalColor, uColor3, edge2);
+  
+  // Convert from Linear RGB back to sRGB for correct display
+  finalColor = linearToSrgb(finalColor);
   
   gl_FragColor = vec4(finalColor, 1.0);
 }

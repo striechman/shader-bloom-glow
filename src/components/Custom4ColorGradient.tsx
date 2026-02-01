@@ -112,6 +112,20 @@ uniform bool uPlaneRadial; // If true, radial gradient from center
 varying vec2 vUv;
 varying vec3 vPosition;
 
+// sRGB to Linear RGB conversion (gamma decoding)
+vec3 srgbToLinear(vec3 srgb) {
+  vec3 low = srgb / 12.92;
+  vec3 high = pow((srgb + 0.055) / 1.055, vec3(2.4));
+  return mix(low, high, step(0.04045, srgb));
+}
+
+// Linear RGB to sRGB conversion (gamma encoding)
+vec3 linearToSrgb(vec3 linear) {
+  vec3 low = linear * 12.92;
+  vec3 high = 1.055 * pow(linear, vec3(1.0 / 2.4)) - 0.055;
+  return mix(low, high, step(0.0031308, linear));
+}
+
 void main() {
   float freq = max(0.1, uFrequency);
   float density = max(0.0, uDensity);
@@ -210,12 +224,12 @@ void main() {
   float threshold1 = w0 + w1;
   float threshold2 = w0 + w1 + w2;
   
-  // Smooth color blending
+  // Smooth color blending (in linear space - uColors are already linear from THREE.Color)
   float blend01 = smoothstep(threshold0 - blurFactor, threshold0 + blurFactor, noise);
   float blend12 = smoothstep(threshold1 - blurFactor, threshold1 + blurFactor, noise);
   float blend23 = smoothstep(threshold2 - blurFactor, threshold2 + blurFactor, noise);
   
-  // Progressive color mixing
+  // Progressive color mixing in linear space
   vec3 finalColor = uColor0;
   finalColor = mix(finalColor, uColor1, blend01);
   finalColor = mix(finalColor, uColor2, blend12);
@@ -224,9 +238,12 @@ void main() {
   // Edge fade to color0
   finalColor = mix(uColor0, finalColor, edgeFade);
   
+  // Convert from Linear RGB back to sRGB for correct display
+  finalColor = linearToSrgb(finalColor);
+  
   gl_FragColor = vec4(finalColor, 1.0);
 
-  // Film grain
+  // Film grain - apply in sRGB space
   if (uGrain > 0.0) {
     float g = snoise(vec3(vUv * 220.0, uTime * 0.7));
     float grainAmt = (g * 0.5 + 0.5 - 0.5) * (uGrain * 0.18);
