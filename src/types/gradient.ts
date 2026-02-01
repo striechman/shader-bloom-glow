@@ -1,6 +1,6 @@
 export interface GradientConfig {
   // Shape - includes new gradient types: noiseBlend, diamond, voronoi
-  type: 'sphere' | 'plane' | 'waterPlane' | 'conic' | 'noiseBlend' | 'diamond' | 'voronoi';
+  type: 'sphere' | 'plane' | 'waterPlane' | 'conic';
   wireframe: boolean;
   
   // Colors (Default state) - color0 is always theme-based (black/white)
@@ -64,19 +64,6 @@ export interface GradientConfig {
   conicOffsetX: number; // -50 to 50 horizontal offset of center
   conicOffsetY: number; // -50 to 50 vertical offset of center
   
-  // Diamond gradient settings
-  diamondSharpness: number; // 0-100 how sharp the diamond edges are
-  diamondOffsetX: number; // -50 to 50 horizontal offset
-  diamondOffsetY: number; // -50 to 50 vertical offset
-  diamondRotation: number; // 0-360 rotation angle
-  
-  // Voronoi gradient settings
-  voronoiScale: number; // 1-20 number of cells
-  voronoiRandomness: number; // 0-100 cell randomness
-  
-  // Noise Blend settings
-  noiseBlendScale: number; // 0.5-5 noise scale
-  noiseBlendComplexity: number; // 1-5 octaves
 }
 
 export const defaultGradientConfig: GradientConfig = {
@@ -122,17 +109,6 @@ export const defaultGradientConfig: GradientConfig = {
   conicSpiral: 0,
   conicOffsetX: 0,
   conicOffsetY: 0,
-  // Diamond defaults
-  diamondSharpness: 50,
-  diamondOffsetX: 0,
-  diamondOffsetY: 0,
-  diamondRotation: 45,
-  // Voronoi defaults
-  voronoiScale: 5,
-  voronoiRandomness: 80,
-  // Noise Blend defaults
-  noiseBlendScale: 2,
-  noiseBlendComplexity: 3,
 };
 
 // Get theme-based color0 (black for dark mode, white for light mode)

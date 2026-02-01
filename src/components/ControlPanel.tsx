@@ -39,9 +39,6 @@ const shapeOptions: { value: GradientConfig['type']; wireframe: boolean; label: 
   { value: 'waterPlane', wireframe: false, label: 'Water' },
   { value: 'plane', wireframe: true, label: 'Mesh' },
   { value: 'conic', wireframe: false, label: 'Conic' },
-  { value: 'noiseBlend', wireframe: false, label: 'Noise' },
-  { value: 'diamond', wireframe: false, label: 'Diamond' },
-  { value: 'voronoi', wireframe: false, label: 'Voronoi' },
 ];
 
 const aspectRatioOptions: { value: GradientConfig['aspectRatio']; label: string; category?: string }[] = [
@@ -130,33 +127,6 @@ const effectPresets: Record<string, Partial<GradientConfig>> = {
   conic: {
     uStrength: 1,
     uDensity: 0.5,
-    uFrequency: 1,
-    colorWeight0: 25,
-    colorWeight1: 25,
-    colorWeight2: 25,
-    colorWeight3: 25,
-  },
-  noiseBlend: {
-    uStrength: 1,
-    uDensity: 1,
-    uFrequency: 1.5,
-    colorWeight0: 25,
-    colorWeight1: 25,
-    colorWeight2: 25,
-    colorWeight3: 25,
-  },
-  diamond: {
-    uStrength: 1,
-    uDensity: 0.5,
-    uFrequency: 1,
-    colorWeight0: 30,
-    colorWeight1: 23,
-    colorWeight2: 24,
-    colorWeight3: 23,
-  },
-  voronoi: {
-    uStrength: 1,
-    uDensity: 0.8,
     uFrequency: 1,
     colorWeight0: 25,
     colorWeight1: 25,
@@ -302,9 +272,6 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
 
   const isWireframeMode = config.wireframe;
   const isConicMode = config.type === 'conic';
-  const isNoiseBlendMode = config.type === 'noiseBlend';
-  const isDiamondMode = config.type === 'diamond';
-  const isVoronoiMode = config.type === 'voronoi';
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === 'dark';
 
@@ -377,9 +344,6 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                   if (shape.label === 'Plane') return 'plane';
                   if (shape.label === 'Water') return 'water';
                   if (shape.label === 'Conic') return 'conic';
-                  if (shape.label === 'Noise') return 'noiseBlend';
-                  if (shape.label === 'Diamond') return 'diamond';
-                  if (shape.label === 'Voronoi') return 'voronoi';
                   return null;
                 };
                 
@@ -947,169 +911,6 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
             </div>
           )}
 
-          {/* Noise Blend Controls */}
-          {isNoiseBlendMode && (
-            <div>
-              <h3 className="font-display text-lg font-medium mb-4 text-foreground">Noise Blend</h3>
-              <div className="space-y-4">
-                {/* Scale */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground">Scale</Label>
-                    <span className="text-xs text-muted-foreground">{(config.noiseBlendScale ?? 2).toFixed(1)}</span>
-                  </div>
-                  <Slider
-                    value={[config.noiseBlendScale ?? 2]}
-                    onValueChange={([value]) => onConfigChange({ noiseBlendScale: value })}
-                    min={0.5}
-                    max={5}
-                    step={0.1}
-                    className="w-full"
-                  />
-                  <p className="text-xs text-muted-foreground/70">Size of the noise pattern</p>
-                </div>
-                
-                {/* Complexity */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground">Complexity</Label>
-                    <span className="text-xs text-muted-foreground">{config.noiseBlendComplexity ?? 3}</span>
-                  </div>
-                  <Slider
-                    value={[config.noiseBlendComplexity ?? 3]}
-                    onValueChange={([value]) => onConfigChange({ noiseBlendComplexity: value })}
-                    min={1}
-                    max={5}
-                    step={1}
-                    className="w-full"
-                  />
-                  <p className="text-xs text-muted-foreground/70">Number of noise layers (more = richer detail)</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Diamond Controls */}
-          {isDiamondMode && (
-            <div>
-              <h3 className="font-display text-lg font-medium mb-4 text-foreground">Diamond</h3>
-              <div className="space-y-4">
-                {/* Sharpness */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground">Sharpness</Label>
-                    <span className="text-xs text-muted-foreground">{config.diamondSharpness ?? 50}%</span>
-                  </div>
-                  <Slider
-                    value={[config.diamondSharpness ?? 50]}
-                    onValueChange={([value]) => onConfigChange({ diamondSharpness: value })}
-                    min={0}
-                    max={100}
-                    step={5}
-                    className="w-full"
-                  />
-                  <p className="text-xs text-muted-foreground/70">How sharp or soft the diamond edges are</p>
-                </div>
-                
-                {/* Rotation */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground flex items-center gap-2">
-                      <RotateCw className="w-4 h-4" />
-                      Rotation
-                    </Label>
-                    <span className="text-xs text-muted-foreground">{config.diamondRotation ?? 45}°</span>
-                  </div>
-                  <Slider
-                    value={[config.diamondRotation ?? 45]}
-                    onValueChange={([value]) => onConfigChange({ diamondRotation: value })}
-                    min={0}
-                    max={360}
-                    step={5}
-                    className="w-full"
-                  />
-                </div>
-                
-                {/* Position Offset */}
-                <div className="space-y-3">
-                  <Label className="text-muted-foreground flex items-center gap-2">
-                    <Move className="w-4 h-4" />
-                    Center Offset
-                  </Label>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">Horizontal</span>
-                      <span className="text-xs text-muted-foreground">{config.diamondOffsetX ?? 0}%</span>
-                    </div>
-                    <Slider
-                      value={[config.diamondOffsetX ?? 0]}
-                      onValueChange={([value]) => onConfigChange({ diamondOffsetX: value })}
-                      min={-50}
-                      max={50}
-                      step={5}
-                      className="w-full"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">Vertical</span>
-                      <span className="text-xs text-muted-foreground">{config.diamondOffsetY ?? 0}%</span>
-                    </div>
-                    <Slider
-                      value={[config.diamondOffsetY ?? 0]}
-                      onValueChange={([value]) => onConfigChange({ diamondOffsetY: value })}
-                      min={-50}
-                      max={50}
-                      step={5}
-                      className="w-full"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Voronoi Controls */}
-          {isVoronoiMode && (
-            <div>
-              <h3 className="font-display text-lg font-medium mb-4 text-foreground">Voronoi Cells</h3>
-              <div className="space-y-4">
-                {/* Cell Count */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground">Cell Count</Label>
-                    <span className="text-xs text-muted-foreground">{config.voronoiScale ?? 5}</span>
-                  </div>
-                  <Slider
-                    value={[config.voronoiScale ?? 5]}
-                    onValueChange={([value]) => onConfigChange({ voronoiScale: value })}
-                    min={2}
-                    max={15}
-                    step={1}
-                    className="w-full"
-                  />
-                  <p className="text-xs text-muted-foreground/70">Number of cells in the pattern</p>
-                </div>
-                
-                {/* Randomness */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground">Randomness</Label>
-                    <span className="text-xs text-muted-foreground">{config.voronoiRandomness ?? 80}%</span>
-                  </div>
-                  <Slider
-                    value={[config.voronoiRandomness ?? 80]}
-                    onValueChange={([value]) => onConfigChange({ voronoiRandomness: value })}
-                    min={0}
-                    max={100}
-                    step={5}
-                    className="w-full"
-                  />
-                  <p className="text-xs text-muted-foreground/70">How random the cell positions are</p>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Animation / Freeze Frame */}
           <div>
