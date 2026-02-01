@@ -248,10 +248,9 @@ void main() {
     noise = clamp(noise, 0.0, 1.0);
     
   } else if (uGradientType == 4) {
-    // CONIC MODE: Angular gradient with optional spiral and soft edge fade
+    // CONIC MODE: Angular gradient with optional spiral
     vec2 offsetCenter = centeredUv - uConicOffset;
     float angle = atan(offsetCenter.y, offsetCenter.x);
-    float dist = length(offsetCenter) * 2.0;
     
     // Normalize angle from [-PI, PI] to [0, 1]
     float normalized = (angle + 3.14159265) / 6.28318530;
@@ -261,25 +260,15 @@ void main() {
     
     // Add spiral effect based on distance from center
     if (uConicSpiral > 0.01) {
+      float dist = length(offsetCenter) * 2.0;
       normalized = fract(normalized + dist * uConicSpiral);
     }
     
-    // Soft fade at edges of the color cycle to prevent hard seams
-    // Create smooth transitions at the 0/1 boundary
-    float edgeSoftness = 0.15;
-    float fadeNear0 = smoothstep(0.0, edgeSoftness, normalized);
-    float fadeNear1 = smoothstep(1.0, 1.0 - edgeSoftness, normalized);
-    float cycleFade = fadeNear0 * fadeNear1;
-    
-    // Blend the normalized value with a softer falloff at edges
-    // This prevents the sharp purple line at the spiral edge
-    float softNormalized = normalized * cycleFade + (1.0 - cycleFade) * 0.5;
-    
     // Add subtle noise for organic feel
     vec3 noisePos = vec3(vUv * 2.0 * freq, uTime * 0.2);
-    float organicNoise = snoise(noisePos) * 0.08 * density;
+    float organicNoise = snoise(noisePos) * 0.05 * density;
     
-    noise = softNormalized + organicNoise;
+    noise = normalized + organicNoise;
     noise = clamp(noise, 0.0, 1.0);
     
   } else if (uGradientType == 5) {

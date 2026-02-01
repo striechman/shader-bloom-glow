@@ -232,10 +232,9 @@ async function render4ColorGradientHighQuality(
         noise = Math.max(0, Math.min(1, noise));
         
       } else if (gradientType === 4) {
-        // CONIC MODE: Angular gradient with optional spiral and soft edge fade
+        // CONIC MODE: Angular gradient with optional spiral
         const offsetCenterU = centeredU - conicOffsetX;
         const offsetCenterV = centeredV - conicOffsetY;
-        const dist = Math.sqrt(offsetCenterU * offsetCenterU + offsetCenterV * offsetCenterV) * 2.0;
         let angle = Math.atan2(offsetCenterV, offsetCenterU);
         
         // Normalize angle from [-PI, PI] to [0, 1]
@@ -246,22 +245,14 @@ async function render4ColorGradientHighQuality(
         
         // Add spiral effect based on distance from center
         if (conicSpiral > 0.01) {
+          const dist = Math.sqrt(offsetCenterU * offsetCenterU + offsetCenterV * offsetCenterV) * 2.0;
           normalized = ((normalized + dist * conicSpiral) % 1 + 1) % 1;
         }
         
-        // Soft fade at edges of the color cycle to prevent hard seams
-        const edgeSoftness = 0.15;
-        const fadeNear0 = smoothstep(0.0, edgeSoftness, normalized);
-        const fadeNear1 = smoothstep(1.0, 1.0 - edgeSoftness, normalized);
-        const cycleFade = fadeNear0 * fadeNear1;
-        
-        // Blend the normalized value with a softer falloff at edges
-        const softNormalized = normalized * cycleFade + (1.0 - cycleFade) * 0.5;
-        
         // Add subtle noise for organic feel
-        const organicNoise = noise3D(u * 2 * freq, v * 2 * freq, time * 0.2) * 0.08 * density;
+        const organicNoise = noise3D(u * 2 * freq, v * 2 * freq, time * 0.2) * 0.05 * density;
         
-        noise = softNormalized + organicNoise;
+        noise = normalized + organicNoise;
         noise = Math.max(0, Math.min(1, noise));
         
       } else if (gradientType === 5) {
