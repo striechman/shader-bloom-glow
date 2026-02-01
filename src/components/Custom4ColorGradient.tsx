@@ -180,15 +180,19 @@ void main() {
     } else {
       // Linear gradient with custom angle
       vec2 direction = vec2(cos(uPlaneAngle), sin(uPlaneAngle));
-      baseNoise = dot(centeredUv, direction) + 0.5;
+      // Map from [-0.5, 0.5] to [0, 1] range properly
+      float dotProduct = dot(centeredUv, direction);
+      // Normalize based on max possible distance in that direction
+      float maxDist = length(direction * 0.5);
+      baseNoise = (dotProduct / maxDist) * 0.5 + 0.5;
     }
     
-    // Add subtle noise for organic feel
+    // Add subtle noise for organic feel (reduced to keep colors distinct)
     vec3 noisePos = vec3(vUv * 2.0 * freq, uTime * 0.25);
-    float organicNoise = snoise(noisePos) * 0.12 * density;
+    float organicNoise = snoise(noisePos) * 0.08 * density;
     
-    // Add gentle wave along gradient direction
-    float wave = sin(baseNoise * 6.28 + uTime * 0.4) * 0.06 * strength;
+    // Add gentle wave along gradient direction (reduced)
+    float wave = sin(baseNoise * 6.28 + uTime * 0.4) * 0.04 * strength;
     
     noise = baseNoise + organicNoise + wave;
     noise = clamp(noise, 0.0, 1.0);
