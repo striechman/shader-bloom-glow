@@ -230,12 +230,15 @@ void main() {
       baseNoise += waveNoise;
     }
     
-    // Apply spread (controls transition sharpness) - only when not at default
-    // Default (0.5) = normal soft gradient, 0 = sharp edges, 1 = very soft
-    if (uPlaneSpread < 0.45) {
-      // Sharpen transitions when spread is low
-      float sharpness = 1.0 - uPlaneSpread * 2.0; // 0-0.45 -> 1.0-0.1
-      baseNoise = mix(baseNoise, step(0.5, baseNoise), sharpness * 0.7);
+    // Apply spread (controls transition sharpness)
+    // 0% = very sharp edges, 50% = normal, 100% = extra soft
+    float sharpness = 1.0 - uPlaneSpread; // 0 = soft, 1 = sharp
+    if (sharpness > 0.1) {
+      // Apply sharpening using power function for smoother control
+      float center = 0.5;
+      float dist = baseNoise - center;
+      float sharpened = center + sign(dist) * pow(abs(dist * 2.0), 1.0 + sharpness * 2.0) * 0.5;
+      baseNoise = mix(baseNoise, clamp(sharpened, 0.0, 1.0), sharpness);
     }
     
     // Add subtle organic noise for texture
