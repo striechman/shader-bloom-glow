@@ -768,7 +768,18 @@ ${smoothStops}
         return;
       }
 
-      // Prefer WebGL pixel capture (matches the preview exactly). Fall back to JS render only if capture fails.
+      // ==========================================================================
+      // EXPORT STRATEGY: WebGL pixel capture for exact preview match
+      // ==========================================================================
+      // We capture the live WebGL canvas directly to preserve the EXACT on-screen
+      // appearance including animation state, colors, and noise patterns.
+      // 
+      // Key points:
+      // 1. We wait for multiple animation frames to ensure the GL buffer is ready
+      // 2. We do NOT add any post-processing overlays that don't exist in preview
+      // 3. Fallback to JS renderer only if WebGL capture completely fails
+      // ==========================================================================
+      
       const isHeroBanner = config.aspectRatio === 'hero-banner';
       const gradientStage = document.querySelector('#gradient-stage');
       const sourceCanvas = (gradientStage?.querySelector('canvas') ?? null) as HTMLCanvasElement | null;
@@ -776,52 +787,29 @@ ${smoothStops}
       let captured = false;
       if (sourceCanvas) {
         try {
+          // Wait for 2 animation frames to ensure WebGL has rendered the latest state
+          await new Promise<void>(resolve => {
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => resolve());
+            });
+          });
+          
           await captureWebGLCanvasTo2D(sourceCanvas, ctx, targetWidth, targetHeight);
           captured = true;
-        } catch {
+        } catch (e) {
+          console.warn('[Export] WebGL capture failed, falling back to JS renderer:', e);
           captured = false;
         }
       }
 
       if (!captured) {
+        // Fallback: Use high-quality JS renderer
         await render4ColorGradientHighQuality(ctx, targetWidth, targetHeight, config, isHeroBanner);
       }
       
-      // Note: Removed corner healing as it was causing visual discrepancies between
-      // the on-screen preview and exported images. The WebGL capture now preserves
-      // the exact appearance from the preview.
-
-      // Add weight overlay for static mode (matches on-screen behavior)
-      const isFrozen = config.frozenTime !== null;
-      const isStaticMode = !config.animate || isFrozen;
-
-      if (isStaticMode) {
-        const w1 = config.colorWeight1;
-        const w2 = w1 + config.colorWeight2;
-        const feather = 6;
-        const f1 = Math.max(0, w1 - feather) / 100;
-        const f2 = Math.min(100, w1 + feather) / 100;
-        const f3 = Math.max(0, w2 - feather) / 100;
-        const f4 = Math.min(100, w2 + feather) / 100;
-
-        const g = ctx.createLinearGradient(0, 0, targetWidth, targetHeight);
-        g.addColorStop(0, config.color1);
-        g.addColorStop(f1, config.color1);
-        g.addColorStop(f2, config.color2);
-        g.addColorStop(f3, config.color2);
-        g.addColorStop(f4, config.color3);
-        g.addColorStop(1, config.color3);
-
-        ctx.save();
-        ctx.globalAlpha = 0.4;
-        ctx.globalCompositeOperation = 'soft-light';
-        ctx.filter = 'blur(48px)';
-        ctx.fillStyle = g;
-        const padX = targetWidth * 0.08;
-        const padY = targetHeight * 0.08;
-        ctx.fillRect(-padX, -padY, targetWidth + padX * 2, targetHeight + padY * 2);
-        ctx.restore();
-      }
+      // NOTE: We intentionally do NOT apply any post-processing overlays here.
+      // The "static mode overlay" was removed because it created visual discrepancies
+      // between the preview and exported images. The export now matches the preview exactly.
 
       // Export
       const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
