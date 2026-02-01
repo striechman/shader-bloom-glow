@@ -13,7 +13,7 @@ import {
   webAssetsBrandColors,
 } from '@/types/webAssets';
 import { BannerCanvas } from './BannerCanvas';
-import { noise3D, smoothstep, lerp, parseColor } from '@/lib/noise';
+import { noise3D, smoothstep, lerp, parseColorLinear, linearToSrgb } from '@/lib/noise';
 import { captureWebGLCanvasTo2D } from '@/lib/webglCapture';
 import { downloadBlob } from '@/lib/download';
 
@@ -40,10 +40,10 @@ function renderBannerHighQuality(
   const imageData = ctx.createImageData(width, height);
   const data = imageData.data;
   
-  // Parse colors
-  const color1 = parseColor(config.gradientColors[0] || '#FDB515');
-  const color2 = parseColor(config.gradientColors[1] || '#EC008C');
-  const color3 = parseColor(config.gradientColors[2] || '#6A00F4');
+  // Parse colors to Linear RGB for correct color mixing (matches WebGL shader)
+  const color1 = parseColorLinear(config.gradientColors[0] || '#FDB515');
+  const color2 = parseColorLinear(config.gradientColors[1] || '#EC008C');
+  const color3 = parseColorLinear(config.gradientColors[2] || '#6A00F4');
   
   const noiseScale = config.meshNoiseScale ?? 1.0;
   const blurFactor = ((config.meshBlur ?? 50) / 100) * 0.5;
@@ -133,10 +133,11 @@ function renderBannerHighQuality(
         }
       }
       
+      // Convert from Linear RGB back to sRGB for output
       const idx = (y * width + x) * 4;
-      data[idx] = Math.round(Math.max(0, Math.min(255, r)));
-      data[idx + 1] = Math.round(Math.max(0, Math.min(255, g)));
-      data[idx + 2] = Math.round(Math.max(0, Math.min(255, b)));
+      data[idx] = linearToSrgb(r);
+      data[idx + 1] = linearToSrgb(g);
+      data[idx + 2] = linearToSrgb(b);
       data[idx + 3] = 255;
     }
   }
