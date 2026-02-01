@@ -1,15 +1,11 @@
 import { motion } from 'framer-motion';
-import { Menu, Undo2, Redo2 } from 'lucide-react';
+import { Menu } from 'lucide-react';
 
 interface HeaderProps {
   onMenuToggle: () => void;
-  onUndo?: () => void;
-  onRedo?: () => void;
-  canUndo?: boolean;
-  canRedo?: boolean;
 }
 
-export const Header = ({ onMenuToggle, onUndo, onRedo, canUndo = false, canRedo = false }: HeaderProps) => {
+export const Header = ({ onMenuToggle }: HeaderProps) => {
   return (
     <motion.header
       initial={{ opacity: 0, y: -20 }}
@@ -39,55 +35,16 @@ export const Header = ({ onMenuToggle, onUndo, onRedo, canUndo = false, canRedo 
           </div>
         </div>
         
-        {/* Right side controls */}
-        <div className="flex items-center gap-2">
-          {/* Undo/Redo Buttons */}
-          {onUndo && onRedo && (
-            <div className="flex items-center gap-1">
-              <motion.button
-                onClick={onUndo}
-                disabled={!canUndo}
-                className={`glass rounded-full p-2.5 md:p-3 transition-colors ${
-                  canUndo 
-                    ? 'hover:bg-secondary/50 text-foreground' 
-                    : 'opacity-40 cursor-not-allowed text-muted-foreground'
-                }`}
-                whileHover={canUndo ? { scale: 1.05 } : {}}
-                whileTap={canUndo ? { scale: 0.95 } : {}}
-                aria-label="Undo"
-                title="Undo (Ctrl+Z)"
-              >
-                <Undo2 className="w-4 h-4" />
-              </motion.button>
-              <motion.button
-                onClick={onRedo}
-                disabled={!canRedo}
-                className={`glass rounded-full p-2.5 md:p-3 transition-colors ${
-                  canRedo 
-                    ? 'hover:bg-secondary/50 text-foreground' 
-                    : 'opacity-40 cursor-not-allowed text-muted-foreground'
-                }`}
-                whileHover={canRedo ? { scale: 1.05 } : {}}
-                whileTap={canRedo ? { scale: 0.95 } : {}}
-                aria-label="Redo"
-                title="Redo (Ctrl+Shift+Z)"
-              >
-                <Redo2 className="w-4 h-4" />
-              </motion.button>
-            </div>
-          )}
-          
-          {/* Hamburger Menu Button */}
-          <motion.button
-            onClick={onMenuToggle}
-            className="glass rounded-full p-3 md:p-4 hover:bg-secondary/50 transition-colors"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            aria-label="Open menu"
-          >
-            <Menu className="w-5 h-5 text-foreground" />
-          </motion.button>
-        </div>
+        {/* Hamburger Menu Button */}
+        <motion.button
+          onClick={onMenuToggle}
+          className="glass rounded-full p-3 md:p-4 hover:bg-secondary/50 transition-colors"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          aria-label="Open menu"
+        >
+          <Menu className="w-5 h-5 text-foreground" />
+        </motion.button>
       </div>
     </motion.header>
   );

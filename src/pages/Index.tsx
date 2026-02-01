@@ -7,20 +7,12 @@ import { ExportModal } from '@/components/ExportModal';
 import { WebButtonsPanel } from '@/components/WebButtonsPanel';
 import { GradientConfig, defaultGradientConfig, getThemeColor0 } from '@/types/gradient';
 import { useTheme } from '@/hooks/useTheme';
-import { useConfigHistory } from '@/hooks/useConfigHistory';
 
 const Index = () => {
   const { theme } = useTheme();
-  const { 
-    config, 
-    updateConfig, 
-    undo, 
-    redo, 
-    canUndo, 
-    canRedo 
-  } = useConfigHistory({
+  const [config, setConfig] = useState<GradientConfig>({
     ...defaultGradientConfig,
-    color0: getThemeColor0('dark'), // Start with dark mode color0
+    color0: getThemeColor0('dark'),
   });
   
   const [isPanelOpen, setIsPanelOpen] = useState(false);
@@ -29,37 +21,17 @@ const Index = () => {
 
   // Update color0 and color3 based on theme
   useEffect(() => {
-    updateConfig(prev => {
+    setConfig(prev => {
       const newColor0 = getThemeColor0(theme);
-      // Also update color3 if it's the default value
       const isDefaultColor3 = prev.color3 === '#000000' || prev.color3 === '#FFFFFF';
       const newColor3 = isDefaultColor3 ? (theme === 'dark' ? '#000000' : '#FFFFFF') : prev.color3;
       return { ...prev, color0: newColor0, color3: newColor3 };
-    }, false); // Don't record theme changes in history
-  }, [theme, updateConfig]);
-
-  // Keyboard shortcuts for undo/redo
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Undo: Ctrl+Z or Cmd+Z
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
-        e.preventDefault();
-        undo();
-      }
-      // Redo: Ctrl+Shift+Z or Cmd+Shift+Z or Ctrl+Y
-      if ((e.ctrlKey || e.metaKey) && ((e.key === 'z' && e.shiftKey) || e.key === 'y')) {
-        e.preventDefault();
-        redo();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undo, redo]);
+    });
+  }, [theme]);
 
   const handleConfigChange = useCallback((updates: Partial<GradientConfig>) => {
-    updateConfig((prev) => ({ ...prev, ...updates }));
-  }, [updateConfig]);
+    setConfig((prev) => ({ ...prev, ...updates }));
+  }, []);
 
   return (
     <div className="relative min-h-screen overflow-x-hidden">
@@ -77,14 +49,8 @@ const Index = () => {
       {/* Overlay for readability */}
       <div className="fixed inset-0 bg-gradient-to-b from-background/30 via-transparent to-background pointer-events-none z-[1]" />
 
-      {/* Header with Undo/Redo */}
-      <Header 
-        onMenuToggle={() => setIsPanelOpen(!isPanelOpen)}
-        onUndo={undo}
-        onRedo={redo}
-        canUndo={canUndo}
-        canRedo={canRedo}
-      />
+      {/* Header */}
+      <Header onMenuToggle={() => setIsPanelOpen(!isPanelOpen)} />
 
       {/* Control Panel */}
       <ControlPanel
