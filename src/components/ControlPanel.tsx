@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Minus, Save, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Minus } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -8,8 +8,6 @@ import { useState, useEffect, useRef } from 'react';
 import { GradientConfig, isHeroBannerRatio, isButtonRatio, getThemeColor0 } from '@/types/gradient';
 import { useTheme } from '@/hooks/useTheme';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { usePresets, GradientPreset } from '@/hooks/usePresets';
-import { toast } from 'sonner';
 
 // Plane direction presets
 const planeDirectionPresets = [
@@ -139,10 +137,6 @@ const effectPresets: Record<string, Partial<GradientConfig>> = {
 
 export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenButtonsPanel }: ControlPanelProps) => {
   const isMobile = useIsMobile();
-  const { presets, savePreset, loadPreset, deletePreset } = usePresets();
-  const [showPresets, setShowPresets] = useState(false);
-  const [newPresetName, setNewPresetName] = useState('');
-  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
   const [internalTime, setInternalTime] = useState(0);
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
@@ -281,31 +275,6 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === 'dark';
 
-  const toggleSection = (section: string) => {
-    setCollapsedSections(prev => ({ ...prev, [section]: !prev[section] }));
-  };
-
-  const handleSavePreset = () => {
-    if (!newPresetName.trim()) {
-      toast.error('Please enter a preset name');
-      return;
-    }
-    savePreset(newPresetName.trim(), config);
-    setNewPresetName('');
-    toast.success(`Preset "${newPresetName}" saved!`);
-  };
-
-  const handleLoadPreset = (preset: GradientPreset) => {
-    const presetConfig = loadPreset(preset);
-    onConfigChange(presetConfig);
-    toast.success(`Loaded "${preset.name}"`);
-  };
-
-  const handleDeletePreset = (id: string, name: string) => {
-    deletePreset(id);
-    toast.success(`Deleted "${name}"`);
-  };
-
   return (
     <>
       {/* Backdrop overlay - closes panel on click */}
@@ -321,32 +290,16 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
         )}
       </AnimatePresence>
       
-      {/* Panel */}
+      {/* Panel - slides from right on all devices */}
       <motion.div
         initial={false}
-        animate={isOpen ? { 
-          x: isMobile ? 0 : 0, 
-          y: isMobile ? 0 : 0,
-          opacity: 1 
-        } : { 
-          x: isMobile ? 0 : '100%', 
-          y: isMobile ? '100%' : 0,
-          opacity: isMobile ? 1 : 0
-        }}
+        animate={isOpen ? { x: 0, opacity: 1 } : { x: '100%', opacity: 0 }}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        className={`fixed z-40 glass overflow-y-auto ${
-          isMobile 
-            ? 'bottom-0 left-0 right-0 h-[75vh] rounded-t-2xl' 
-            : 'top-0 right-0 h-full w-80'
+        className={`fixed z-40 glass overflow-y-auto top-0 right-0 h-full ${
+          isMobile ? 'w-[85vw] max-w-80' : 'w-80'
         }`}
-        style={!isOpen && !isMobile ? { pointerEvents: 'none' } : undefined}
+        style={!isOpen ? { pointerEvents: 'none' } : undefined}
       >
-        {/* Mobile drag handle */}
-        {isMobile && (
-          <div className="sticky top-0 flex justify-center py-2 bg-inherit z-10">
-            <div className="w-12 h-1 bg-muted-foreground/30 rounded-full" />
-          </div>
-        )}
         
         <div className={`p-4 md:p-6 space-y-6 ${isMobile ? 'pb-8' : 'pt-6 space-y-8'}`}>
           {/* Panel Header with close button */}
@@ -360,82 +313,6 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
               <X className="w-5 h-5 text-foreground" />
             </button>
           </div>
-
-          {/* My Presets Section */}
-          <div className="space-y-3">
-            <button
-              onClick={() => setShowPresets(!showPresets)}
-              className="flex items-center justify-between w-full py-2"
-            >
-              <h3 className="font-display text-lg font-medium text-foreground">My Presets</h3>
-              {showPresets ? (
-                <ChevronUp className="w-5 h-5 text-muted-foreground" />
-              ) : (
-                <ChevronDown className="w-5 h-5 text-muted-foreground" />
-              )}
-            </button>
-            
-            <AnimatePresence>
-              {showPresets && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className="overflow-hidden space-y-3"
-                >
-                  {/* Save new preset */}
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={newPresetName}
-                      onChange={(e) => setNewPresetName(e.target.value)}
-                      placeholder="Preset name..."
-                      className="flex-1 px-3 py-2 text-sm rounded-lg bg-secondary text-foreground placeholder:text-muted-foreground border border-border focus:outline-none focus:ring-2 focus:ring-primary"
-                      onKeyDown={(e) => e.key === 'Enter' && handleSavePreset()}
-                    />
-                    <button
-                      onClick={handleSavePreset}
-                      className="px-3 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-                      title="Save current settings as preset"
-                    >
-                      <Save className="w-4 h-4" />
-                    </button>
-                  </div>
-                  
-                  {/* Preset list */}
-                  {presets.length > 0 ? (
-                    <div className="space-y-2 max-h-40 overflow-y-auto">
-                      {presets.map((preset) => (
-                        <div
-                          key={preset.id}
-                          className="flex items-center justify-between p-2 rounded-lg bg-secondary/50 hover:bg-secondary/80 transition-colors group"
-                        >
-                          <button
-                            onClick={() => handleLoadPreset(preset)}
-                            className="flex-1 text-left text-sm font-medium text-foreground truncate"
-                          >
-                            {preset.name}
-                          </button>
-                          <button
-                            onClick={() => handleDeletePreset(preset.id, preset.name)}
-                            className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-all"
-                            title="Delete preset"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground text-center py-2">
-                      No saved presets yet
-                    </p>
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
           {/* Theme Toggle */}
           <div className="flex items-center justify-between py-3 px-4 rounded-lg bg-secondary/50">
             <div className="flex items-center gap-3">
