@@ -4,7 +4,7 @@ import { useRef, useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import { GradientConfig, exportCategories, ExportCategory, aspectRatioValues } from '@/types/gradient';
 import { Slider } from '@/components/ui/slider';
-import { noise3D, perlinNoise3D, smoothstep, lerp, parseColor, parseColorLinear, linearToSrgb } from '@/lib/noise';
+import { noise3D, perlinNoise3D, smoothstep, lerp, parseColor, parseColorLinear, linearToSrgb, linearToSrgbDithered } from '@/lib/noise';
 import { captureWebGLCanvasTo2D } from '@/lib/webglCapture';
 import { downloadBlob } from '@/lib/download';
 
@@ -344,18 +344,18 @@ async function render4ColorGradientHighQuality(
         }
       }
       
-      // Convert from Linear RGB back to sRGB for output
-      let finalR = linearToSrgb(r);
-      let finalG = linearToSrgb(g);
-      let finalB = linearToSrgb(b);
+      // Convert from Linear RGB back to sRGB with dithering for smooth exports
+      let finalR = linearToSrgbDithered(r, x, y);
+      let finalG = linearToSrgbDithered(g, x, y);
+      let finalB = linearToSrgbDithered(b, x, y);
       
       // Apply grain if enabled (in sRGB space)
       if (grainIntensity > 0) {
         const grainNoise = perlinNoise3D(u * 220.0, v * 220.0, time * 1.4);
         const grainAmt = (grainNoise * 0.5) * (grainIntensity * 0.18) * 255;
-        finalR = Math.round(Math.max(0, Math.min(255, finalR + grainAmt)));
-        finalG = Math.round(Math.max(0, Math.min(255, finalG + grainAmt)));
-        finalB = Math.round(Math.max(0, Math.min(255, finalB + grainAmt)));
+        finalR = Math.max(0, Math.min(255, Math.round(finalR + grainAmt)));
+        finalG = Math.max(0, Math.min(255, Math.round(finalG + grainAmt)));
+        finalB = Math.max(0, Math.min(255, Math.round(finalB + grainAmt)));
       }
       
       const idx = (y * width + x) * 4;
