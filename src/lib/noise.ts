@@ -296,27 +296,33 @@ export function linearToSrgb(c: number): number {
   return Math.round(Math.max(0, Math.min(255, s * 255)));
 }
 
-// Linear RGB to sRGB with dithering for smooth exports (no banding)
-// Uses blue noise approximation via position-based dithering
+// Linear RGB to sRGB with stronger dithering for smooth exports (no banding)
+// Uses 8x8 Bayer matrix for better gradient smoothing
 export function linearToSrgbDithered(c: number, x: number, y: number): number {
   const s = c <= 0.0031308 
     ? c * 12.92 
     : 1.055 * Math.pow(c, 1 / 2.4) - 0.055;
   const value = s * 255;
   
-  // Bayer-like dithering pattern for smooth gradients
-  // Use position to create a repeating pattern that breaks up banding
-  const ditherMatrix = [
-    [0, 8, 2, 10],
-    [12, 4, 14, 6],
-    [3, 11, 1, 9],
-    [15, 7, 13, 5]
+  // 8x8 Bayer dithering matrix for smoother gradients
+  // Values are normalized 0-63, then scaled to -0.5 to +0.5
+  const bayer8x8 = [
+    [ 0, 32,  8, 40,  2, 34, 10, 42],
+    [48, 16, 56, 24, 50, 18, 58, 26],
+    [12, 44,  4, 36, 14, 46,  6, 38],
+    [60, 28, 52, 20, 62, 30, 54, 22],
+    [ 3, 35, 11, 43,  1, 33,  9, 41],
+    [51, 19, 59, 27, 49, 17, 57, 25],
+    [15, 47,  7, 39, 13, 45,  5, 37],
+    [63, 31, 55, 23, 61, 29, 53, 21]
   ];
-  const mx = x % 4;
-  const my = y % 4;
-  const threshold = (ditherMatrix[my][mx] / 16.0) - 0.5;
   
-  // Apply subtle dithering (±0.5 pixel value)
+  const mx = x % 8;
+  const my = y % 8;
+  // Normalize to -0.5 to +0.5, then scale up for stronger effect
+  const threshold = (bayer8x8[my][mx] / 64.0 - 0.5) * 2.0;
+  
+  // Apply dithering (±1.0 pixel value for visible smoothing)
   const dithered = value + threshold;
   
   return Math.max(0, Math.min(255, Math.round(dithered)));
