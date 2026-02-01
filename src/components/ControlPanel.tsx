@@ -255,6 +255,17 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
 
   return (
     <>
+      {/* Backdrop overlay for mobile - closes panel on click */}
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onToggle}
+          className="fixed inset-0 z-30 bg-black/20 md:hidden"
+        />
+      )}
+      
       {/* Panel */}
       <motion.div
         initial={{ x: 400, opacity: 0 }}
