@@ -14,8 +14,8 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
   const isStaticMode = isButton ? true : (!config.animate || isFrozen);
   const isHeroBanner = isHeroBannerRatio(config.aspectRatio);
   
-  // Check if we should use 4-color mode (Mesh or Plane)
-  const use4ColorMode = config.type === 'plane' || config.wireframe;
+  // Check if we should use 4-color mode (Mesh, Plane, or Conic)
+  const use4ColorMode = config.type === 'plane' || config.type === 'conic' || config.wireframe;
   
   // Get current colors based on button preview state
   const currentColors = useMemo(() => {
@@ -121,7 +121,7 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
             }}
           >
             <ShaderGradient
-              type={config.type}
+              type={config.type === 'conic' ? 'sphere' : config.type}
               animate={isButton ? 'off' : (isStaticMode ? 'off' : 'on')}
               uTime={isFrozen && config.frozenTime !== null ? config.frozenTime : 0}
               uSpeed={config.speed}

@@ -108,7 +108,7 @@ uniform float uStrength;
 uniform float uDensity;
 uniform float uFrequency;
 uniform float uGrain;
-uniform int uGradientType; // 0=mesh, 1=sphere, 2=plane, 3=water
+uniform int uGradientType; // 0=mesh, 1=sphere, 2=plane, 3=water, 4=conic
 uniform float uPlaneAngle; // Plane gradient angle in radians
 uniform bool uPlaneRadial; // If true, radial gradient from center
 uniform float uPlaneWave; // Wave distortion amount (0-1)
@@ -117,6 +117,10 @@ uniform vec2 uPlaneOffset; // Center offset for radial
 uniform int uMeshStyle; // 0=organic, 1=flow, 2=center
 uniform float uMeshFlowAngle; // radians
 uniform bool uMeshCenterInward;
+// Conic uniforms
+uniform float uConicStartAngle; // radians
+uniform float uConicSpiral; // 0-1
+uniform vec2 uConicOffset; // Center offset
 
 varying vec2 vUv;
 varying vec3 vPosition;
@@ -238,6 +242,29 @@ void main() {
     noise = baseNoise + organicNoise;
     noise = clamp(noise, 0.0, 1.0);
     
+  } else if (uGradientType == 4) {
+    // CONIC MODE: Angular gradient with optional spiral
+    vec2 offsetCenter = centeredUv - uConicOffset;
+    float angle = atan(offsetCenter.y, offsetCenter.x);
+    
+    // Normalize angle from [-PI, PI] to [0, 1]
+    float normalized = (angle + 3.14159265) / 6.28318530;
+    
+    // Apply start angle offset
+    normalized = fract(normalized + uConicStartAngle / 6.28318530);
+    
+    // Add spiral effect based on distance from center
+    if (uConicSpiral > 0.01) {
+      float dist = length(offsetCenter) * 2.0;
+      normalized = fract(normalized + dist * uConicSpiral);
+    }
+    
+    // Add subtle noise for organic feel
+    vec3 noisePos = vec3(vUv * 2.0 * freq, uTime * 0.2);
+    float organicNoise = snoise(noisePos) * 0.05 * density;
+    
+    noise = normalized + organicNoise;
+    noise = clamp(noise, 0.0, 1.0);
     
   } else {
     // WATER MODE: Smooth flowing liquid effect like the original
@@ -317,6 +344,7 @@ const typeToInt: Record<string, number> = {
   'sphere': 1,
   'plane': 2,
   'waterPlane': 3,
+  'conic': 4,
 };
 
 export function Custom4ColorGradient({ config }: Custom4ColorGradientProps) {
@@ -355,6 +383,10 @@ export function Custom4ColorGradient({ config }: Custom4ColorGradientProps) {
     uMeshStyle: { value: config.meshStyle === 'flow' ? 1 : config.meshStyle === 'center' ? 2 : 0 },
     uMeshFlowAngle: { value: (config.meshFlowAngle ?? 45) * Math.PI / 180 },
     uMeshCenterInward: { value: config.meshCenterInward ?? true },
+    // Conic uniforms
+    uConicStartAngle: { value: (config.conicStartAngle ?? 0) * Math.PI / 180 },
+    uConicSpiral: { value: (config.conicSpiral ?? 0) / 100 },
+    uConicOffset: { value: new THREE.Vector2((config.conicOffsetX ?? 0) / 100, (config.conicOffsetY ?? 0) / 100) },
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), []);
   
@@ -397,6 +429,11 @@ export function Custom4ColorGradient({ config }: Custom4ColorGradientProps) {
     mat.uniforms.uMeshStyle.value = config.meshStyle === 'flow' ? 1 : config.meshStyle === 'center' ? 2 : 0;
     mat.uniforms.uMeshFlowAngle.value = (config.meshFlowAngle ?? 45) * Math.PI / 180;
     mat.uniforms.uMeshCenterInward.value = config.meshCenterInward ?? true;
+    
+    // Update conic uniforms
+    mat.uniforms.uConicStartAngle.value = (config.conicStartAngle ?? 0) * Math.PI / 180;
+    mat.uniforms.uConicSpiral.value = (config.conicSpiral ?? 0) / 100;
+    mat.uniforms.uConicOffset.value.set((config.conicOffsetX ?? 0) / 100, (config.conicOffsetY ?? 0) / 100);
     
     const isFrozen = config.frozenTime !== null;
     const shouldAnimate = config.animate && !isFrozen;

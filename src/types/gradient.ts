@@ -1,6 +1,6 @@
 export interface GradientConfig {
   // Shape
-  type: 'sphere' | 'plane' | 'waterPlane';
+  type: 'sphere' | 'plane' | 'waterPlane' | 'conic';
   wireframe: boolean;
   
   // Colors (Default state) - color0 is always theme-based (black/white)
@@ -57,6 +57,12 @@ export interface GradientConfig {
   planeSpread: number; // 0-100 how sharp/soft the color transitions are
   planeOffsetX: number; // -50 to 50 horizontal offset of center
   planeOffsetY: number; // -50 to 50 vertical offset of center
+  
+  // Conic gradient settings
+  conicStartAngle: number; // 0-360 degrees starting angle
+  conicSpiral: number; // 0-100 spiral intensity
+  conicOffsetX: number; // -50 to 50 horizontal offset of center
+  conicOffsetY: number; // -50 to 50 vertical offset of center
 }
 
 export const defaultGradientConfig: GradientConfig = {
@@ -97,6 +103,11 @@ export const defaultGradientConfig: GradientConfig = {
   planeSpread: 50,
   planeOffsetX: 0,
   planeOffsetY: 0,
+  // Conic defaults
+  conicStartAngle: 0,
+  conicSpiral: 0,
+  conicOffsetX: 0,
+  conicOffsetY: 0,
 };
 
 // Get theme-based color0 (black for dark mode, white for light mode)
