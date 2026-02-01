@@ -1,6 +1,6 @@
 export interface GradientConfig {
-  // Shape - includes new gradient types: noiseBlend, diamond, voronoi
-  type: 'sphere' | 'plane' | 'waterPlane' | 'conic';
+  // Shape - gradient types
+  type: 'sphere' | 'plane' | 'waterPlane' | 'conic' | 'radialBurst' | 'spiral' | 'waves' | 'aurora';
   wireframe: boolean;
   
   // Colors (Default state) - color0 is always theme-based (black/white)
@@ -64,6 +64,21 @@ export interface GradientConfig {
   conicOffsetX: number; // -50 to 50 horizontal offset of center
   conicOffsetY: number; // -50 to 50 vertical offset of center
   
+  // Radial Burst settings
+  burstRays: number; // 4-24 number of rays
+  burstTwist: number; // 0-100 twist amount
+  
+  // Spiral settings
+  spiralTightness: number; // 1-10 how tight the spiral is
+  spiralDirection: boolean; // true = clockwise, false = counter-clockwise
+  
+  // Waves settings
+  wavesCount: number; // 2-10 number of waves
+  wavesAmplitude: number; // 0-100 wave height
+  
+  // Aurora settings
+  auroraLayers: number; // 2-5 number of flowing layers
+  auroraSpeed: number; // 0-100 flow speed multiplier
 }
 
 export const defaultGradientConfig: GradientConfig = {
@@ -109,6 +124,18 @@ export const defaultGradientConfig: GradientConfig = {
   conicSpiral: 0,
   conicOffsetX: 0,
   conicOffsetY: 0,
+  // Radial Burst defaults
+  burstRays: 12,
+  burstTwist: 30,
+  // Spiral defaults
+  spiralTightness: 3,
+  spiralDirection: true,
+  // Waves defaults
+  wavesCount: 5,
+  wavesAmplitude: 50,
+  // Aurora defaults
+  auroraLayers: 3,
+  auroraSpeed: 50,
 };
 
 // Get theme-based color0 (black for dark mode, white for light mode)
