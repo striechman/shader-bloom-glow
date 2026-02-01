@@ -39,10 +39,8 @@ const shapeOptions: { value: GradientConfig['type']; wireframe: boolean; label: 
   { value: 'waterPlane', wireframe: false, label: 'Water' },
   { value: 'plane', wireframe: true, label: 'Mesh' },
   { value: 'conic', wireframe: false, label: 'Conic' },
-  { value: 'radialBurst', wireframe: false, label: 'Burst' },
   { value: 'spiral', wireframe: false, label: 'Spiral' },
   { value: 'waves', wireframe: false, label: 'Waves' },
-  { value: 'aurora', wireframe: false, label: 'Aurora' },
 ];
 
 const aspectRatioOptions: { value: GradientConfig['aspectRatio']; label: string; category?: string }[] = [
@@ -137,15 +135,6 @@ const effectPresets: Record<string, Partial<GradientConfig>> = {
     colorWeight2: 25,
     colorWeight3: 25,
   },
-  radialBurst: {
-    uStrength: 1.2,
-    uDensity: 0.8,
-    uFrequency: 1,
-    colorWeight0: 25,
-    colorWeight1: 25,
-    colorWeight2: 25,
-    colorWeight3: 25,
-  },
   spiral: {
     uStrength: 1,
     uDensity: 0.6,
@@ -163,15 +152,6 @@ const effectPresets: Record<string, Partial<GradientConfig>> = {
     colorWeight1: 23,
     colorWeight2: 24,
     colorWeight3: 23,
-  },
-  aurora: {
-    uStrength: 0.8,
-    uDensity: 1.5,
-    uFrequency: 2,
-    colorWeight0: 30,
-    colorWeight1: 25,
-    colorWeight2: 25,
-    colorWeight3: 20,
   },
 };
 
@@ -312,10 +292,8 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
 
   const isWireframeMode = config.wireframe;
   const isConicMode = config.type === 'conic';
-  const isBurstMode = config.type === 'radialBurst';
   const isSpiralMode = config.type === 'spiral';
   const isWavesMode = config.type === 'waves';
-  const isAuroraMode = config.type === 'aurora';
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === 'dark';
 
@@ -391,7 +369,6 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                   if (shape.label === 'Burst') return 'radialBurst';
                   if (shape.label === 'Spiral') return 'spiral';
                   if (shape.label === 'Waves') return 'waves';
-                  if (shape.label === 'Aurora') return 'aurora';
                   return null;
                 };
                 
@@ -959,48 +936,6 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
             </div>
           )}
 
-          {/* Radial Burst Controls */}
-          {isBurstMode && (
-            <div>
-              <h3 className="font-display text-lg font-medium mb-4 text-foreground">Radial Burst</h3>
-              <div className="space-y-4">
-                {/* Ray Count */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground">Rays</Label>
-                    <span className="text-xs text-muted-foreground">{config.burstRays ?? 12}</span>
-                  </div>
-                  <Slider
-                    value={[config.burstRays ?? 12]}
-                    onValueChange={([value]) => onConfigChange({ burstRays: value })}
-                    min={4}
-                    max={24}
-                    step={1}
-                    className="w-full"
-                  />
-                  <p className="text-xs text-muted-foreground/70">Number of light rays</p>
-                </div>
-                
-                {/* Twist */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground">Twist</Label>
-                    <span className="text-xs text-muted-foreground">{config.burstTwist ?? 30}%</span>
-                  </div>
-                  <Slider
-                    value={[config.burstTwist ?? 30]}
-                    onValueChange={([value]) => onConfigChange({ burstTwist: value })}
-                    min={0}
-                    max={100}
-                    step={5}
-                    className="w-full"
-                  />
-                  <p className="text-xs text-muted-foreground/70">Spiral twist amount</p>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Spiral Controls */}
           {isSpiralMode && (
             <div>
@@ -1071,47 +1006,6 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                     className="w-full"
                   />
                   <p className="text-xs text-muted-foreground/70">Wave height intensity</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Aurora Controls */}
-          {isAuroraMode && (
-            <div>
-              <h3 className="font-display text-lg font-medium mb-4 text-foreground">Aurora</h3>
-              <div className="space-y-4">
-                {/* Layers */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground">Layers</Label>
-                    <span className="text-xs text-muted-foreground">{config.auroraLayers ?? 3}</span>
-                  </div>
-                  <Slider
-                    value={[config.auroraLayers ?? 3]}
-                    onValueChange={([value]) => onConfigChange({ auroraLayers: value })}
-                    min={2}
-                    max={5}
-                    step={1}
-                    className="w-full"
-                  />
-                  <p className="text-xs text-muted-foreground/70">Number of flowing layers</p>
-                </div>
-                
-                {/* Speed */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground">Flow Speed</Label>
-                    <span className="text-xs text-muted-foreground">{config.auroraSpeed ?? 50}%</span>
-                  </div>
-                  <Slider
-                    value={[config.auroraSpeed ?? 50]}
-                    onValueChange={([value]) => onConfigChange({ auroraSpeed: value })}
-                    min={10}
-                    max={100}
-                    step={5}
-                    className="w-full"
-                  />
                 </div>
               </div>
             </div>

@@ -157,25 +157,19 @@ async function render4ColorGradientHighQuality(
   
   
   // New effect settings
-  const burstRays = config.burstRays ?? 12;
-  const burstTwist = (config.burstTwist ?? 30) / 100;
   const spiralTightness = config.spiralTightness ?? 3;
   const spiralDirection = config.spiralDirection ?? true;
   const wavesCount = config.wavesCount ?? 5;
   const wavesAmplitude = (config.wavesAmplitude ?? 50) / 100;
-  const auroraLayers = config.auroraLayers ?? 3;
-  const auroraSpeed = (config.auroraSpeed ?? 50) / 100;
   
-  // Gradient type: 0=mesh, 1=sphere, 2=plane, 3=water, 4=conic, 5=radialBurst, 6=spiral, 7=waves, 8=aurora
+  // Gradient type: 0=mesh, 1=sphere, 2=plane, 3=water, 4=conic, 5=spiral, 6=waves
   const gradientType = config.wireframe ? 0 : 
     config.type === 'sphere' ? 1 : 
     config.type === 'plane' ? 2 : 
     config.type === 'waterPlane' ? 3 : 
     config.type === 'conic' ? 4 : 
-    config.type === 'radialBurst' ? 5 :
-    config.type === 'spiral' ? 6 :
-    config.type === 'waves' ? 7 :
-    config.type === 'aurora' ? 8 : 0;
+    config.type === 'spiral' ? 5 :
+    config.type === 'waves' ? 6 : 0;
   
   // Hero banner fade settings
   const bannerBlackFade = config.bannerBlackFade ?? 30;
@@ -262,16 +256,6 @@ async function render4ColorGradientHighQuality(
         noise = Math.max(0, Math.min(1, noise));
         
       } else if (gradientType === 5) {
-        // RADIAL BURST MODE
-        const dist = Math.sqrt(centeredU * centeredU + centeredV * centeredV);
-        const angle = Math.atan2(centeredV, centeredU);
-        const rays = Math.sin(angle * burstRays + dist * burstTwist * 10.0 + time * 0.5) * 0.5 + 0.5;
-        const baseNoise = rays * 0.6 + dist * 0.4;
-        const organicNoise = noise3D(u * 2 * freq, v * 2 * freq, time * 0.2) * 0.08 * density;
-        noise = baseNoise + organicNoise;
-        noise = Math.max(0, Math.min(1, noise));
-        
-      } else if (gradientType === 6) {
         // SPIRAL MODE - smooth sine-based blending
         const dist = Math.sqrt(centeredU * centeredU + centeredV * centeredV);
         const angle = Math.atan2(centeredV, centeredU);
@@ -287,7 +271,7 @@ async function render4ColorGradientHighQuality(
         noise = spiral + organicNoise + organicNoise2 + radialBlend;
         noise = Math.max(0, Math.min(1, noise));
         
-      } else if (gradientType === 7) {
+      } else if (gradientType === 6) {
         // WAVES MODE
         const wave1 = Math.sin(v * wavesCount * Math.PI + time * 0.5) * wavesAmplitude;
         const wave2 = Math.sin(v * wavesCount * 2 * Math.PI + time * 0.3 + 1.0) * wavesAmplitude * 0.5;
@@ -296,20 +280,6 @@ async function render4ColorGradientHighQuality(
         const baseNoise = Math.max(0, Math.min(1, wavyX));
         const organicNoise = noise3D(u * 2 * freq, v * 2 * freq, time * 0.2) * 0.1 * density;
         noise = baseNoise + organicNoise;
-        noise = Math.max(0, Math.min(1, noise));
-        
-      } else if (gradientType === 8) {
-        // AURORA MODE
-        let aurora = 0;
-        for (let i = 0; i < auroraLayers; i++) {
-          const offset = i * 0.2;
-          const layerNoise = noise3D(u * (1.5 + i * 0.3) * freq, v * 0.5 + offset, time * 0.15 * auroraSpeed + i * 10.0);
-          const curtain = Math.sin(u * 6.0 + time * 0.3 * auroraSpeed + i) * 0.3 + 0.7;
-          aurora += layerNoise * curtain / auroraLayers;
-        }
-        const verticalFade = smoothstep(0.0, 0.8, 1.0 - v);
-        noise = aurora * 0.7 + (1.0 - v) * 0.3;
-        noise = noise * verticalFade + (1.0 - verticalFade) * 0.1;
         noise = Math.max(0, Math.min(1, noise));
         
       } else {
