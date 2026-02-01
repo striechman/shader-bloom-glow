@@ -115,6 +115,9 @@ uniform float uPlaneWave; // Wave distortion amount (0-1)
 uniform float uPlaneSpread; // Transition sharpness (0-1)
 uniform vec2 uPlaneOffset; // Center offset for radial/linear
 uniform bool uPlaneMultiCenter; // Multiple centers mode
+uniform int uMeshStyle; // 0=organic, 1=flow, 2=center
+uniform float uMeshFlowAngle; // radians
+uniform bool uMeshCenterInward;
 
 varying vec2 vUv;
 varying vec3 vPosition;
@@ -147,12 +150,28 @@ void main() {
   float noise;
   
   if (uGradientType == 0) {
-    // MESH MODE: Multi-octave noise for organic blobs
+    // MESH MODE: Multi-octave noise for organic blobs with style options
     vec3 noisePos = vec3(vUv * uNoiseScale * freq, uTime * 0.5);
     float n1 = snoise(noisePos) * 0.5 + 0.5;
     float n2 = snoise(noisePos * 2.0 + 100.0) * (0.20 + 0.10 * density);
     float n3 = snoise(noisePos * 4.0 + 200.0) * (0.10 + 0.06 * density);
-    noise = (n1 + n2 + n3) / 1.375;
+    float baseNoise = (n1 + n2 + n3) / 1.375;
+    
+    // Apply mesh style modifications
+    if (uMeshStyle == 1) {
+      // FLOW: Noise biased by direction
+      vec2 flowDir = vec2(cos(uMeshFlowAngle), sin(uMeshFlowAngle));
+      float directionalBias = dot(centeredUv, flowDir) * 0.5 + 0.5;
+      noise = baseNoise * 0.6 + directionalBias * 0.4;
+    } else if (uMeshStyle == 2) {
+      // CENTER: Noise biased by distance from center
+      float dist = length(centeredUv) * 1.4;
+      if (!uMeshCenterInward) dist = 1.0 - dist;
+      noise = baseNoise * 0.5 + dist * 0.5;
+    } else {
+      // ORGANIC (default): Pure noise
+      noise = baseNoise;
+    }
     
   } else if (uGradientType == 1) {
     // SPHERE MODE: Classic 3D sphere with smooth color blending
@@ -339,6 +358,9 @@ export function Custom4ColorGradient({ config }: Custom4ColorGradientProps) {
     uPlaneSpread: { value: (config.planeSpread ?? 50) / 100 },
     uPlaneOffset: { value: new THREE.Vector2((config.planeOffsetX ?? 0) / 100, (config.planeOffsetY ?? 0) / 100) },
     uPlaneMultiCenter: { value: config.planeMultiCenter ?? false },
+    uMeshStyle: { value: config.meshStyle === 'flow' ? 1 : config.meshStyle === 'center' ? 2 : 0 },
+    uMeshFlowAngle: { value: (config.meshFlowAngle ?? 45) * Math.PI / 180 },
+    uMeshCenterInward: { value: config.meshCenterInward ?? true },
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), []);
   
@@ -377,6 +399,11 @@ export function Custom4ColorGradient({ config }: Custom4ColorGradientProps) {
     mat.uniforms.uPlaneSpread.value = (config.planeSpread ?? 50) / 100;
     mat.uniforms.uPlaneOffset.value.set((config.planeOffsetX ?? 0) / 100, (config.planeOffsetY ?? 0) / 100);
     mat.uniforms.uPlaneMultiCenter.value = config.planeMultiCenter ?? false;
+    
+    // Update mesh style uniforms
+    mat.uniforms.uMeshStyle.value = config.meshStyle === 'flow' ? 1 : config.meshStyle === 'center' ? 2 : 0;
+    mat.uniforms.uMeshFlowAngle.value = (config.meshFlowAngle ?? 45) * Math.PI / 180;
+    mat.uniforms.uMeshCenterInward.value = config.meshCenterInward ?? true;
     
     const isFrozen = config.frozenTime !== null;
     const shouldAnimate = config.animate && !isFrozen;
