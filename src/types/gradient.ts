@@ -57,7 +57,6 @@ export interface GradientConfig {
   planeSpread: number; // 0-100 how sharp/soft the color transitions are
   planeOffsetX: number; // -50 to 50 horizontal offset of center
   planeOffsetY: number; // -50 to 50 vertical offset of center
-  planeMultiCenter: boolean; // If true, creates multiple radial centers
 }
 
 export const defaultGradientConfig: GradientConfig = {
@@ -98,7 +97,6 @@ export const defaultGradientConfig: GradientConfig = {
   planeSpread: 50,
   planeOffsetX: 0,
   planeOffsetY: 0,
-  planeMultiCenter: false,
 };
 
 // Get theme-based color0 (black for dark mode, white for light mode)

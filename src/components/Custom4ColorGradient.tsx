@@ -113,8 +113,7 @@ uniform float uPlaneAngle; // Plane gradient angle in radians
 uniform bool uPlaneRadial; // If true, radial gradient from center
 uniform float uPlaneWave; // Wave distortion amount (0-1)
 uniform float uPlaneSpread; // Transition sharpness (0-1)
-uniform vec2 uPlaneOffset; // Center offset for radial/linear
-uniform bool uPlaneMultiCenter; // Multiple centers mode
+uniform vec2 uPlaneOffset; // Center offset for radial
 uniform int uMeshStyle; // 0=organic, 1=flow, 2=center
 uniform float uMeshFlowAngle; // radians
 uniform bool uMeshCenterInward;
@@ -194,25 +193,16 @@ void main() {
     noise = clamp(noise, 0.0, 1.0);
     
   } else if (uGradientType == 2) {
-    // PLANE MODE: Linear or radial gradient with custom angle, wave, spread, offset, and multi-center
+    // PLANE MODE: Linear or radial gradient with custom angle, wave, spread, offset
     float baseNoise;
     
-    // Apply offset to center (only when radial or multi-center)
+    // Apply offset to center (only when radial)
     vec2 offsetCenter = centeredUv;
-    if (uPlaneRadial || uPlaneMultiCenter) {
+    if (uPlaneRadial) {
       offsetCenter = centeredUv - uPlaneOffset;
     }
     
-    if (uPlaneMultiCenter) {
-      // Multi-center mode: create multiple radial gradients
-      float dist1 = length(offsetCenter - vec2(-0.2, -0.15));
-      float dist2 = length(offsetCenter - vec2(0.2, 0.1));
-      float dist3 = length(offsetCenter - vec2(0.0, 0.2));
-      
-      // Blend distances with smooth minimum
-      float minDist = min(min(dist1, dist2), dist3);
-      baseNoise = minDist * 1.4;
-    } else if (uPlaneRadial) {
+    if (uPlaneRadial) {
       // Radial gradient from offset center outward
       baseNoise = length(offsetCenter) * 1.4;
     } else {
@@ -362,7 +352,6 @@ export function Custom4ColorGradient({ config }: Custom4ColorGradientProps) {
     uPlaneWave: { value: (config.planeWave ?? 0) / 100 },
     uPlaneSpread: { value: (config.planeSpread ?? 50) / 100 },
     uPlaneOffset: { value: new THREE.Vector2((config.planeOffsetX ?? 0) / 100, (config.planeOffsetY ?? 0) / 100) },
-    uPlaneMultiCenter: { value: config.planeMultiCenter ?? false },
     uMeshStyle: { value: config.meshStyle === 'flow' ? 1 : config.meshStyle === 'center' ? 2 : 0 },
     uMeshFlowAngle: { value: (config.meshFlowAngle ?? 45) * Math.PI / 180 },
     uMeshCenterInward: { value: config.meshCenterInward ?? true },
@@ -403,7 +392,6 @@ export function Custom4ColorGradient({ config }: Custom4ColorGradientProps) {
     mat.uniforms.uPlaneWave.value = (config.planeWave ?? 0) / 100;
     mat.uniforms.uPlaneSpread.value = (config.planeSpread ?? 50) / 100;
     mat.uniforms.uPlaneOffset.value.set((config.planeOffsetX ?? 0) / 100, (config.planeOffsetY ?? 0) / 100);
-    mat.uniforms.uPlaneMultiCenter.value = config.planeMultiCenter ?? false;
     
     // Update mesh style uniforms
     mat.uniforms.uMeshStyle.value = config.meshStyle === 'flow' ? 1 : config.meshStyle === 'center' ? 2 : 0;

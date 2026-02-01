@@ -3,7 +3,7 @@ import { Plus, Minus } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Play, Pause, Camera, RotateCcw, X, Moon, Sun, ArrowRight, ArrowDown, ArrowDownRight, ArrowDownLeft, Circle, Waves, Target, Grid3X3, Move } from 'lucide-react';
+import { Play, Pause, Camera, RotateCcw, X, Moon, Sun, ArrowRight, ArrowDown, ArrowDownRight, ArrowDownLeft, Circle, Waves, Target, Move } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { GradientConfig, isHeroBannerRatio, isButtonRatio, getThemeColor0 } from '@/types/gradient';
 import { useTheme } from '@/hooks/useTheme';
@@ -713,8 +713,8 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                   })}
                 </div>
                 
-                {/* Angle Slider (only when not radial and not multi-center) */}
-                {!config.planeRadial && !config.planeMultiCenter && (
+                {/* Angle Slider (only when not radial) */}
+                {!config.planeRadial && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <Label className="text-muted-foreground">Angle</Label>
@@ -731,17 +731,6 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                   </div>
                 )}
                 
-                {/* Multi-Center Toggle */}
-                <div className="flex items-center justify-between py-2">
-                  <Label className="text-muted-foreground flex items-center gap-2">
-                    <Grid3X3 className="w-4 h-4" />
-                    Multi-Center
-                  </Label>
-                  <Switch
-                    checked={config.planeMultiCenter ?? false}
-                    onCheckedChange={(checked) => onConfigChange({ planeMultiCenter: checked })}
-                  />
-                </div>
                 
                 {/* Wave Effect */}
                 <div className="space-y-2">
@@ -780,7 +769,7 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                 </div>
                 
                 {/* Offset Controls (only when radial or multi-center) */}
-                {(config.planeRadial || config.planeMultiCenter) && (
+                {config.planeRadial && (
                   <div className="space-y-3">
                     <Label className="text-muted-foreground flex items-center gap-2">
                       <Move className="w-4 h-4" />
