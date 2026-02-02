@@ -72,6 +72,7 @@ export interface GradientConfig {
   // Waves settings
   wavesCount: number; // 2-10 number of waves
   wavesAmplitude: number; // 0-100 wave height
+  wavesAngle: number; // 0-360 degrees - wave direction
 }
 
 export const defaultGradientConfig: GradientConfig = {
@@ -124,6 +125,7 @@ export const defaultGradientConfig: GradientConfig = {
   // Waves defaults
   wavesCount: 5,
   wavesAmplitude: 50,
+  wavesAngle: 0, // Horizontal waves by default
 };
 
 // Get theme-based color0 (black for dark mode, white for light mode)
