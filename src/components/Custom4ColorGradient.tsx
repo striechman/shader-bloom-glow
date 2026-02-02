@@ -470,31 +470,33 @@ void main() {
     
   } else {
     // =========================================================================
-    // OTHER MODES (Mesh, Water, Conic, Spiral, Waves): Layer Masking
+    // OTHER MODES (Mesh, Water, Conic, Spiral, Waves): Sequential Mix
     // =========================================================================
-    float blend01 = smoothstep(threshold0 - blurFactor, threshold0 + blurFactor, noise);
-    float blend12 = smoothstep(threshold1 - blurFactor, threshold1 + blurFactor, noise);
-    float blend23 = smoothstep(threshold2 - blurFactor, threshold2 + blurFactor, noise);
-    float blend34 = smoothstep(threshold3 - blurFactor, threshold3 + blurFactor, noise);
+    // Use the same sequential mixing approach as Plane mode, but with blur-based
+    // transitions. This ensures all colors remain visible as Color0 weight changes.
     
-    float strengthExp = 1.0 + strength * 0.5;
-    blend01 = pow(blend01, strengthExp);
-    blend12 = pow(blend12, strengthExp);
-    blend23 = pow(blend23, strengthExp);
-    blend34 = pow(blend34, strengthExp);
+    // Transition width based on blur
+    float transitionWidth = blurFactor * 0.15 + 0.02;
     
+    // Apply strength to sharpen/soften transitions
+    float strengthMod = 1.0 + strength * 0.3;
+    transitionWidth = transitionWidth / strengthMod;
+    
+    // Calculate blend factors - transitions CENTERED on thresholds
+    // This ensures each color gets exactly its weight percentage of the area
+    float blend01 = smoothstep(threshold0, threshold0 + transitionWidth * 2.0, noise);
+    float blend12 = smoothstep(threshold1 - transitionWidth, threshold1 + transitionWidth, noise);
+    float blend23 = smoothstep(threshold2 - transitionWidth, threshold2 + transitionWidth, noise);
+    float blend34 = smoothstep(threshold3 - transitionWidth, threshold3 + transitionWidth, noise);
+    
+    // Sequential mix - each color replaces the previous in its segment
+    // This preserves all colors even when Color0 weight is high (e.g., 80%)
     finalColor = uColor0;
     finalColor = mix(finalColor, uColor1, blend01);
-    
-    float mask12 = blend01;
-    finalColor = mix(finalColor, uColor2, blend12 * mask12);
-    
-    float mask23 = max(blend01, blend12);
-    finalColor = mix(finalColor, uColor3, blend23 * mask23);
-    
+    finalColor = mix(finalColor, uColor2, blend12);
+    finalColor = mix(finalColor, uColor3, blend23);
     if (uHasColor4) {
-      float mask34 = max(mask23, blend23);
-      finalColor = mix(finalColor, uColor4, blend34 * mask34);
+      finalColor = mix(finalColor, uColor4, blend34);
     }
   }
   
