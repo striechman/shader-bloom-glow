@@ -319,11 +319,10 @@ async function render4ColorGradientHighQuality(
         // =========================================================================
         // PLANE MODE: Weighted Segments (matches WebGL shader)
         // =========================================================================
-        // Spread controls softness; Strength tightens transition width (without warping area mapping).
+        // Spread controls softness. Strength does NOT affect Plane mixing (must stay predictable).
         const planeSpread = (config.planeSpread ?? 50) / 100;
         const spreadMult = lerp(0.004, 0.08, planeSpread);
         let transitionWidth = spreadMult + blurFactor * 0.10;
-        transitionWidth = transitionWidth / (1.0 + strength * 0.25);
 
         // Keep Color0 SOLID up to threshold0 (true 30%+ region), then transition outward.
         // Subsequent transitions remain centered so downstream colors keep their intended space.
