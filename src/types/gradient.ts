@@ -42,6 +42,7 @@ export interface GradientConfig {
   meshBlur: number; // Softness between colors (0-100)
   meshStyle: 'organic' | 'flow' | 'center'; // Distribution style
   meshFlowAngle: number; // 0-360 degrees (for flow style)
+  meshStretch: boolean; // true = Aurora curtain effect (stretched vertically)
   meshCenterInward: boolean; // true = colors flow inward, false = outward
   
   // Aspect Ratio
@@ -103,6 +104,7 @@ export const defaultGradientConfig: GradientConfig = {
   meshStyle: 'organic',
   meshFlowAngle: 45,
   meshCenterInward: true,
+  meshStretch: false,
   aspectRatio: 'free',
   bannerBlackFade: 30,
   planeAngle: 45,
