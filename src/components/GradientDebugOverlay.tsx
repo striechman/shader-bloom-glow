@@ -89,6 +89,10 @@ export function GradientDebugOverlay({ config, visible = true }: GradientDebugOv
               <span className="text-white">{config.meshBlur ?? 50}</span>
               <span className="text-white/60">Noise Scale:</span>
               <span className="text-white">{config.meshNoiseScale ?? 1.0}</span>
+              <span className="text-white/60">Mesh Stretch:</span>
+              <span className={config.meshStretch ? 'text-green-400' : 'text-white/40'}>
+                {config.meshStretch ? 'ON (Aurora)' : 'OFF'}
+              </span>
             </>
           ) : null}
 

@@ -117,7 +117,8 @@ uniform vec2 uPlaneOffset; // Center offset for radial
 uniform int uMeshStyle; // 0=organic, 1=flow, 2=center
 uniform float uMeshFlowAngle; // radians
 uniform bool uMeshCenterInward;
-// Conic uniforms
+uniform bool uMeshStretch; // Aurora curtain effect
+uniform float uMeshStretchAmount; // How much to stretch (1.0 = normal, 3.0+ = curtains)
 uniform float uConicStartAngle; // radians
 uniform float uConicSpiral; // 0-1
 uniform vec2 uConicOffset; // Center offset
@@ -181,35 +182,114 @@ void main() {
   float noise;
   
   if (uGradientType == 0) {
-    // MESH MODE: Multi-octave noise for organic blobs with style options
-    vec3 noisePos = vec3(vUv * uNoiseScale * freq, uTime * 0.5);
-    float n1 = snoise(noisePos) * 0.5 + 0.5;
-    float n2 = snoise(noisePos * 2.0 + 100.0) * (0.20 + 0.10 * density);
-    float n3 = snoise(noisePos * 4.0 + 200.0) * (0.10 + 0.06 * density);
-    float baseNoise = (n1 + n2 + n3) / 1.375;
+    // =========================================================================
+    // MESH MODE: Radial Light Sources (Soft Light Blobs / Atmospheric Lighting)
+    // =========================================================================
+    // Each color acts as a "light source" with exponential falloff, blended additively
+    // onto the base color (Color0 - typically black). This creates the atmospheric
+    // "light emerging from darkness" effect seen in premium dark mode gradients.
     
-    // Apply mesh style modifications
+    // Softness factor: higher blur = more spread/softer lights
+    float softness = 0.3 + uBlur * 0.7; // Range: 0.3 (sharp) to 1.0 (very soft)
+    float spread = softness * (1.5 + uNoiseScale * 0.5); // Combine with scale
+    
+    // Animated light positions with organic movement
+    float t = uTime * 0.3;
+    
+    // Base positions for 4 light sources (distributed across canvas)
+    vec2 basePos1 = vec2(0.25, 0.25);
+    vec2 basePos2 = vec2(0.75, 0.25);
+    vec2 basePos3 = vec2(0.75, 0.75);
+    vec2 basePos4 = vec2(0.25, 0.75);
+    
+    // Apply mesh style to positions
     if (uMeshStyle == 1) {
-      // FLOW: Noise biased by direction
+      // FLOW: Lights arranged along a direction
       vec2 flowDir = vec2(cos(uMeshFlowAngle), sin(uMeshFlowAngle));
-      float directionalBias = dot(centeredUv, flowDir) * 0.5 + 0.5;
-      noise = baseNoise * 0.6 + directionalBias * 0.4;
+      vec2 perpDir = vec2(-flowDir.y, flowDir.x);
+      basePos1 = vec2(0.5, 0.5) + flowDir * 0.3 + perpDir * 0.15;
+      basePos2 = vec2(0.5, 0.5) + flowDir * 0.1 - perpDir * 0.2;
+      basePos3 = vec2(0.5, 0.5) - flowDir * 0.2 + perpDir * 0.1;
+      basePos4 = vec2(0.5, 0.5) - flowDir * 0.35 - perpDir * 0.15;
     } else if (uMeshStyle == 2) {
-      // CENTER: Noise biased by distance from center
-      float dist = length(centeredUv) * 1.4;
-      if (!uMeshCenterInward) dist = 1.0 - dist;
-      noise = baseNoise * 0.5 + dist * 0.5;
-    } else {
-      // ORGANIC (default): Pure noise
-      noise = baseNoise;
+      // CENTER: Lights clustered toward or away from center
+      float centerBias = uMeshCenterInward ? 0.15 : 0.35;
+      basePos1 = vec2(0.5 + centerBias * 0.7, 0.5 - centerBias * 0.5);
+      basePos2 = vec2(0.5 - centerBias * 0.6, 0.5 - centerBias * 0.7);
+      basePos3 = vec2(0.5 - centerBias * 0.5, 0.5 + centerBias * 0.6);
+      basePos4 = vec2(0.5 + centerBias * 0.8, 0.5 + centerBias * 0.4);
     }
     
-    // HISTOGRAM EQUALIZATION: Simplex noise naturally clusters around 0.5 (Gaussian-like).
-    // To make color weights match screen area, we stretch the distribution to be more uniform.
-    // This uses a simplified S-curve that pushes values away from 0.5 toward 0 and 1.
-    float centered = noise - 0.5;
-    float stretched = sign(centered) * pow(abs(centered) * 2.0, 0.7) * 0.5;
-    noise = stretched + 0.5;
+    // Animate positions with smooth organic movement
+    vec2 pos1 = basePos1 + vec2(sin(t * 0.7) * 0.08, cos(t * 0.9) * 0.06);
+    vec2 pos2 = basePos2 + vec2(cos(t * 0.8) * 0.07, sin(t * 0.6) * 0.09);
+    vec2 pos3 = basePos3 + vec2(sin(t * 0.5 + 1.0) * 0.09, cos(t * 0.7 + 2.0) * 0.07);
+    vec2 pos4 = basePos4 + vec2(cos(t * 0.6 + 1.5) * 0.06, sin(t * 0.8 + 0.5) * 0.08);
+    
+    // For Aurora mode (stretch enabled): stretch coordinates vertically to create curtain effect
+    vec2 stretchedUv = vUv;
+    if (uMeshStretch) {
+      // Stretch Y axis to create vertical curtain shapes
+      stretchedUv.y = (stretchedUv.y - 0.5) / uMeshStretchAmount + 0.5;
+    }
+    
+    // Calculate distances from current pixel to each light source
+    float dist1 = length(stretchedUv - pos1);
+    float dist2 = length(stretchedUv - pos2);
+    float dist3 = length(stretchedUv - pos3);
+    float dist4 = length(stretchedUv - pos4);
+    
+    // Radial light falloff function: smooth exponential decay
+    // Higher spread = slower falloff = larger, softer lights
+    float light1 = exp(-dist1 * dist1 / (spread * spread * 0.15));
+    float light2 = exp(-dist2 * dist2 / (spread * spread * 0.12));
+    float light3 = exp(-dist3 * dist3 / (spread * spread * 0.14));
+    float light4 = exp(-dist4 * dist4 / (spread * spread * 0.13));
+    
+    // Apply color weights as intensity multipliers
+    float w1 = uWeight1 / 100.0;
+    float w2 = uWeight2 / 100.0;
+    float w3 = uWeight3 / 100.0;
+    float w4 = uWeight4 / 100.0;
+    
+    light1 *= w1 * 3.0;
+    light2 *= w2 * 3.0;
+    light3 *= w3 * 3.0;
+    light4 *= w4 * 3.0;
+    
+    // Additive-style blending: lights emerge from base color
+    vec3 baseColor = srgbToLinear(uColor0);
+    vec3 c1 = srgbToLinear(uColor1);
+    vec3 c2 = srgbToLinear(uColor2);
+    vec3 c3 = srgbToLinear(uColor3);
+    vec3 c4 = srgbToLinear(uColor4);
+    
+    // Start with base, then mix in each light source
+    vec3 result = baseColor;
+    result = mix(result, c1, clamp(light1, 0.0, 1.0));
+    result = mix(result, c2, clamp(light2, 0.0, 1.0));
+    result = mix(result, c3, clamp(light3, 0.0, 1.0));
+    if (uHasColor4) {
+      result = mix(result, c4, clamp(light4, 0.0, 1.0));
+    }
+    
+    // Convert back to sRGB and output directly (skip the noise-based blending below)
+    result = linearToSrgb(result);
+    
+    // Subtle ordered dithering
+    float d = bayer8x8(gl_FragCoord.xy);
+    result = clamp(result + d * (0.75 / 255.0), 0.0, 1.0);
+    
+    gl_FragColor = vec4(result, 1.0);
+    
+    // Film grain for mesh mode
+    if (uGrain > 0.0) {
+      float g = snoise(vec3(vUv * 220.0, uTime * 0.7));
+      float grainAmt = (g * 0.5 + 0.5 - 0.5) * (uGrain * 0.18);
+      gl_FragColor.rgb = clamp(gl_FragColor.rgb + grainAmt, 0.0, 1.0);
+    }
+    
+    return; // Exit early - mesh mode handles its own output
     
   } else if (uGradientType == 1) {
     // SPHERE MODE: Classic 3D sphere with smooth color blending
@@ -529,6 +609,8 @@ export function Custom4ColorGradient({ config }: Custom4ColorGradientProps) {
     uMeshStyle: { value: config.meshStyle === 'flow' ? 1 : config.meshStyle === 'center' ? 2 : 0 },
     uMeshFlowAngle: { value: (config.meshFlowAngle ?? 45) * Math.PI / 180 },
     uMeshCenterInward: { value: config.meshCenterInward ?? true },
+    uMeshStretch: { value: config.meshStretch ?? false },
+    uMeshStretchAmount: { value: config.meshStretch ? 3.0 : 1.0 },
     // Conic uniforms
     uConicStartAngle: { value: (config.conicStartAngle ?? 0) * Math.PI / 180 },
     uConicSpiral: { value: (config.conicSpiral ?? 0) / 100 },
@@ -581,6 +663,8 @@ export function Custom4ColorGradient({ config }: Custom4ColorGradientProps) {
     mat.uniforms.uMeshStyle.value = config.meshStyle === 'flow' ? 1 : config.meshStyle === 'center' ? 2 : 0;
     mat.uniforms.uMeshFlowAngle.value = (config.meshFlowAngle ?? 45) * Math.PI / 180;
     mat.uniforms.uMeshCenterInward.value = config.meshCenterInward ?? true;
+    mat.uniforms.uMeshStretch.value = config.meshStretch ?? false;
+    mat.uniforms.uMeshStretchAmount.value = config.meshStretch ? 3.0 : 1.0;
     
     // Update conic uniforms
     mat.uniforms.uConicStartAngle.value = (config.conicStartAngle ?? 0) * Math.PI / 180;
