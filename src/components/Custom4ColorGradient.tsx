@@ -386,96 +386,82 @@ void main() {
   // Apply blur (softness)
   float blurFactor = uBlur * 0.5;
   
-  // =========================================================================
-  // NEW APPROACH: Black as Darkness Overlay
-  // =========================================================================
-  // Instead of black "taking space" from other colors, colors 1-4 ALWAYS
-  // distribute across the full noise range, and black is applied as an
-  // overlay/darkness that affects the entire gradient.
-  // 
-  // This means:
-  // - At 30% black: All colors visible, slight dark tint
-  // - At 60% black: All colors visible, darker overall
-  // - At 100% black: Solid black
+  // Calculate cumulative thresholds for colors (4 or 5 depending on uHasColor4)
+  float w0 = uWeight0 / 100.0;
+  float w1 = uWeight1 / 100.0;
+  float w2 = uWeight2 / 100.0;
+  float w3 = uWeight3 / 100.0;
+  float w4 = uWeight4 / 100.0;
   
-  float blackness = uWeight0 / 100.0; // 0.3 to 1.0
+  // Color0 occupies [0, w0] of noise range (true 30%-100% segment)
+  float threshold0 = w0;
+  float threshold1 = w0 + w1;
+  float threshold2 = w0 + w1 + w2;
+  float threshold3 = w0 + w1 + w2 + w3;
   
-  // Normalize color1-4 weights to 100% for their own distribution
-  float totalBrandWeight = uWeight1 + uWeight2 + uWeight3 + uWeight4;
-  float w1 = (totalBrandWeight > 0.0) ? uWeight1 / totalBrandWeight : 0.25;
-  float w2 = (totalBrandWeight > 0.0) ? uWeight2 / totalBrandWeight : 0.25;
-  float w3 = (totalBrandWeight > 0.0) ? uWeight3 / totalBrandWeight : 0.25;
-  float w4 = (totalBrandWeight > 0.0) ? uWeight4 / totalBrandWeight : 0.25;
+  // PROGRESSIVE MIX - Different strategies for different gradient types
+  // Plane uses direct sequential mix (no layer masking needed for linear noise)
+  // Other modes use layer masking to prevent color0 from bleeding into later transitions
   
-  // Thresholds for colors 1-4 across full [0, 1] noise range
-  float threshold1 = w1;
-  float threshold2 = w1 + w2;
-  float threshold3 = w1 + w2 + w3;
-  // threshold4 is implicitly 1.0
-  
-  vec3 brandGradient;
+  vec3 finalColor;
   
   if (uGradientType == 2) {
     // =========================================================================
-    // PLANE MODE: Direct Sequential Mix for linear noise
+    // PLANE MODE: Weighted Segments - Direct Sequential Mix
     // =========================================================================
+    // Use WIDER blur for smooth transitions (prevents a hard black band)
     float planeBlur = blurFactor * 1.2;
     
+    float seg01 = smoothstep(threshold0 - planeBlur, threshold0 + planeBlur, noise);
     float seg12 = smoothstep(threshold1 - planeBlur, threshold1 + planeBlur, noise);
     float seg23 = smoothstep(threshold2 - planeBlur, threshold2 + planeBlur, noise);
     float seg34 = smoothstep(threshold3 - planeBlur, threshold3 + planeBlur, noise);
     
+    // Apply strength for edge control
     float strengthExp = 1.0 + strength * 0.5;
+    seg01 = pow(seg01, strengthExp);
     seg12 = pow(seg12, strengthExp);
     seg23 = pow(seg23, strengthExp);
     seg34 = pow(seg34, strengthExp);
     
-    // Start with Color1, blend through colors 2-4
-    brandGradient = uColor1;
-    brandGradient = mix(brandGradient, uColor2, seg12);
-    brandGradient = mix(brandGradient, uColor3, seg23);
+    // Direct sequential mix - no layer masking needed for linear monotonic noise
+    finalColor = uColor0;
+    finalColor = mix(finalColor, uColor1, seg01);
+    finalColor = mix(finalColor, uColor2, seg12);
+    finalColor = mix(finalColor, uColor3, seg23);
     if (uHasColor4) {
-      brandGradient = mix(brandGradient, uColor4, seg34);
+      finalColor = mix(finalColor, uColor4, seg34);
     }
     
   } else {
     // =========================================================================
     // OTHER MODES (Mesh, Water, Conic, Spiral, Waves): Layer Masking
     // =========================================================================
+    float blend01 = smoothstep(threshold0 - blurFactor, threshold0 + blurFactor, noise);
     float blend12 = smoothstep(threshold1 - blurFactor, threshold1 + blurFactor, noise);
     float blend23 = smoothstep(threshold2 - blurFactor, threshold2 + blurFactor, noise);
     float blend34 = smoothstep(threshold3 - blurFactor, threshold3 + blurFactor, noise);
     
     float strengthExp = 1.0 + strength * 0.5;
+    blend01 = pow(blend01, strengthExp);
     blend12 = pow(blend12, strengthExp);
     blend23 = pow(blend23, strengthExp);
     blend34 = pow(blend34, strengthExp);
     
-    brandGradient = uColor1;
-    brandGradient = mix(brandGradient, uColor2, blend12);
+    finalColor = uColor0;
+    finalColor = mix(finalColor, uColor1, blend01);
     
-    float mask23 = blend12;
-    brandGradient = mix(brandGradient, uColor3, blend23 * mask23);
+    float mask12 = blend01;
+    finalColor = mix(finalColor, uColor2, blend12 * mask12);
+    
+    float mask23 = max(blend01, blend12);
+    finalColor = mix(finalColor, uColor3, blend23 * mask23);
     
     if (uHasColor4) {
       float mask34 = max(mask23, blend23);
-      brandGradient = mix(brandGradient, uColor4, blend34 * mask34);
+      finalColor = mix(finalColor, uColor4, blend34 * mask34);
     }
   }
-  
-  // =========================================================================
-  // Apply Black/White as Darkness Overlay
-  // =========================================================================
-  // Use smooth gradient-based mixing so black blends organically
-  // At low blackness (30%), colors dominate with subtle dark tint
-  // At high blackness (80%+), black dominates but colors still peek through
-  
-  // Create a smooth darkness gradient based on noise
-  // Lower noise values = more darkness, higher = more color
-  float darknessCurve = smoothstep(0.0, blackness * 1.2, noise);
-  
-  // Mix: black in dark areas, brand colors in bright areas
-  vec3 finalColor = mix(uColor0, brandGradient, darknessCurve);
   
   // Convert from Linear RGB back to sRGB for correct display
   finalColor = linearToSrgb(finalColor);
