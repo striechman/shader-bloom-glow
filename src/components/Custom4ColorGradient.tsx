@@ -293,12 +293,13 @@ void main() {
     light3 *= lightScale;
     light4 *= lightScale;
     
-    // Additive-style blending: lights emerge from base color
-    vec3 baseColor = srgbToLinear(uColor0);
-    vec3 c1 = srgbToLinear(uColor1);
-    vec3 c2 = srgbToLinear(uColor2);
-    vec3 c3 = srgbToLinear(uColor3);
-    vec3 c4 = srgbToLinear(uColor4);
+    // Direct blending in sRGB space to preserve exact brand colors
+    // (Linear RGB blending was causing color shifts - magenta looked red)
+    vec3 baseColor = uColor0;
+    vec3 c1 = uColor1;
+    vec3 c2 = uColor2;
+    vec3 c3 = uColor3;
+    vec3 c4 = uColor4;
     
     // Start with pure base color, then overlay lights
     vec3 result = baseColor;
@@ -308,9 +309,6 @@ void main() {
     if (uHasColor4) {
       result = mix(result, c4, clamp(light4, 0.0, 1.0));
     }
-    
-    // Convert back to sRGB
-    result = linearToSrgb(result);
     
     // Subtle ordered dithering to prevent banding
     float d = bayer8x8(gl_FragCoord.xy);
