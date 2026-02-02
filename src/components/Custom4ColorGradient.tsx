@@ -398,11 +398,24 @@ void main() {
   // Smooth organic blending that prevents color0 from bleeding into later transitions
   // Each color layer only affects areas already "covered" by the previous color transition
   
-  // Blend factors with wide, smooth transitions
-  float blend01 = smoothstep(threshold0 - blurFactor, threshold0 + blurFactor, noise);
-  float blend12 = smoothstep(threshold1 - blurFactor, threshold1 + blurFactor, noise);
-  float blend23 = smoothstep(threshold2 - blurFactor, threshold2 + blurFactor, noise);
-  float blend34 = smoothstep(threshold3 - blurFactor, threshold3 + blurFactor, noise);
+  // Blend factors - Plane mode uses ONE-SIDED blending to keep color0 pure for its 30%
+  float blend01, blend12, blend23, blend34;
+  
+  if (uGradientType == 2) {
+    // PLANE MODE: One-sided blending - transitions START at threshold (not centered)
+    // This ensures color0 stays pure for its full 30% weight range
+    float transitionWidth = blurFactor * 0.6;
+    blend01 = smoothstep(threshold0, threshold0 + transitionWidth, noise);
+    blend12 = smoothstep(threshold1, threshold1 + transitionWidth, noise);
+    blend23 = smoothstep(threshold2, threshold2 + transitionWidth, noise);
+    blend34 = smoothstep(threshold3, threshold3 + transitionWidth, noise);
+  } else {
+    // OTHER MODES: Centered blending for organic feel
+    blend01 = smoothstep(threshold0 - blurFactor, threshold0 + blurFactor, noise);
+    blend12 = smoothstep(threshold1 - blurFactor, threshold1 + blurFactor, noise);
+    blend23 = smoothstep(threshold2 - blurFactor, threshold2 + blurFactor, noise);
+    blend34 = smoothstep(threshold3 - blurFactor, threshold3 + blurFactor, noise);
+  }
   
   // Apply strength for edge control (sharpens transitions without shifting ranges)
   float strengthExp = 1.0 + strength * 0.5;

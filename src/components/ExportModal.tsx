@@ -316,11 +316,24 @@ async function render4ColorGradientHighQuality(
       // PROGRESSIVE MIX WITH LAYER MASKING (matches shader)
       // Smooth organic blending that prevents color0 from bleeding into later transitions
       
-      // Blend factors with wide, smooth transitions
-      let blend01 = smoothstep(threshold0 - blurFactor, threshold0 + blurFactor, noise);
-      let blend12 = smoothstep(threshold1 - blurFactor, threshold1 + blurFactor, noise);
-      let blend23 = smoothstep(threshold2 - blurFactor, threshold2 + blurFactor, noise);
-      let blend34 = hasColor4 ? smoothstep(threshold3 - blurFactor, threshold3 + blurFactor, noise) : 0;
+      // Blend factors - Plane mode uses ONE-SIDED blending to keep color0 pure for its 30%
+      let blend01: number, blend12: number, blend23: number, blend34: number;
+      const isPlane = gradientType === 2;
+      
+      if (isPlane) {
+        // PLANE MODE: One-sided blending - transitions START at threshold (not centered)
+        const transitionWidth = blurFactor * 0.6;
+        blend01 = smoothstep(threshold0, threshold0 + transitionWidth, noise);
+        blend12 = smoothstep(threshold1, threshold1 + transitionWidth, noise);
+        blend23 = smoothstep(threshold2, threshold2 + transitionWidth, noise);
+        blend34 = hasColor4 ? smoothstep(threshold3, threshold3 + transitionWidth, noise) : 0;
+      } else {
+        // OTHER MODES: Centered blending for organic feel
+        blend01 = smoothstep(threshold0 - blurFactor, threshold0 + blurFactor, noise);
+        blend12 = smoothstep(threshold1 - blurFactor, threshold1 + blurFactor, noise);
+        blend23 = smoothstep(threshold2 - blurFactor, threshold2 + blurFactor, noise);
+        blend34 = hasColor4 ? smoothstep(threshold3 - blurFactor, threshold3 + blurFactor, noise) : 0;
+      }
       
       // Apply strength for edge control (sharpens transitions without shifting ranges)
       const strengthExp = 1.0 + strength * 0.5;
