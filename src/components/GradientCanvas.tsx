@@ -2,13 +2,15 @@ import { Canvas } from '@react-three/fiber';
 import { ShaderGradientCanvas, ShaderGradient } from '@shadergradient/react';
 import { GradientConfig, aspectRatioValues, isHeroBannerRatio, isButtonRatio } from '@/types/gradient';
 import { Custom4ColorGradient } from './Custom4ColorGradient';
-import { useMemo } from 'react';
+import { GradientDebugOverlay } from './GradientDebugOverlay';
+import { useMemo, useState } from 'react';
 
 interface GradientCanvasProps {
   config: GradientConfig;
 }
 
 export const GradientCanvas = ({ config }: GradientCanvasProps) => {
+  const [showDebug, setShowDebug] = useState(false);
   const isButton = isButtonRatio(config.aspectRatio);
   const isFrozen = config.frozenTime !== null;
   const isStaticMode = isButton ? true : (!config.animate || isFrozen);
@@ -178,6 +180,17 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
             }}
           />
         )}
+        
+        {/* Debug toggle button */}
+        <button
+          onClick={() => setShowDebug(!showDebug)}
+          className="absolute bottom-4 left-4 z-50 bg-black/70 hover:bg-black/90 text-white text-xs px-3 py-1.5 rounded-md font-mono transition-colors border border-white/20"
+        >
+          {showDebug ? '🔽 Hide Debug' : '🔼 Show Debug'}
+        </button>
+        
+        {/* Debug overlay */}
+        <GradientDebugOverlay config={config} visible={showDebug} />
       </div>
     </div>
   );
