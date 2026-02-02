@@ -239,7 +239,10 @@ void main() {
     // Apply offset to center (only when radial)
     vec2 offsetCenter = centeredUv;
     if (uPlaneRadial) {
-      offsetCenter = centeredUv - uPlaneOffset;
+      // Add subtle time-based drift so Plane animates even when PlaneWave=0
+      // (keeps monotonic mapping; does not change weight thresholds)
+      vec2 drift = vec2(sin(uTime * 0.22), cos(uTime * 0.18)) * 0.02;
+      offsetCenter = centeredUv - uPlaneOffset + drift;
     }
     
     if (uPlaneRadial) {
@@ -253,6 +256,10 @@ void main() {
       float maxDot = abs(direction.x) * 0.5 + abs(direction.y) * 0.5;
       // Normalize to full 0-1 range
       baseNoise = (dotProduct / maxDot) * 0.5 + 0.5;
+
+      // Add subtle time-based drift so Plane animates even when PlaneWave=0
+      // Drift is kept small to avoid clipping the 0..1 range and preserving 30% base region.
+      baseNoise += sin(uTime * 0.20) * 0.025;
     }
     
     // Add wave distortion (only when enabled)
@@ -404,8 +411,8 @@ void main() {
     // Spread controls transition softness (0=sharp edges, 1=soft blend)
     // Strength should NOT affect Plane mixing.
     // In Plane we want predictable, print-safe transitions that depend only on Spread + Blur.
-    float spreadMult = mix(0.004, 0.08, uPlaneSpread);
-    float transitionWidth = spreadMult + blurFactor * 0.10;
+    float spreadMult = mix(0.008, 0.12, uPlaneSpread);
+    float transitionWidth = spreadMult + blurFactor * 0.14;
     
     // Calculate blend factors - transitions CENTERED on thresholds
     // This ensures Color0 gets exactly threshold0 (e.g., 30%) of the area,

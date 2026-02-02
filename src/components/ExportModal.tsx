@@ -224,13 +224,21 @@ async function render4ColorGradientHighQuality(
 
         if (planeRadial) {
           // Match Custom4ColorGradient: use stronger scaling to cover full 0..1 range
-          baseNoise = Math.sqrt(centeredU * centeredU + centeredV * centeredV) * 2.0;
+          // Add subtle time-based drift so Plane animates even when PlaneWave=0
+          const driftU = Math.sin(time * 0.22) * 0.02;
+          const driftV = Math.cos(time * 0.18) * 0.02;
+          const du = centeredU - (config.planeOffsetX ?? 0) / 100 + driftU;
+          const dv = centeredV - (config.planeOffsetY ?? 0) / 100 + driftV;
+          baseNoise = Math.sqrt(du * du + dv * dv) * 2.0;
         } else {
           const dirX = Math.cos(planeAngle);
           const dirY = Math.sin(planeAngle);
           const dotProduct = centeredU * dirX + centeredV * dirY;
           const maxDot = Math.abs(dirX) * 0.5 + Math.abs(dirY) * 0.5;
           baseNoise = (dotProduct / (maxDot || 1)) * 0.5 + 0.5;
+
+          // Add subtle time-based drift so Plane animates even when PlaneWave=0
+          baseNoise += Math.sin(time * 0.20) * 0.025;
         }
 
         baseNoise = Math.max(0, Math.min(1, baseNoise));
@@ -321,8 +329,8 @@ async function render4ColorGradientHighQuality(
         // =========================================================================
         // Spread controls softness. Strength does NOT affect Plane mixing (must stay predictable).
         const planeSpread = (config.planeSpread ?? 50) / 100;
-        const spreadMult = lerp(0.004, 0.08, planeSpread);
-        let transitionWidth = spreadMult + blurFactor * 0.10;
+        const spreadMult = lerp(0.008, 0.12, planeSpread);
+        let transitionWidth = spreadMult + blurFactor * 0.14;
 
         // Keep Color0 SOLID up to threshold0 (true 30%+ region), then transition outward.
         // Subsequent transitions remain centered so downstream colors keep their intended space.
