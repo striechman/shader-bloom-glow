@@ -120,8 +120,7 @@ void main() {
   float n3 = snoise(noisePos * 4.0 + 200.0) * (0.10 + 0.06 * density);
   
   float noise = n1 + n2 + n3;
-  noise = noise / 1.375;
-  noise = pow(clamp(noise, 0.0, 1.0), 1.0 + strength * 0.18);
+   noise = clamp(noise / 1.375, 0.0, 1.0);
   
   float blurFactor = uBlur * 0.5;
   float w1 = uWeight1 / 100.0;
@@ -130,8 +129,13 @@ void main() {
   float threshold2 = w1 + w2;
   
   vec3 finalColor;
-  float edge1 = smoothstep(threshold1 - blurFactor, threshold1 + blurFactor, noise);
-  float edge2 = smoothstep(threshold2 - blurFactor, threshold2 + blurFactor, noise);
+   float edge1 = smoothstep(threshold1 - blurFactor, threshold1 + blurFactor, noise);
+   float edge2 = smoothstep(threshold2 - blurFactor, threshold2 + blurFactor, noise);
+
+   // Strength as edge sharpening (preserves weight ranges)
+   float strengthExp = 1.0 + strength * 1.25;
+   edge1 = pow(clamp(edge1, 0.0, 1.0), strengthExp);
+   edge2 = pow(clamp(edge2, 0.0, 1.0), strengthExp);
   
   // Mix in linear space (uColors are already linear from THREE.Color)
   finalColor = mix(uColor1, uColor2, edge1);
