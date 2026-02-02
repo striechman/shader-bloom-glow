@@ -313,52 +313,53 @@ async function render4ColorGradientHighQuality(
       // otherwise percentages stop matching perceived area. We sharpen edges instead.
       noise = Math.max(0, Math.min(1, noise));
 
-      // Color mixing with smooth edges (supports 4 or 5 colors)
-      let edge0: number;
-      let edge1: number;
-      let edge2: number;
-      let edge3: number;
-
-      const isPlane = gradientType === 2;
-      if (isPlane) {
-        // One-sided blending (keeps base color pure for its full weight)
-        const transitionWidth = blurFactor * 0.4;
-        edge0 = smoothstep(threshold0, threshold0 + transitionWidth, noise);
-        edge1 = smoothstep(threshold1, threshold1 + transitionWidth, noise);
-        edge2 = smoothstep(threshold2, threshold2 + transitionWidth, noise);
-        edge3 = hasColor4 ? smoothstep(threshold3, threshold3 + transitionWidth, noise) : 0;
-      } else {
-        edge0 = smoothstep(threshold0 - blurFactor, threshold0 + blurFactor, noise);
-        edge1 = smoothstep(threshold1 - blurFactor, threshold1 + blurFactor, noise);
-        edge2 = smoothstep(threshold2 - blurFactor, threshold2 + blurFactor, noise);
-        edge3 = hasColor4 ? smoothstep(threshold3 - blurFactor, threshold3 + blurFactor, noise) : 0;
-      }
-
-      // Strength as edge sharpening (preserves weight ranges)
-      const strengthExp = 1.0 + strength * 1.25;
-      edge0 = Math.pow(Math.max(0, Math.min(1, edge0)), strengthExp);
-      edge1 = Math.pow(Math.max(0, Math.min(1, edge1)), strengthExp);
-      edge2 = Math.pow(Math.max(0, Math.min(1, edge2)), strengthExp);
-      edge3 = Math.pow(Math.max(0, Math.min(1, edge3)), strengthExp);
+      // PROGRESSIVE MIX WITH LAYER MASKING (matches shader)
+      // Smooth organic blending that prevents color0 from bleeding into later transitions
       
-      // Progressive color mixing
-      let r = lerp(color0.r, color1.r, edge0);
-      let g = lerp(color0.g, color1.g, edge0);
-      let b = lerp(color0.b, color1.b, edge0);
+      // Blend factors with wide, smooth transitions
+      let blend01 = smoothstep(threshold0 - blurFactor, threshold0 + blurFactor, noise);
+      let blend12 = smoothstep(threshold1 - blurFactor, threshold1 + blurFactor, noise);
+      let blend23 = smoothstep(threshold2 - blurFactor, threshold2 + blurFactor, noise);
+      let blend34 = hasColor4 ? smoothstep(threshold3 - blurFactor, threshold3 + blurFactor, noise) : 0;
       
-      r = lerp(r, color2.r, edge1);
-      g = lerp(g, color2.g, edge1);
-      b = lerp(b, color2.b, edge1);
+      // Apply strength for edge control (sharpens transitions without shifting ranges)
+      const strengthExp = 1.0 + strength * 0.5;
+      blend01 = Math.pow(Math.max(0, Math.min(1, blend01)), strengthExp);
+      blend12 = Math.pow(Math.max(0, Math.min(1, blend12)), strengthExp);
+      blend23 = Math.pow(Math.max(0, Math.min(1, blend23)), strengthExp);
+      blend34 = Math.pow(Math.max(0, Math.min(1, blend34)), strengthExp);
       
-      r = lerp(r, color3.r, edge2);
-      g = lerp(g, color3.g, edge2);
-      b = lerp(b, color3.b, edge2);
+      // LAYER MASKING: Each color only affects areas already past the previous threshold
+      // This prevents color0 from appearing in color2-color3 or color3-color4 transitions
       
-      // Apply color4 if it exists
+      // Start with color0
+      let r = color0.r;
+      let g = color0.g;
+      let b = color0.b;
+      
+      // Color1 blends over color0
+      r = lerp(r, color1.r, blend01);
+      g = lerp(g, color1.g, blend01);
+      b = lerp(b, color1.b, blend01);
+      
+      // Color2 only blends where color1 has already started (mask = blend01)
+      const mask12 = blend01;
+      r = lerp(r, color2.r, blend12 * mask12);
+      g = lerp(g, color2.g, blend12 * mask12);
+      b = lerp(b, color2.b, blend12 * mask12);
+      
+      // Color3 only blends where color1 or color2 exist
+      const mask23 = Math.max(blend01, blend12);
+      r = lerp(r, color3.r, blend23 * mask23);
+      g = lerp(g, color3.g, blend23 * mask23);
+      b = lerp(b, color3.b, blend23 * mask23);
+      
+      // Color4 (if enabled) only blends where previous colors exist
       if (hasColor4 && color4) {
-        r = lerp(r, color4.r, edge3);
-        g = lerp(g, color4.g, edge3);
-        b = lerp(b, color4.b, edge3);
+        const mask34 = Math.max(mask23, blend23);
+        r = lerp(r, color4.r, blend34 * mask34);
+        g = lerp(g, color4.g, blend34 * mask34);
+        b = lerp(b, color4.b, blend34 * mask34);
       }
       
       // Apply edge fade - corners blend to color0

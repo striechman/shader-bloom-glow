@@ -394,60 +394,42 @@ void main() {
   float threshold3 = w0 + w1 + w2 + w3;
   // threshold4 is implicitly 1.0
   
-  // ZONE-BASED BLENDING: Only mix between adjacent colors to prevent color0 bleeding
-  // This ensures black never appears between color3 and color4
-  vec3 finalColor;
+  // PROGRESSIVE MIX WITH LAYER MASKING
+  // Smooth organic blending that prevents color0 from bleeding into later transitions
+  // Each color layer only affects areas already "covered" by the previous color transition
   
-  // Calculate blur transition width
-  float transitionWidth = blurFactor * 0.3;
-  if (uGradientType == 2) {
-    transitionWidth = blurFactor * 0.15; // Narrower for Plane mode
-  }
+  // Blend factors with wide, smooth transitions
+  float blend01 = smoothstep(threshold0 - blurFactor, threshold0 + blurFactor, noise);
+  float blend12 = smoothstep(threshold1 - blurFactor, threshold1 + blurFactor, noise);
+  float blend23 = smoothstep(threshold2 - blurFactor, threshold2 + blurFactor, noise);
+  float blend34 = smoothstep(threshold3 - blurFactor, threshold3 + blurFactor, noise);
   
-  if (noise < threshold0) {
-    // Pure color0 zone
-    finalColor = uColor0;
-  } else if (noise < threshold0 + transitionWidth && transitionWidth > 0.001) {
-    // Transition from color0 to color1
-    float t = (noise - threshold0) / transitionWidth;
-    t = smoothstep(0.0, 1.0, t);
-    t = pow(clamp(t, 0.0, 1.0), 1.0 + strength * 1.25);
-    finalColor = mix(uColor0, uColor1, t);
-  } else if (noise < threshold1) {
-    // Pure color1 zone
-    finalColor = uColor1;
-  } else if (noise < threshold1 + transitionWidth && transitionWidth > 0.001) {
-    // Transition from color1 to color2
-    float t = (noise - threshold1) / transitionWidth;
-    t = smoothstep(0.0, 1.0, t);
-    t = pow(clamp(t, 0.0, 1.0), 1.0 + strength * 1.25);
-    finalColor = mix(uColor1, uColor2, t);
-  } else if (noise < threshold2) {
-    // Pure color2 zone
-    finalColor = uColor2;
-  } else if (noise < threshold2 + transitionWidth && transitionWidth > 0.001) {
-    // Transition from color2 to color3
-    float t = (noise - threshold2) / transitionWidth;
-    t = smoothstep(0.0, 1.0, t);
-    t = pow(clamp(t, 0.0, 1.0), 1.0 + strength * 1.25);
-    finalColor = mix(uColor2, uColor3, t);
-  } else if (noise < threshold3) {
-    // Pure color3 zone
-    finalColor = uColor3;
-  } else if (uHasColor4) {
-    if (noise < threshold3 + transitionWidth && transitionWidth > 0.001) {
-      // Transition from color3 to color4
-      float t = (noise - threshold3) / transitionWidth;
-      t = smoothstep(0.0, 1.0, t);
-      t = pow(clamp(t, 0.0, 1.0), 1.0 + strength * 1.25);
-      finalColor = mix(uColor3, uColor4, t);
-    } else {
-      // Pure color4 zone
-      finalColor = uColor4;
-    }
-  } else {
-    // No color4, stay on color3
-    finalColor = uColor3;
+  // Apply strength for edge control (sharpens transitions without shifting ranges)
+  float strengthExp = 1.0 + strength * 0.5;
+  blend01 = pow(blend01, strengthExp);
+  blend12 = pow(blend12, strengthExp);
+  blend23 = pow(blend23, strengthExp);
+  blend34 = pow(blend34, strengthExp);
+  
+  // LAYER MASKING: Each color only affects areas already past the previous threshold
+  // This prevents color0 from appearing in color2-color3 or color3-color4 transitions
+  vec3 finalColor = uColor0;
+  
+  // Color1 blends over color0
+  finalColor = mix(finalColor, uColor1, blend01);
+  
+  // Color2 only blends where color1 has already started (mask = blend01)
+  float mask12 = blend01;
+  finalColor = mix(finalColor, uColor2, blend12 * mask12);
+  
+  // Color3 only blends where color1 or color2 exist
+  float mask23 = max(blend01, blend12);
+  finalColor = mix(finalColor, uColor3, blend23 * mask23);
+  
+  // Color4 (if enabled) only blends where previous colors exist
+  if (uHasColor4) {
+    float mask34 = max(mask23, blend23);
+    finalColor = mix(finalColor, uColor4, blend34 * mask34);
   }
   
   // Convert from Linear RGB back to sRGB for correct display
