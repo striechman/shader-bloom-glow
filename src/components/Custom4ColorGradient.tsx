@@ -392,47 +392,63 @@ void main() {
   float threshold1 = w0 + w1;
   float threshold2 = w0 + w1 + w2;
   float threshold3 = w0 + w1 + w2 + w3;
+  // threshold4 is implicitly 1.0
   
-  // BRANDING RULE: For Plane mode, color0 (black/white) must be PURE for its full weight (30%+)
-  // The blend should start AFTER the threshold, not centered on it
-  // This ensures 30% black means 30% of the gradient is actually pure black
-  float blend01, blend12, blend23, blend34;
+  // ZONE-BASED BLENDING: Only mix between adjacent colors to prevent color0 bleeding
+  // This ensures black never appears between color3 and color4
+  vec3 finalColor;
   
+  // Calculate blur transition width
+  float transitionWidth = blurFactor * 0.3;
   if (uGradientType == 2) {
-    // PLANE MODE: One-sided blending - color0 is pure until threshold0, then transitions
-    float transitionWidth = blurFactor * 0.4; // Narrow transition zone
-    blend01 = smoothstep(threshold0, threshold0 + transitionWidth, noise);
-    blend12 = smoothstep(threshold1, threshold1 + transitionWidth, noise);
-    blend23 = smoothstep(threshold2, threshold2 + transitionWidth, noise);
-    blend34 = smoothstep(threshold3, threshold3 + transitionWidth, noise);
+    transitionWidth = blurFactor * 0.15; // Narrower for Plane mode
+  }
+  
+  if (noise < threshold0) {
+    // Pure color0 zone
+    finalColor = uColor0;
+  } else if (noise < threshold0 + transitionWidth && transitionWidth > 0.001) {
+    // Transition from color0 to color1
+    float t = (noise - threshold0) / transitionWidth;
+    t = smoothstep(0.0, 1.0, t);
+    t = pow(clamp(t, 0.0, 1.0), 1.0 + strength * 1.25);
+    finalColor = mix(uColor0, uColor1, t);
+  } else if (noise < threshold1) {
+    // Pure color1 zone
+    finalColor = uColor1;
+  } else if (noise < threshold1 + transitionWidth && transitionWidth > 0.001) {
+    // Transition from color1 to color2
+    float t = (noise - threshold1) / transitionWidth;
+    t = smoothstep(0.0, 1.0, t);
+    t = pow(clamp(t, 0.0, 1.0), 1.0 + strength * 1.25);
+    finalColor = mix(uColor1, uColor2, t);
+  } else if (noise < threshold2) {
+    // Pure color2 zone
+    finalColor = uColor2;
+  } else if (noise < threshold2 + transitionWidth && transitionWidth > 0.001) {
+    // Transition from color2 to color3
+    float t = (noise - threshold2) / transitionWidth;
+    t = smoothstep(0.0, 1.0, t);
+    t = pow(clamp(t, 0.0, 1.0), 1.0 + strength * 1.25);
+    finalColor = mix(uColor2, uColor3, t);
+  } else if (noise < threshold3) {
+    // Pure color3 zone
+    finalColor = uColor3;
+  } else if (uHasColor4) {
+    if (noise < threshold3 + transitionWidth && transitionWidth > 0.001) {
+      // Transition from color3 to color4
+      float t = (noise - threshold3) / transitionWidth;
+      t = smoothstep(0.0, 1.0, t);
+      t = pow(clamp(t, 0.0, 1.0), 1.0 + strength * 1.25);
+      finalColor = mix(uColor3, uColor4, t);
+    } else {
+      // Pure color4 zone
+      finalColor = uColor4;
+    }
   } else {
-    // OTHER MODES: Centered blending for smooth organic look
-    blend01 = smoothstep(threshold0 - blurFactor, threshold0 + blurFactor, noise);
-    blend12 = smoothstep(threshold1 - blurFactor, threshold1 + blurFactor, noise);
-    blend23 = smoothstep(threshold2 - blurFactor, threshold2 + blurFactor, noise);
-    blend34 = smoothstep(threshold3 - blurFactor, threshold3 + blurFactor, noise);
+    // No color4, stay on color3
+    finalColor = uColor3;
   }
-
-  // Apply strength as edge sharpening (preserves weight ranges)
-  float strengthExp = 1.0 + strength * 1.25;
-  blend01 = pow(clamp(blend01, 0.0, 1.0), strengthExp);
-  blend12 = pow(clamp(blend12, 0.0, 1.0), strengthExp);
-  blend23 = pow(clamp(blend23, 0.0, 1.0), strengthExp);
-  blend34 = pow(clamp(blend34, 0.0, 1.0), strengthExp);
-  
-  // Progressive color mixing in linear space
-  vec3 finalColor = uColor0;
-  finalColor = mix(finalColor, uColor1, blend01);
-  finalColor = mix(finalColor, uColor2, blend12);
-  finalColor = mix(finalColor, uColor3, blend23);
-  
-  // Only apply color4 if it's enabled
-  if (uHasColor4) {
-    finalColor = mix(finalColor, uColor4, blend34);
-  }
-  
-  // Edge fade to color0
-  finalColor = mix(uColor0, finalColor, edgeFade);
   
   // Convert from Linear RGB back to sRGB for correct display
   finalColor = linearToSrgb(finalColor);
