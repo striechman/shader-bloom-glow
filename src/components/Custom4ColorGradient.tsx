@@ -404,8 +404,11 @@ void main() {
     // Transitions are CENTERED on thresholds so each color gets its fair area.
     
     // Spread controls transition softness (0=sharp edges, 1=soft blend)
-    float spreadMult = mix(0.02, 0.12, uPlaneSpread);
-    float transitionWidth = spreadMult + blurFactor * 0.08;
+    // Strength should NOT warp the noise distribution (would break area mapping),
+    // so we let it tighten the transition width instead.
+    float spreadMult = mix(0.004, 0.08, uPlaneSpread);
+    float transitionWidth = spreadMult + blurFactor * 0.10;
+    transitionWidth = transitionWidth / (1.0 + strength * 0.25);
     
     // Calculate blend factors - transitions CENTERED on thresholds
     // This ensures Color0 gets exactly threshold0 (e.g., 30%) of the area,
@@ -414,13 +417,6 @@ void main() {
     float blend12 = smoothstep(threshold1 - transitionWidth, threshold1 + transitionWidth, noise);
     float blend23 = smoothstep(threshold2 - transitionWidth, threshold2 + transitionWidth, noise);
     float blend34 = smoothstep(threshold3 - transitionWidth, threshold3 + transitionWidth, noise);
-    
-    // Apply strength for sharper/softer transitions
-    float strengthExp = 1.0 + strength * 0.3;
-    blend01 = pow(blend01, strengthExp);
-    blend12 = pow(blend12, strengthExp);
-    blend23 = pow(blend23, strengthExp);
-    blend34 = pow(blend34, strengthExp);
     
     // Sequential mix - each color replaces the previous in its segment
     finalColor = uColor0;
