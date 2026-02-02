@@ -1,5 +1,25 @@
 # 🎨 Amdocs Ambiance Studio - Gradient Engine Documentation
 
+> **Last Updated:** February 2026  
+> **Engine Version:** 2.0 (with Bayer Dithering & Built-in Presets)
+
+---
+
+## 📋 Table of Contents
+
+1. [Overview](#סקירה-כללית)
+2. [Architecture](#ארכיטקטורה)
+3. [Color System](#מערכת-הצבעים)
+4. [Mesh Shader](#שיידר-glsl---מצב-mesh)
+5. [Plane Shader](#שיידר-glsl---מצב-plane)
+6. [Dithering (Banding Prevention)](#dithering-מניעת-פסים)
+7. [Built-in Presets](#presets-מובנים)
+8. [Export System](#ייצוא-export)
+9. [Performance](#ביצועים)
+
+---
+
+
 ## סקירה כללית
 
 מנוע הגרדיינטים של Amdocs Ambiance Studio בנוי על בסיס WebGL ו-Three.js, עם שיידרים מותאמים אישית (Custom GLSL Shaders) לשליטה מלאה על מיזוג צבעים, אנימציה ואפקטים ויזואליים.
@@ -292,6 +312,116 @@ if (uGrain > 0.0) {
   gl_FragColor.rgb = clamp(gl_FragColor.rgb + grainAmt, 0.0, 1.0);
 }
 ```
+
+---
+
+## 🎯 Dithering (מניעת פסים)
+
+### הבעיה: Banding
+
+בגרדיינטים כהים (במיוחד ב-Dark Mode), המסך מתקשה להציג מעברי צבע עדינים ונוצרים "פסים" (Banding). זה קורה כי יש רק 256 ערכים אפשריים לכל ערוץ צבע (8-bit).
+
+### הפתרון: 8x8 Bayer Ordered Dithering
+
+המנוע משתמש ב-Bayer Dithering - טכניקה שמוסיפה רעש מבוקר (לא אקראי) כדי "לשבור" את הפסים:
+
+```glsl
+// פונקציית Bayer Dithering
+float bayer8x8(vec2 coord) {
+  int x = int(mod(coord.x, 8.0));
+  int y = int(mod(coord.y, 8.0));
+  
+  // מטריצת Bayer 8x8 (ערכים 0-63)
+  int bayer[64] = int[64](
+     0, 32,  8, 40,  2, 34, 10, 42,
+    48, 16, 56, 24, 50, 18, 58, 26,
+    12, 44,  4, 36, 14, 46,  6, 38,
+    60, 28, 52, 20, 62, 30, 54, 22,
+     3, 35, 11, 43,  1, 33,  9, 41,
+    51, 19, 59, 27, 49, 17, 57, 25,
+    15, 47,  7, 39, 13, 45,  5, 37,
+    63, 31, 55, 23, 61, 29, 53, 21
+  );
+  
+  int index = y * 8 + x;
+  return (float(bayer[index]) / 64.0 - 0.5);  // -0.5 to 0.5
+}
+
+// יישום בסוף ה-shader
+float d = bayer8x8(gl_FragCoord.xy);
+finalColor = clamp(finalColor + d * (0.75 / 255.0), 0.0, 1.0);
+```
+
+### למה Bayer ולא רעש אקראי?
+
+| סוג | יתרונות | חסרונות |
+|-----|---------|---------|
+| **Bayer (Ordered)** | פטרן קבוע, לא "רוקד" באנימציה | מבנה גיאומטרי עדין |
+| **Random Noise** | אין מבנה נראה | "רוקד" ומהבהב באנימציה |
+
+### כיסוי ה-Dithering במנוע
+
+| רכיב | Bayer Dithering | Film Grain |
+|------|:---------------:|:----------:|
+| Custom4ColorGradient (Plane) | ✅ | ✅ |
+| CustomMeshGradient (Mesh) | ✅ | ✅ |
+| ExportModal (JS Renderer) | ✅ | ❌ |
+
+---
+
+## 🎨 Presets מובנים
+
+### קובץ: `src/config/presets.ts`
+
+המערכת כוללת presets מובנים המחולקים לקטגוריות:
+
+### Dark Mode Presets
+
+| שם | סוג | תיאור |
+|----|-----|-------|
+| **Dark Sunrise** | Plane | גרדיינט אלכסוני סגול-קורל על שחור |
+| **Deep Aurora** | Mesh | עננים אורגניים כחול-סגול-מגנטה |
+| **Ocean Depth** | Water | כחולים וטורקיזים עם סגול עמוק |
+| **Blue Beacon** | Plane Radial | מקור אור כחול על רקע שחור |
+
+### Vibrant Presets
+
+| שם | סוג | תיאור |
+|----|-----|-------|
+| **Neon Nights** | Mesh | מגנטה וציאן חשמליים |
+| **Sunset Blaze** | Plane | גרדיינט חם קורל-צהוב-מגנטה |
+| **Cosmic Spiral** | Spiral | ספירלה היפנוטית עם כל צבעי המותג |
+| **Prismatic Waves** | Waves | גלים צבעוניים יוצרים אפקט פריזמה |
+
+### Light Mode Presets
+
+| שם | סוג | תיאור |
+|----|-----|-------|
+| **Morning Mist** | Mesh | פסטלים רכים על בסיס לבן |
+| **Soft Coral** | Plane | קורל ואפרסק על רקע בהיר |
+
+### שימוש ב-Presets
+
+```typescript
+import { PRESET_DEEP_AURORA, getPresetById } from '@/config/presets';
+
+// טעינה ישירה
+const config = { ...defaultGradientConfig, ...PRESET_DEEP_AURORA.config };
+
+// טעינה לפי ID
+const preset = getPresetById('deep-aurora');
+if (preset) {
+  setConfig(prev => ({ ...prev, ...preset.config }));
+}
+```
+
+### המלצות ל-Preset של Aurora
+
+הסוד למראה ה"חלבי" של Aurora:
+- `meshBlur: 90` - טשטוש מקסימלי
+- `meshNoiseScale: 2.5` - כתמים גדולים
+- `speed: 0.2` - תנועה איטית
+- `colorWeight0: 35` - שחור דומיננטי אבל לא מוחלט
 
 ---
 
