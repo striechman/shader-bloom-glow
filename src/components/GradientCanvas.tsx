@@ -4,6 +4,7 @@ import { GradientConfig, aspectRatioValues, isHeroBannerRatio, isButtonRatio } f
 import { Custom4ColorGradient } from './Custom4ColorGradient';
 import { GradientDebugOverlay } from './GradientDebugOverlay';
 import { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 interface GradientCanvasProps {
   config: GradientConfig;
@@ -181,17 +182,24 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
           />
         )}
       </div>
-      
-      {/* Debug toggle button - outside container to avoid overflow issues */}
-      <button
-        onClick={() => setShowDebug(!showDebug)}
-        className="fixed bottom-6 left-6 z-[100] bg-black/80 hover:bg-black/95 text-white text-xs px-4 py-2 rounded-lg font-mono transition-all border border-white/30 shadow-lg hover:shadow-xl"
-      >
-        {showDebug ? '🔽 Hide Debug' : '🔼 Show Debug'}
-      </button>
-      
-      {/* Debug overlay - fixed position */}
-      {showDebug && <GradientDebugOverlay config={config} visible={showDebug} />}
+
+      {/* Debug UI rendered via portal to avoid z-index/stacking-context and pointer-event issues */}
+      {createPortal(
+        <div className="pointer-events-none fixed inset-0 z-[1000]">
+          <button
+            type="button"
+            onClick={() => setShowDebug((v) => !v)}
+            className="pointer-events-auto fixed bottom-6 left-6 z-[1001] bg-black/80 hover:bg-black/95 text-white text-xs px-4 py-2 rounded-lg font-mono transition-all border border-white/30 shadow-lg hover:shadow-xl"
+          >
+            {showDebug ? 'Hide Debug' : 'Show Debug'}
+          </button>
+
+          <div className="pointer-events-auto">
+            <GradientDebugOverlay config={config} visible={showDebug} />
+          </div>
+        </div>,
+        document.body,
+      )}
     </div>
   );
 };
