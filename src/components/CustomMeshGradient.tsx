@@ -193,12 +193,17 @@ void main() {
   // COLOR MIXING in LINEAR space (uColors are already in linear from THREE.Color)
   vec3 finalColor;
   
-  float blend01 = smoothstep(threshold0 - blurFactor, threshold0 + blurFactor, noise);
-  float blend12 = smoothstep(threshold1 - blurFactor, threshold1 + blurFactor, noise);
-  float blend23 = smoothstep(threshold2 - blurFactor, threshold2 + blurFactor, noise);
-  float blend34 = smoothstep(threshold3 - blurFactor, threshold3 + blurFactor, noise);
+  // CRITICAL: Color0 (base/black) must be SOLID up to its full threshold.
+  // First transition starts AFTER threshold0, not centered on it.
+  // This ensures 30% black = 30% solid black area before any blending.
+  float transitionWidth = blurFactor * 0.8;
+  
+  float blend01 = smoothstep(threshold0, threshold0 + transitionWidth * 2.0, noise);
+  float blend12 = smoothstep(threshold1 - transitionWidth, threshold1 + transitionWidth, noise);
+  float blend23 = smoothstep(threshold2 - transitionWidth, threshold2 + transitionWidth, noise);
+  float blend34 = smoothstep(threshold3 - transitionWidth, threshold3 + transitionWidth, noise);
 
-  // Strength as edge sharpening (preserves weight ranges)
+  // Strength as edge sharpening (applied after threshold calc to preserve weights)
   float strengthExp = 1.0 + strength * 1.25;
   blend01 = pow(clamp(blend01, 0.0, 1.0), strengthExp);
   blend12 = pow(clamp(blend12, 0.0, 1.0), strengthExp);
