@@ -110,6 +110,10 @@ uniform float uGrain;
 uniform int uMeshStyle; // 0=organic, 1=flow, 2=center
 uniform float uMeshFlowAngle; // radians
 uniform bool uMeshCenterInward;
+// Aurora enhancements
+uniform float uStretchX; // Horizontal stretch (>1 = wider bands)
+uniform float uStretchY; // Vertical stretch (<1 = horizontal bands)
+uniform float uWarpAmount; // Wave distortion intensity
 
 varying vec2 vUv;
 varying vec3 vPosition;
@@ -162,15 +166,28 @@ void main() {
   // The gradient must fill the entire canvas the same way the export renderer does.
   float edgeFade = 1.0;
   
-  vec3 noisePos = vec3(vUv * uNoiseScale * freq, uTime * 0.5);
+  // === AURORA ENHANCEMENT: Anisotropic UV Stretching ===
+  // This transforms circular noise blobs into elongated curtain-like bands
+  vec2 stretchedUv = vUv;
+  stretchedUv.x *= uStretchX; // Stretch horizontally (>1 = wider patterns)
+  stretchedUv.y *= uStretchY; // Compress vertically (<1 = horizontal bands)
   
-  // Base noise calculation
+  // === AURORA ENHANCEMENT: Wave Warping ===
+  // Adds organic flowing distortion to break up uniformity
+  float warpIntensity = uWarpAmount * 0.15; // Scale to reasonable range
+  stretchedUv.y += sin(stretchedUv.x * 2.5 + uTime * 0.3) * warpIntensity;
+  stretchedUv.x += cos(stretchedUv.y * 1.8 + uTime * 0.2) * warpIntensity * 0.5;
+  
+  vec3 noisePos = vec3(stretchedUv * uNoiseScale * freq, uTime * 0.3);
+  
+  // Base noise calculation with reduced higher octaves for smoother look
   float n1 = snoise(noisePos) * 0.5 + 0.5;
-  float n2 = snoise(noisePos * 2.0 + 100.0) * (0.20 + 0.10 * density);
-  float n3 = snoise(noisePos * 4.0 + 200.0) * (0.10 + 0.06 * density);
+  // Reduced contribution from higher frequencies for smoother Aurora
+  float n2 = snoise(noisePos * 1.5 + 100.0) * (0.12 + 0.06 * density);
+  float n3 = snoise(noisePos * 2.5 + 200.0) * (0.05 + 0.03 * density);
   
   float baseNoise = n1 + n2 + n3;
-  baseNoise = baseNoise / 1.375; // Normalize to 0-1 range
+  baseNoise = baseNoise / 1.2; // Normalize to 0-1 range
   
   // Apply mesh style modifications
   float noise = baseNoise;
@@ -189,15 +206,15 @@ void main() {
   // else uMeshStyle == 0 (ORGANIC): use baseNoise as-is
   
   // HISTOGRAM EQUALIZATION: Simplex noise naturally clusters around 0.5 (Gaussian-like).
-  // To make color weights match screen area, we stretch the distribution to be more uniform.
-  // This uses a simplified S-curve that pushes values away from 0.5 toward 0 and 1.
+  // For Aurora effect, we use gentler equalization to keep smooth gradients
   float centered = noise - 0.5;
-  float stretched = sign(centered) * pow(abs(centered) * 2.0, 0.7) * 0.5;
+  float stretched = sign(centered) * pow(abs(centered) * 2.0, 0.85) * 0.5;
   noise = stretched + 0.5;
   noise = clamp(noise, 0.0, 1.0);
   
-  // Apply blur (softness) - higher blur = smoother transitions
-  float blurFactor = uBlur * 0.5;
+  // === AURORA ENHANCEMENT: Much wider transition zones ===
+  // Higher blur = dramatically wider transitions = silky Aurora effect
+  float blurFactor = uBlur;
   
   // Calculate cumulative thresholds based on weights (normalized to 0-1)
   float w0 = uWeight0 / 100.0;
@@ -214,20 +231,23 @@ void main() {
   // COLOR MIXING in LINEAR space (uColors are already in linear from THREE.Color)
   vec3 finalColor;
   
-  // SMOOTH TRANSITIONS: Wider transition zones for organic fade between colors.
-  // Higher blur = wider transitions = smoother blending.
-  // Base transition width is 0.15 + blur contribution for always-soft edges.
-  float baseTransitionWidth = 0.12;
-  float transitionWidth = baseTransitionWidth + blurFactor * 0.25;
+  // === AURORA ENHANCEMENT: Dramatically wider transitions ===
+  // Base width increased from 0.12 to 0.25, blur multiplier increased 4x
+  float baseTransitionWidth = 0.25;
+  float transitionWidth = baseTransitionWidth + blurFactor * 0.6; // Can reach 0.85 at max blur
   
-  // All transitions are centered on thresholds for smooth organic blending
-  float blend01 = smoothstep(threshold0 - transitionWidth * 0.5, threshold0 + transitionWidth * 1.5, noise);
+  // Ensure minimum transition width for always-smooth edges
+  transitionWidth = max(transitionWidth, 0.15);
+  
+  // Asymmetric first transition - Color0 stays solid until threshold
+  float blend01 = smoothstep(threshold0 - transitionWidth * 0.3, threshold0 + transitionWidth * 1.2, noise);
+  // Other transitions centered on thresholds with wide zones
   float blend12 = smoothstep(threshold1 - transitionWidth, threshold1 + transitionWidth, noise);
   float blend23 = smoothstep(threshold2 - transitionWidth, threshold2 + transitionWidth, noise);
   float blend34 = smoothstep(threshold3 - transitionWidth, threshold3 + transitionWidth, noise);
 
-  // Strength as SUBTLE edge definition (reduced impact for softer look)
-  float strengthExp = 1.0 + strength * 0.4;
+  // Strength as VERY subtle edge definition (reduced for Aurora smoothness)
+  float strengthExp = 1.0 + strength * 0.15; // Reduced from 0.4
   blend01 = pow(clamp(blend01, 0.0, 1.0), strengthExp);
   blend12 = pow(clamp(blend12, 0.0, 1.0), strengthExp);
   blend23 = pow(clamp(blend23, 0.0, 1.0), strengthExp);
@@ -244,8 +264,23 @@ void main() {
     finalColor = mix(finalColor, uColor4, blend34);
   }
   
+  // === AURORA ENHANCEMENT: Subtle glow boost at color transitions ===
+  // This adds a "halo" effect at the edges where colors meet
+  float midBlend01 = 1.0 - abs(blend01 * 2.0 - 1.0);
+  float midBlend12 = 1.0 - abs(blend12 * 2.0 - 1.0);
+  float midBlend23 = 1.0 - abs(blend23 * 2.0 - 1.0);
+  
+  // Add subtle glow using the brighter of adjacent colors
+  vec3 glow = uColor1 * midBlend01 * 0.08;
+  glow += uColor2 * midBlend12 * 0.06;
+  glow += uColor3 * midBlend23 * 0.05;
+  finalColor += glow;
+  
   // No edge fade (kept for clarity)
   finalColor = mix(uColor0, finalColor, edgeFade);
+  
+  // Clamp before gamma correction
+  finalColor = clamp(finalColor, 0.0, 1.0);
   
   // Convert from Linear RGB back to sRGB for correct display
   finalColor = linearToSrgb(finalColor);
@@ -285,8 +320,8 @@ export function CustomMeshGradient({ config }: CustomMeshGradientProps) {
     uWeight4: { value: config.colorWeight4 ?? 0 },
     uHasColor4: { value: config.color4 !== null },
     uTime: { value: 0 },
-    uNoiseScale: { value: config.meshNoiseScale ?? 3.0 },
-    uBlur: { value: (config.meshBlur ?? 50) / 100 },
+    uNoiseScale: { value: config.meshNoiseScale ?? 0.5 },
+    uBlur: { value: (config.meshBlur ?? 80) / 100 },
     uStrength: { value: config.uStrength },
     uDensity: { value: config.uDensity },
     uFrequency: { value: config.uFrequency },
@@ -294,6 +329,10 @@ export function CustomMeshGradient({ config }: CustomMeshGradientProps) {
     uMeshStyle: { value: config.meshStyle === 'flow' ? 1 : config.meshStyle === 'center' ? 2 : 0 },
     uMeshFlowAngle: { value: (config.meshFlowAngle ?? 45) * Math.PI / 180 },
     uMeshCenterInward: { value: config.meshCenterInward ?? true },
+    // Aurora enhancements
+    uStretchX: { value: config.meshStretchX ?? 1.8 },
+    uStretchY: { value: config.meshStretchY ?? 0.6 },
+    uWarpAmount: { value: (config.meshWarpAmount ?? 30) / 100 },
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), []);
   
@@ -315,8 +354,8 @@ export function CustomMeshGradient({ config }: CustomMeshGradientProps) {
     mat.uniforms.uWeight3.value = config.colorWeight3;
     mat.uniforms.uWeight4.value = config.colorWeight4 ?? 0;
     mat.uniforms.uHasColor4.value = config.color4 !== null;
-    mat.uniforms.uNoiseScale.value = config.meshNoiseScale ?? 3.0;
-    mat.uniforms.uBlur.value = (config.meshBlur ?? 50) / 100;
+    mat.uniforms.uNoiseScale.value = config.meshNoiseScale ?? 0.5;
+    mat.uniforms.uBlur.value = (config.meshBlur ?? 80) / 100;
     mat.uniforms.uStrength.value = config.uStrength;
     mat.uniforms.uDensity.value = config.uDensity;
     mat.uniforms.uFrequency.value = config.uFrequency;
@@ -326,6 +365,11 @@ export function CustomMeshGradient({ config }: CustomMeshGradientProps) {
     mat.uniforms.uMeshStyle.value = config.meshStyle === 'flow' ? 1 : config.meshStyle === 'center' ? 2 : 0;
     mat.uniforms.uMeshFlowAngle.value = (config.meshFlowAngle ?? 45) * Math.PI / 180;
     mat.uniforms.uMeshCenterInward.value = config.meshCenterInward ?? true;
+    
+    // Aurora enhancement uniforms
+    mat.uniforms.uStretchX.value = config.meshStretchX ?? 1.8;
+    mat.uniforms.uStretchY.value = config.meshStretchY ?? 0.6;
+    mat.uniforms.uWarpAmount.value = (config.meshWarpAmount ?? 30) / 100;
     
     // Check animation state directly from config (not from stale closure)
     const isFrozen = config.frozenTime !== null;
