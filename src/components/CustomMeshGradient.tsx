@@ -128,6 +128,27 @@ vec3 linearToSrgb(vec3 linear) {
   return mix(low, high, step(0.0031308, linear));
 }
 
+// 8x8 Bayer Ordered Dithering - prevents banding in dark gradients
+float bayer8x8(vec2 coord) {
+  int x = int(mod(coord.x, 8.0));
+  int y = int(mod(coord.y, 8.0));
+  
+  // Bayer 8x8 matrix values (0-63, normalized to -0.5 to 0.5)
+  int bayer[64] = int[64](
+     0, 32,  8, 40,  2, 34, 10, 42,
+    48, 16, 56, 24, 50, 18, 58, 26,
+    12, 44,  4, 36, 14, 46,  6, 38,
+    60, 28, 52, 20, 62, 30, 54, 22,
+     3, 35, 11, 43,  1, 33,  9, 41,
+    51, 19, 59, 27, 49, 17, 57, 25,
+    15, 47,  7, 39, 13, 45,  5, 37,
+    63, 31, 55, 23, 61, 29, 53, 21
+  );
+  
+  int index = y * 8 + x;
+  return (float(bayer[index]) / 64.0 - 0.5);
+}
+
 void main() {
   // Multi-octave noise for richer texture
   float freq = max(0.1, uFrequency);
@@ -228,6 +249,10 @@ void main() {
   
   // Convert from Linear RGB back to sRGB for correct display
   finalColor = linearToSrgb(finalColor);
+  
+  // Apply Bayer dithering to prevent banding (especially in dark gradients)
+  float d = bayer8x8(gl_FragCoord.xy);
+  finalColor = clamp(finalColor + d * (0.75 / 255.0), 0.0, 1.0);
   
   gl_FragColor = vec4(finalColor, 1.0);
 
