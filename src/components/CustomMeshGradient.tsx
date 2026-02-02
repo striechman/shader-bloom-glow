@@ -193,18 +193,20 @@ void main() {
   // COLOR MIXING in LINEAR space (uColors are already in linear from THREE.Color)
   vec3 finalColor;
   
-  // CRITICAL: Color0 (base/black) must be SOLID up to its full threshold.
-  // First transition starts AFTER threshold0, not centered on it.
-  // This ensures 30% black = 30% solid black area before any blending.
-  float transitionWidth = blurFactor * 0.8;
+  // SMOOTH TRANSITIONS: Wider transition zones for organic fade between colors.
+  // Higher blur = wider transitions = smoother blending.
+  // Base transition width is 0.15 + blur contribution for always-soft edges.
+  float baseTransitionWidth = 0.12;
+  float transitionWidth = baseTransitionWidth + blurFactor * 0.25;
   
-  float blend01 = smoothstep(threshold0, threshold0 + transitionWidth * 2.0, noise);
+  // All transitions are centered on thresholds for smooth organic blending
+  float blend01 = smoothstep(threshold0 - transitionWidth * 0.5, threshold0 + transitionWidth * 1.5, noise);
   float blend12 = smoothstep(threshold1 - transitionWidth, threshold1 + transitionWidth, noise);
   float blend23 = smoothstep(threshold2 - transitionWidth, threshold2 + transitionWidth, noise);
   float blend34 = smoothstep(threshold3 - transitionWidth, threshold3 + transitionWidth, noise);
 
-  // Strength as edge sharpening (applied after threshold calc to preserve weights)
-  float strengthExp = 1.0 + strength * 1.25;
+  // Strength as SUBTLE edge definition (reduced impact for softer look)
+  float strengthExp = 1.0 + strength * 0.4;
   blend01 = pow(clamp(blend01, 0.0, 1.0), strengthExp);
   blend12 = pow(clamp(blend12, 0.0, 1.0), strengthExp);
   blend23 = pow(clamp(blend23, 0.0, 1.0), strengthExp);
