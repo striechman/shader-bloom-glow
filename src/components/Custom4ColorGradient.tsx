@@ -402,11 +402,10 @@ void main() {
     // Transitions are CENTERED on thresholds so each color gets its fair area.
     
     // Spread controls transition softness (0=sharp edges, 1=soft blend)
-    // Strength should NOT warp the noise distribution (would break area mapping),
-    // so we let it tighten the transition width instead.
+    // Strength should NOT affect Plane mixing.
+    // In Plane we want predictable, print-safe transitions that depend only on Spread + Blur.
     float spreadMult = mix(0.004, 0.08, uPlaneSpread);
     float transitionWidth = spreadMult + blurFactor * 0.10;
-    transitionWidth = transitionWidth / (1.0 + strength * 0.25);
     
     // Calculate blend factors - transitions CENTERED on thresholds
     // This ensures Color0 gets exactly threshold0 (e.g., 30%) of the area,
