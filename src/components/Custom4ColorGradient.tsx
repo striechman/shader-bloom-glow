@@ -386,116 +386,96 @@ void main() {
   // Apply blur (softness)
   float blurFactor = uBlur * 0.5;
   
-  // Calculate cumulative thresholds for colors (4 or 5 depending on uHasColor4)
-  // IMPORTANT: Color1-4 weights are RELATIVE to remaining space after Color0
-  // e.g., if Color0=30% and Color1=28%, Color1 should occupy 28/70 = 40% of the remaining 70%
-  // This means Color1 appears in range [0.30, 0.30 + 0.28] = [0.30, 0.58]
-  // But 28% of the screen means: 28/70 of the 70% remaining = 0.28 absolute
-  // So we need: threshold1 = w0 + (w1 / (1-w0)) * (1-w0) = w0 + w1 ✗ WRONG
-  // Actually the weights already sum to 100, so threshold math is correct!
-  // The REAL issue: noise must be RESCALED so that after w0 threshold,
-  // the remaining range [w0, 1.0] is normalized to [0, 1] for Color1-4 weight distribution
+  // =========================================================================
+  // NEW APPROACH: Black as Darkness Overlay
+  // =========================================================================
+  // Instead of black "taking space" from other colors, colors 1-4 ALWAYS
+  // distribute across the full noise range, and black is applied as an
+  // overlay/darkness that affects the entire gradient.
+  // 
+  // This means:
+  // - At 30% black: All colors visible, slight dark tint
+  // - At 60% black: All colors visible, darker overall
+  // - At 100% black: Solid black
   
-  float w0 = uWeight0 / 100.0;
-  float w1 = uWeight1 / 100.0;
-  float w2 = uWeight2 / 100.0;
-  float w3 = uWeight3 / 100.0;
-  float w4 = uWeight4 / 100.0;
+  float blackness = uWeight0 / 100.0; // 0.3 to 1.0
   
-  // Rescale noise so that Color0's range [0, w0] maps to itself,
-  // but the remaining colors [w0, 1] are distributed according to their RELATIVE weights
-  // This ensures Color1's 28% (when w0=30%) means 28% of SCREEN, not 28% of remaining range
+  // Normalize color1-4 weights to 100% for their own distribution
+  float totalBrandWeight = uWeight1 + uWeight2 + uWeight3 + uWeight4;
+  float w1 = (totalBrandWeight > 0.0) ? uWeight1 / totalBrandWeight : 0.25;
+  float w2 = (totalBrandWeight > 0.0) ? uWeight2 / totalBrandWeight : 0.25;
+  float w3 = (totalBrandWeight > 0.0) ? uWeight3 / totalBrandWeight : 0.25;
+  float w4 = (totalBrandWeight > 0.0) ? uWeight4 / totalBrandWeight : 0.25;
   
-  // Color0 occupies [0, w0] of noise range
-  float threshold0 = w0;
-  
-  // For colors 1-4, they share the remaining (1-w0) of noise range
-  // Their weights (w1,w2,w3,w4) should be interpreted as percentages of the TOTAL,
-  // meaning each color occupies exactly its weight percentage of the screen
-  float threshold1 = w0 + w1;
-  float threshold2 = w0 + w1 + w2;
-  float threshold3 = w0 + w1 + w2 + w3;
+  // Thresholds for colors 1-4 across full [0, 1] noise range
+  float threshold1 = w1;
+  float threshold2 = w1 + w2;
+  float threshold3 = w1 + w2 + w3;
   // threshold4 is implicitly 1.0
   
-  // PROGRESSIVE MIX - Different strategies for different gradient types
-  // Plane uses direct sequential mix (no layer masking needed for linear noise)
-  // Other modes use layer masking to prevent color0 from bleeding into later transitions
-  
-  vec3 finalColor;
+  vec3 brandGradient;
   
   if (uGradientType == 2) {
     // =========================================================================
-    // PLANE MODE: Weighted Segments - Direct Sequential Mix
+    // PLANE MODE: Direct Sequential Mix for linear noise
     // =========================================================================
-    // Plane noise is MONOTONIC (always increasing from 0 to 1 in gradient direction).
-    // This means we don't need layer masking - simple sequential mix() works perfectly
-    // and produces smooth transitions without "stripes".
-    
-    // Use WIDER blur for smooth organic transitions
     float planeBlur = blurFactor * 1.2;
     
-    // Calculate segment transitions - each color blends into the next
-    float seg01 = smoothstep(threshold0 - planeBlur, threshold0 + planeBlur, noise);
     float seg12 = smoothstep(threshold1 - planeBlur, threshold1 + planeBlur, noise);
     float seg23 = smoothstep(threshold2 - planeBlur, threshold2 + planeBlur, noise);
     float seg34 = smoothstep(threshold3 - planeBlur, threshold3 + planeBlur, noise);
     
-    // Apply strength for edge control
     float strengthExp = 1.0 + strength * 0.5;
-    seg01 = pow(seg01, strengthExp);
     seg12 = pow(seg12, strengthExp);
     seg23 = pow(seg23, strengthExp);
     seg34 = pow(seg34, strengthExp);
     
-    // Direct sequential mix - no layer masking needed for linear monotonic noise!
-    // This produces smooth organic blending while respecting weight thresholds
-    finalColor = uColor0;
-    finalColor = mix(finalColor, uColor1, seg01);
-    finalColor = mix(finalColor, uColor2, seg12);
-    finalColor = mix(finalColor, uColor3, seg23);
+    // Start with Color1, blend through colors 2-4
+    brandGradient = uColor1;
+    brandGradient = mix(brandGradient, uColor2, seg12);
+    brandGradient = mix(brandGradient, uColor3, seg23);
     if (uHasColor4) {
-      finalColor = mix(finalColor, uColor4, seg34);
+      brandGradient = mix(brandGradient, uColor4, seg34);
     }
     
   } else {
     // =========================================================================
     // OTHER MODES (Mesh, Water, Conic, Spiral, Waves): Layer Masking
     // =========================================================================
-    // These modes use organic/scattered noise where layer masking prevents
-    // color0 from appearing in later color transitions.
-    
-    float blend01 = smoothstep(threshold0 - blurFactor, threshold0 + blurFactor, noise);
     float blend12 = smoothstep(threshold1 - blurFactor, threshold1 + blurFactor, noise);
     float blend23 = smoothstep(threshold2 - blurFactor, threshold2 + blurFactor, noise);
     float blend34 = smoothstep(threshold3 - blurFactor, threshold3 + blurFactor, noise);
     
-    // Apply strength for edge control
     float strengthExp = 1.0 + strength * 0.5;
-    blend01 = pow(blend01, strengthExp);
     blend12 = pow(blend12, strengthExp);
     blend23 = pow(blend23, strengthExp);
     blend34 = pow(blend34, strengthExp);
     
-    // LAYER MASKING: Each color only affects areas already past the previous threshold
-    finalColor = uColor0;
+    brandGradient = uColor1;
+    brandGradient = mix(brandGradient, uColor2, blend12);
     
-    // Color1 blends over color0
-    finalColor = mix(finalColor, uColor1, blend01);
+    float mask23 = blend12;
+    brandGradient = mix(brandGradient, uColor3, blend23 * mask23);
     
-    // Color2 only blends where color1 has already started
-    float mask12 = blend01;
-    finalColor = mix(finalColor, uColor2, blend12 * mask12);
-    
-    // Color3 only blends where color1 or color2 exist
-    float mask23 = max(blend01, blend12);
-    finalColor = mix(finalColor, uColor3, blend23 * mask23);
-    
-    // Color4 (if enabled) only blends where previous colors exist
     if (uHasColor4) {
       float mask34 = max(mask23, blend23);
-      finalColor = mix(finalColor, uColor4, blend34 * mask34);
+      brandGradient = mix(brandGradient, uColor4, blend34 * mask34);
     }
   }
+  
+  // =========================================================================
+  // Apply Black/White as Darkness Overlay
+  // =========================================================================
+  // Use smooth gradient-based mixing so black blends organically
+  // At low blackness (30%), colors dominate with subtle dark tint
+  // At high blackness (80%+), black dominates but colors still peek through
+  
+  // Create a smooth darkness gradient based on noise
+  // Lower noise values = more darkness, higher = more color
+  float darknessCurve = smoothstep(0.0, blackness * 1.2, noise);
+  
+  // Mix: black in dark areas, brand colors in bright areas
+  vec3 finalColor = mix(uColor0, brandGradient, darknessCurve);
   
   // Convert from Linear RGB back to sRGB for correct display
   finalColor = linearToSrgb(finalColor);

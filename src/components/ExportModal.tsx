@@ -135,15 +135,26 @@ async function render4ColorGradientHighQuality(
   const grainEnabled = config.grain;
   const grainIntensity = grainEnabled ? (config.grainIntensity ?? 50) / 100 : 0;
   
-  // Color weight thresholds (supports 4 or 5 colors)
-  const w0 = (config.colorWeight0 ?? 30) / 100;
-  const w1 = (config.colorWeight1 ?? 23) / 100;
-  const w2 = (config.colorWeight2 ?? 24) / 100;
-  const w3 = (config.colorWeight3 ?? 23) / 100;
-  const threshold0 = w0;
-  const threshold1 = w0 + w1;
-  const threshold2 = w0 + w1 + w2;
-  const threshold3 = w0 + w1 + w2 + w3;
+  // NEW APPROACH: Black as Darkness Overlay
+  // Colors 1-4 distribute across full range, black is applied as darkness overlay
+  const blackness = (config.colorWeight0 ?? 30) / 100; // 0.3 to 1.0
+  
+  // Normalize color1-4 weights to 100% for their own distribution
+  const rawW1 = config.colorWeight1 ?? 23;
+  const rawW2 = config.colorWeight2 ?? 24;
+  const rawW3 = config.colorWeight3 ?? 23;
+  const rawW4 = config.colorWeight4 ?? 0;
+  const totalBrandWeight = rawW1 + rawW2 + rawW3 + rawW4;
+  
+  const w1 = totalBrandWeight > 0 ? rawW1 / totalBrandWeight : 0.25;
+  const w2 = totalBrandWeight > 0 ? rawW2 / totalBrandWeight : 0.25;
+  const w3 = totalBrandWeight > 0 ? rawW3 / totalBrandWeight : 0.25;
+  const w4 = totalBrandWeight > 0 ? rawW4 / totalBrandWeight : 0.25;
+  
+  // Thresholds for colors 1-4 across full [0, 1] noise range
+  const threshold1 = w1;
+  const threshold2 = w1 + w2;
+  const threshold3 = w1 + w2 + w3;
   
   // Plane angle in radians
   const planeAngle = (config.planeAngle ?? 45) * Math.PI / 180;
@@ -313,105 +324,92 @@ async function render4ColorGradientHighQuality(
       // otherwise percentages stop matching perceived area. We sharpen edges instead.
       noise = Math.max(0, Math.min(1, noise));
 
-      // PROGRESSIVE MIX - Different strategies for different gradient types
-      // Plane uses direct sequential mix (no layer masking needed for linear noise)
-      // Other modes use layer masking to prevent color0 from bleeding into later transitions
+      // =========================================================================
+      // NEW APPROACH: Black as Darkness Overlay
+      // =========================================================================
+      // Colors 1-4 distribute across full noise range, black is applied as darkness overlay
       
       const isPlane = gradientType === 2;
-      let r: number, g: number, b: number;
+      let brandR: number, brandG: number, brandB: number;
       
       if (isPlane) {
-        // =========================================================================
-        // PLANE MODE: Weighted Segments - Direct Sequential Mix
-        // =========================================================================
-        // Plane noise is MONOTONIC - no layer masking needed
-        
-        // Use WIDER blur for smooth organic transitions
+        // PLANE MODE: Direct Sequential Mix
         const planeBlur = blurFactor * 1.2;
         
-        // Calculate segment transitions
-        let seg01 = smoothstep(threshold0 - planeBlur, threshold0 + planeBlur, noise);
         let seg12 = smoothstep(threshold1 - planeBlur, threshold1 + planeBlur, noise);
         let seg23 = smoothstep(threshold2 - planeBlur, threshold2 + planeBlur, noise);
         let seg34 = hasColor4 ? smoothstep(threshold3 - planeBlur, threshold3 + planeBlur, noise) : 0;
         
-        // Apply strength for edge control
         const strengthExp = 1.0 + strength * 0.5;
-        seg01 = Math.pow(Math.max(0, Math.min(1, seg01)), strengthExp);
         seg12 = Math.pow(Math.max(0, Math.min(1, seg12)), strengthExp);
         seg23 = Math.pow(Math.max(0, Math.min(1, seg23)), strengthExp);
         seg34 = Math.pow(Math.max(0, Math.min(1, seg34)), strengthExp);
         
-        // Direct sequential mix - smooth organic blending
-        r = color0.r;
-        g = color0.g;
-        b = color0.b;
+        // Start with Color1, blend through 2-4
+        brandR = color1.r;
+        brandG = color1.g;
+        brandB = color1.b;
         
-        r = lerp(r, color1.r, seg01);
-        g = lerp(g, color1.g, seg01);
-        b = lerp(b, color1.b, seg01);
+        brandR = lerp(brandR, color2.r, seg12);
+        brandG = lerp(brandG, color2.g, seg12);
+        brandB = lerp(brandB, color2.b, seg12);
         
-        r = lerp(r, color2.r, seg12);
-        g = lerp(g, color2.g, seg12);
-        b = lerp(b, color2.b, seg12);
-        
-        r = lerp(r, color3.r, seg23);
-        g = lerp(g, color3.g, seg23);
-        b = lerp(b, color3.b, seg23);
+        brandR = lerp(brandR, color3.r, seg23);
+        brandG = lerp(brandG, color3.g, seg23);
+        brandB = lerp(brandB, color3.b, seg23);
         
         if (hasColor4 && color4) {
-          r = lerp(r, color4.r, seg34);
-          g = lerp(g, color4.g, seg34);
-          b = lerp(b, color4.b, seg34);
+          brandR = lerp(brandR, color4.r, seg34);
+          brandG = lerp(brandG, color4.g, seg34);
+          brandB = lerp(brandB, color4.b, seg34);
         }
         
       } else {
-        // =========================================================================
-        // OTHER MODES: Layer Masking (Mesh, Water, Conic, Spiral, Waves)
-        // =========================================================================
-        
-        let blend01 = smoothstep(threshold0 - blurFactor, threshold0 + blurFactor, noise);
+        // OTHER MODES: Layer Masking for colors 1-4
         let blend12 = smoothstep(threshold1 - blurFactor, threshold1 + blurFactor, noise);
         let blend23 = smoothstep(threshold2 - blurFactor, threshold2 + blurFactor, noise);
         let blend34 = hasColor4 ? smoothstep(threshold3 - blurFactor, threshold3 + blurFactor, noise) : 0;
         
-        // Apply strength for edge control
         const strengthExp = 1.0 + strength * 0.5;
-        blend01 = Math.pow(Math.max(0, Math.min(1, blend01)), strengthExp);
         blend12 = Math.pow(Math.max(0, Math.min(1, blend12)), strengthExp);
         blend23 = Math.pow(Math.max(0, Math.min(1, blend23)), strengthExp);
         blend34 = Math.pow(Math.max(0, Math.min(1, blend34)), strengthExp);
         
-        // LAYER MASKING
-        r = color0.r;
-        g = color0.g;
-        b = color0.b;
+        // Start with Color1
+        brandR = color1.r;
+        brandG = color1.g;
+        brandB = color1.b;
         
-        // Color1 blends over color0
-        r = lerp(r, color1.r, blend01);
-        g = lerp(g, color1.g, blend01);
-        b = lerp(b, color1.b, blend01);
+        // Color2 blends over color1
+        brandR = lerp(brandR, color2.r, blend12);
+        brandG = lerp(brandG, color2.g, blend12);
+        brandB = lerp(brandB, color2.b, blend12);
         
-        // Color2 only blends where color1 has already started
-        const mask12 = blend01;
-        r = lerp(r, color2.r, blend12 * mask12);
-        g = lerp(g, color2.g, blend12 * mask12);
-        b = lerp(b, color2.b, blend12 * mask12);
+        // Color3 with mask
+        const mask23 = blend12;
+        brandR = lerp(brandR, color3.r, blend23 * mask23);
+        brandG = lerp(brandG, color3.g, blend23 * mask23);
+        brandB = lerp(brandB, color3.b, blend23 * mask23);
         
-        // Color3 only blends where color1 or color2 exist
-        const mask23 = Math.max(blend01, blend12);
-        r = lerp(r, color3.r, blend23 * mask23);
-        g = lerp(g, color3.g, blend23 * mask23);
-        b = lerp(b, color3.b, blend23 * mask23);
-        
-        // Color4 (if enabled)
+        // Color4 if enabled
         if (hasColor4 && color4) {
           const mask34 = Math.max(mask23, blend23);
-          r = lerp(r, color4.r, blend34 * mask34);
-          g = lerp(g, color4.g, blend34 * mask34);
-          b = lerp(b, color4.b, blend34 * mask34);
+          brandR = lerp(brandR, color4.r, blend34 * mask34);
+          brandG = lerp(brandG, color4.g, blend34 * mask34);
+          brandB = lerp(brandB, color4.b, blend34 * mask34);
         }
       }
+      
+      // =========================================================================
+      // Apply Black/White as Darkness Overlay
+      // =========================================================================
+      // Lower noise values = more darkness, higher = more color
+      const darknessCurve = smoothstep(0.0, blackness * 1.2, noise);
+      
+      // Mix: black in dark areas, brand colors in bright areas
+      let r = lerp(color0.r, brandR, darknessCurve);
+      let g = lerp(color0.g, brandG, darknessCurve);
+      let b = lerp(color0.b, brandB, darknessCurve);
       
       // Apply edge fade - corners blend to color0
       r = lerp(color0.r, r, edgeFade);
