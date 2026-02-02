@@ -183,13 +183,16 @@ void main() {
   
   if (uGradientType == 0) {
     // =========================================================================
-    // MESH MODE: Radial Light Sources (Soft Light Blobs / Atmospheric Lighting)
+    // MESH MODE: Radial Light Sources → produces a scalar noise field.
     // =========================================================================
-    // Color0 (base/black) is guaranteed minimum 30% of the screen area.
-    // Colors 1-4 act as "light sources" with exponential falloff, overlaid onto base.
-    
-    // Get base weight (minimum 30%) - this determines how much area stays pure base color
-    float baseWeight = uWeight0 / 100.0; // e.g., 0.30 for 30%
+    // IMPORTANT:
+    // We do NOT output color directly here.
+    // Instead we generate a 0..1 scalar "noise" field and let the shared
+    // weight-threshold mixer below map it to Color0..Color4.
+    // This guarantees:
+    // - Color0 respects its weight segment (e.g. 30% minimum base)
+    // - Brand colors remain exact (no extra per-mode blending logic)
+    float baseWeight = uWeight0 / 100.0;
     
     // Softness factor: higher blur = more spread/softer lights
     // At blur=0%, lights should still be visible but smaller
@@ -261,69 +264,32 @@ void main() {
     float light3 = exp(-dist3 * dist3 / (spreadSq * 1.1));
     float light4 = exp(-dist4 * dist4 / spreadSq);
     
-    // Apply color weights as intensity multipliers (normalized to remaining space after base)
-    float remainingWeight = 1.0 - baseWeight;
+    // Convert color weights to normalized "energy" only for shaping the scalar field.
+    // The actual area/weight mapping is handled by the shared thresholds below.
+    float remainingWeight = max(0.0, 1.0 - baseWeight);
     float w1 = (uWeight1 / 100.0) / max(0.01, remainingWeight);
     float w2 = (uWeight2 / 100.0) / max(0.01, remainingWeight);
     float w3 = (uWeight3 / 100.0) / max(0.01, remainingWeight);
     float w4 = (uWeight4 / 100.0) / max(0.01, remainingWeight);
-    
-    // Scale lights by their weights (capped to prevent oversaturation)
-    light1 *= min(w1 * 2.0, 1.0);
-    light2 *= min(w2 * 2.0, 1.0);
-    light3 *= min(w3 * 2.0, 1.0);
-    light4 *= min(w4 * 2.0, 1.0);
-    
-    // Calculate total light coverage (how much area is lit)
-    float totalLight = light1 + light2 + light3 + light4;
-    if (uHasColor4) {
-      totalLight = light1 + light2 + light3 + light4;
-    } else {
-      totalLight = light1 + light2 + light3;
-      light4 = 0.0;
-    }
-    
-    // Ensure base color maintains its minimum weight
-    // by limiting how much the lights can cover
-    float maxLightCoverage = remainingWeight * 1.5; // Allow some overlap
-    float lightScale = totalLight > maxLightCoverage ? maxLightCoverage / totalLight : 1.0;
-    
-    light1 *= lightScale;
-    light2 *= lightScale;
-    light3 *= lightScale;
-    light4 *= lightScale;
-    
-    // Direct blending in sRGB space to preserve exact brand colors
-    // (Linear RGB blending was causing color shifts - magenta looked red)
-    vec3 baseColor = uColor0;
-    vec3 c1 = uColor1;
-    vec3 c2 = uColor2;
-    vec3 c3 = uColor3;
-    vec3 c4 = uColor4;
-    
-    // Start with pure base color, then overlay lights
-    vec3 result = baseColor;
-    result = mix(result, c1, clamp(light1, 0.0, 1.0));
-    result = mix(result, c2, clamp(light2, 0.0, 1.0));
-    result = mix(result, c3, clamp(light3, 0.0, 1.0));
-    if (uHasColor4) {
-      result = mix(result, c4, clamp(light4, 0.0, 1.0));
-    }
-    
-    // Subtle ordered dithering to prevent banding
-    float d = bayer8x8(gl_FragCoord.xy);
-    result = clamp(result + d * (0.75 / 255.0), 0.0, 1.0);
-    
-    gl_FragColor = vec4(result, 1.0);
-    
-    // Film grain for mesh mode
-    if (uGrain > 0.0) {
-      float g = snoise(vec3(vUv * 220.0, uTime * 0.7));
-      float grainAmt = (g * 0.5 + 0.5 - 0.5) * (uGrain * 0.18);
-      gl_FragColor.rgb = clamp(gl_FragColor.rgb + grainAmt, 0.0, 1.0);
-    }
-    
-    return; // Exit early - mesh mode handles its own output
+
+    // Weight-shape the local light contributions.
+    light1 *= clamp(w1, 0.0, 2.0);
+    light2 *= clamp(w2, 0.0, 2.0);
+    light3 *= clamp(w3, 0.0, 2.0);
+    light4 *= clamp(w4, 0.0, 2.0);
+
+    float totalLight = light1 + light2 + light3 + (uHasColor4 ? light4 : 0.0);
+
+    // Map light energy to a 0..1 scalar field.
+    // The exp() mapping gives us more dark range (helps keep Color0 dominant).
+    float baseNoise = 1.0 - exp(-totalLight * 1.1);
+
+    // Histogram-ish stretch (S-curve) for more even distribution in organic modes.
+    // This helps weights map more consistently to visible area.
+    baseNoise = smoothstep(0.0, 1.0, baseNoise);
+    baseNoise = pow(baseNoise, 0.85);
+
+    noise = clamp(baseNoise, 0.0, 1.0);
     
   } else if (uGradientType == 1) {
     // SPHERE MODE: Classic 3D sphere with smooth color blending
