@@ -347,7 +347,13 @@ void main() {
   noise = pow(clamp(noise, 0.0, 1.0), 1.0 + strength * 0.15);
   
   // Apply blur (softness)
+  // NOTE: Plane needs stricter transitions so the mandatory 30% base color (black/white)
+  // is visually present; otherwise high blur makes it look like it disappears.
   float blurFactor = uBlur * 0.5;
+  float effectiveBlurFactor = blurFactor;
+  if (uGradientType == 2) {
+    effectiveBlurFactor = blurFactor * 0.35;
+  }
   
   // Calculate cumulative thresholds for colors (4 or 5 depending on uHasColor4)
   float w0 = uWeight0 / 100.0;
@@ -362,10 +368,10 @@ void main() {
   float threshold3 = w0 + w1 + w2 + w3;
   
   // Smooth color blending (in linear space - uColors are already linear from THREE.Color)
-  float blend01 = smoothstep(threshold0 - blurFactor, threshold0 + blurFactor, noise);
-  float blend12 = smoothstep(threshold1 - blurFactor, threshold1 + blurFactor, noise);
-  float blend23 = smoothstep(threshold2 - blurFactor, threshold2 + blurFactor, noise);
-  float blend34 = smoothstep(threshold3 - blurFactor, threshold3 + blurFactor, noise);
+  float blend01 = smoothstep(threshold0 - effectiveBlurFactor, threshold0 + effectiveBlurFactor, noise);
+  float blend12 = smoothstep(threshold1 - effectiveBlurFactor, threshold1 + effectiveBlurFactor, noise);
+  float blend23 = smoothstep(threshold2 - effectiveBlurFactor, threshold2 + effectiveBlurFactor, noise);
+  float blend34 = smoothstep(threshold3 - effectiveBlurFactor, threshold3 + effectiveBlurFactor, noise);
   
   // Progressive color mixing in linear space
   vec3 finalColor = uColor0;
