@@ -33,14 +33,15 @@ interface ControlPanelProps {
   onOpenButtonsPanel?: () => void;
 }
 
-const shapeOptions: { value: GradientConfig['type']; wireframe: boolean; label: string }[] = [
-  { value: 'sphere', wireframe: false, label: 'Sphere' },
-  { value: 'plane', wireframe: false, label: 'Plane' },
-  { value: 'waterPlane', wireframe: false, label: 'Water' },
-  { value: 'plane', wireframe: true, label: 'Mesh' },
-  { value: 'conic', wireframe: false, label: 'Conic' },
-  { value: 'spiral', wireframe: false, label: 'Spiral' },
-  { value: 'waves', wireframe: false, label: 'Waves' },
+const shapeOptions: { value: GradientConfig['type']; wireframe: boolean; label: string; presetKey: string }[] = [
+  { value: 'sphere', wireframe: false, label: 'Sphere', presetKey: 'sphere' },
+  { value: 'plane', wireframe: false, label: 'Plane', presetKey: 'plane' },
+  { value: 'waterPlane', wireframe: false, label: 'Water', presetKey: 'water' },
+  { value: 'plane', wireframe: true, label: 'Mesh', presetKey: 'mesh' },
+  { value: 'plane', wireframe: true, label: 'Aurora', presetKey: 'aurora' },
+  { value: 'conic', wireframe: false, label: 'Conic', presetKey: 'conic' },
+  { value: 'spiral', wireframe: false, label: 'Spiral', presetKey: 'spiral' },
+  { value: 'waves', wireframe: false, label: 'Waves', presetKey: 'waves' },
 ];
 
 const aspectRatioOptions: { value: GradientConfig['aspectRatio']; label: string; category?: string }[] = [
@@ -98,17 +99,52 @@ const colorPresets = [
   { name: 'Warm', color1: '#FDB515', color2: '#F2665F', color3: '#EC008C', color4: null, weight0: 30, weight1: 25, weight2: 25, weight3: 20, weight4: 0 },
 ];
 
-// Effect presets for each gradient type
+// Complete effect presets for each gradient type - resets ALL relevant settings
 // BRANDING RULE: Color0 is FIXED at 30%. Color1-3 must sum to 70%.
 const effectPresets: Record<string, Partial<GradientConfig>> = {
-  mesh: {
-    uStrength: 1,
-    uDensity: 1,
-    uFrequency: 1,
+  sphere: {
+    uStrength: 4,
+    uDensity: 1.3,
+    uFrequency: 5.5,
     colorWeight0: 30,
     colorWeight1: 25,
     colorWeight2: 25,
     colorWeight3: 20,
+    meshNoiseScale: 3.0,
+    meshBlur: 50,
+    meshStyle: 'organic',
+    speed: 0.4,
+    grain: false,
+  },
+  mesh: {
+    uStrength: 4,
+    uDensity: 1.3,
+    uFrequency: 5.5,
+    colorWeight0: 30,
+    colorWeight1: 25,
+    colorWeight2: 25,
+    colorWeight3: 20,
+    meshNoiseScale: 1.5,
+    meshBlur: 60,
+    meshStyle: 'organic',
+    speed: 0.4,
+    grain: false,
+  },
+  // AURORA: The silky curtain effect - low noise scale, high blur, slow animation
+  aurora: {
+    uStrength: 0.5,
+    uDensity: 1.0,
+    uFrequency: 3.0,
+    colorWeight0: 35,
+    colorWeight1: 25,
+    colorWeight2: 20,
+    colorWeight3: 20,
+    meshNoiseScale: 0.4,  // Very low = large smooth areas
+    meshBlur: 95,         // Near-maximum blur
+    meshStyle: 'organic',
+    speed: 0.15,          // Slow dreamy animation
+    grain: true,
+    grainIntensity: 10,
   },
   plane: {
     uStrength: 1.5,
@@ -118,6 +154,12 @@ const effectPresets: Record<string, Partial<GradientConfig>> = {
     colorWeight1: 25,
     colorWeight2: 25,
     colorWeight3: 20,
+    planeAngle: 45,
+    planeRadial: false,
+    planeWave: 0,
+    planeSpread: 50,
+    speed: 0.4,
+    grain: false,
   },
   water: {
     uStrength: 1.5,
@@ -127,6 +169,10 @@ const effectPresets: Record<string, Partial<GradientConfig>> = {
     colorWeight1: 25,
     colorWeight2: 25,
     colorWeight3: 20,
+    meshNoiseScale: 2.0,
+    meshBlur: 70,
+    speed: 0.3,
+    grain: false,
   },
   conic: {
     uStrength: 1,
@@ -136,6 +182,10 @@ const effectPresets: Record<string, Partial<GradientConfig>> = {
     colorWeight1: 25,
     colorWeight2: 25,
     colorWeight3: 20,
+    conicStartAngle: 0,
+    conicSpiral: 0,
+    speed: 0.4,
+    grain: false,
   },
   spiral: {
     uStrength: 1,
@@ -145,6 +195,10 @@ const effectPresets: Record<string, Partial<GradientConfig>> = {
     colorWeight1: 25,
     colorWeight2: 25,
     colorWeight3: 20,
+    spiralTightness: 3,
+    spiralDirection: true,
+    speed: 0.3,
+    grain: false,
   },
   waves: {
     uStrength: 1,
@@ -154,6 +208,10 @@ const effectPresets: Record<string, Partial<GradientConfig>> = {
     colorWeight1: 25,
     colorWeight2: 25,
     colorWeight3: 20,
+    wavesCount: 5,
+    wavesAmplitude: 50,
+    speed: 0.25,
+    grain: false,
   },
 };
 
@@ -460,23 +518,15 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
             <h3 className="font-display text-lg font-medium mb-4 text-foreground">Shape</h3>
             <div className="grid grid-cols-2 gap-2">
               {shapeOptions.map((shape) => {
-                const isActive = config.type === shape.value && config.wireframe === shape.wireframe;
-                
-                // Get effect preset key based on shape
-                const getPresetKey = () => {
-                  if (shape.label === 'Mesh') return 'mesh';
-                  if (shape.label === 'Plane') return 'plane';
-                  if (shape.label === 'Water') return 'water';
-                  if (shape.label === 'Conic') return 'conic';
-                  if (shape.label === 'Burst') return 'radialBurst';
-                  if (shape.label === 'Spiral') return 'spiral';
-                  if (shape.label === 'Waves') return 'waves';
-                  return null;
-                };
+                // Aurora and Mesh share same type+wireframe but different presets
+                const isActive = shape.label === 'Aurora' 
+                  ? config.type === 'plane' && config.wireframe && config.meshNoiseScale !== undefined && config.meshNoiseScale < 0.6
+                  : shape.label === 'Mesh'
+                    ? config.type === 'plane' && config.wireframe && (config.meshNoiseScale === undefined || config.meshNoiseScale >= 0.6)
+                    : config.type === shape.value && config.wireframe === shape.wireframe;
                 
                 const handleShapeClick = () => {
-                  const presetKey = getPresetKey();
-                  const effectSettings = presetKey ? effectPresets[presetKey] : {};
+                  const effectSettings = effectPresets[shape.presetKey] || {};
                   onConfigChange({ 
                     type: shape.value, 
                     wireframe: shape.wireframe,
@@ -552,43 +602,11 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
             
           </div>
 
-          {/* Mesh Controls (only visible when Mesh is selected) */}
+          {/* Mesh Controls (only visible when Mesh/Aurora is selected) */}
           {isWireframeMode && (
             <div>
               <h3 className="font-display text-lg font-medium mb-4 text-foreground">Mesh Gradient</h3>
               <div className="space-y-4">
-                {/* Quick look presets */}
-                <div className="rounded-lg bg-secondary/40 p-3 border border-border">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-medium text-foreground">Aurora</div>
-                      <div className="text-xs text-muted-foreground">Smooth curtains (scale↓, blur↑)</div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        onConfigChange({
-                          // Ensure we're still in Mesh mode (plane+wireframe)
-                          type: 'plane',
-                          wireframe: true,
-                          meshStyle: 'organic',
-                          meshNoiseScale: 0.4,
-                          meshBlur: 95,
-                          uFrequency: 3.0,
-                          uDensity: 1.2,
-                          grain: true,
-                          grainIntensity: 10,
-                          speed: 0.15,
-                        })
-                      }
-                      className="px-3 py-2 rounded-lg text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-                    >
-                      Apply
-                    </button>
-                  </div>
-                </div>
-
-                {/* Noise Scale - controls blob size */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label className="text-muted-foreground">Blob Size</Label>
