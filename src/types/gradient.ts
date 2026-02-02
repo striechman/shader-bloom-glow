@@ -38,14 +38,11 @@ export interface GradientConfig {
   uFrequency: number;
   
   // Mesh Gradient settings (noise-based color blending)
-  meshNoiseScale: number; // Size of color blobs (0.1-10, lower = larger/smoother blobs for Aurora effect)
-  meshBlur: number; // Softness between colors (0-100, higher = smoother Aurora-like transitions)
+  meshNoiseScale: number; // Size of color blobs (1-10, higher = smaller blobs)
+  meshBlur: number; // Softness between colors (0-100)
   meshStyle: 'organic' | 'flow' | 'center'; // Distribution style
   meshFlowAngle: number; // 0-360 degrees (for flow style)
   meshCenterInward: boolean; // true = colors flow inward, false = outward
-  meshStretchX: number; // Horizontal stretch factor (0.5-3.0, >1 = horizontal bands)
-  meshStretchY: number; // Vertical stretch factor (0.5-3.0, <1 = horizontal bands)
-  meshWarpAmount: number; // Wave distortion amount (0-100)
   
   // Aspect Ratio
   aspectRatio: '1:1' | '16:9' | '9:16' | '2:3' | '3:2' | '4:5' | '4:3' | '3:4' | 'free' | 'hero-banner' | 'small-banner' | 'button-large' | 'button-medium' | 'button-small';
@@ -101,14 +98,11 @@ export const defaultGradientConfig: GradientConfig = {
   uDensity: 1.3,
   uFrequency: 5.5,
   frozenTime: null,
-  meshNoiseScale: 0.5, // Lower = larger blobs for Aurora effect
-  meshBlur: 80, // Higher = smoother transitions
+  meshNoiseScale: 3.0,
+  meshBlur: 50,
   meshStyle: 'organic',
   meshFlowAngle: 45,
   meshCenterInward: true,
-  meshStretchX: 1.8, // Horizontal stretch for curtain effect
-  meshStretchY: 0.6, // Vertical compress for horizontal bands
-  meshWarpAmount: 30, // Subtle wave distortion
   aspectRatio: 'free',
   bannerBlackFade: 30,
   planeAngle: 45,
