@@ -20,7 +20,7 @@ export function GradientDebugOverlay({ config, visible = true }: GradientDebugOv
   }
   
   return (
-    <div className="absolute top-4 left-4 bg-black/80 text-white p-4 rounded-lg text-xs font-mono space-y-2 max-w-xs z-50 backdrop-blur-sm border border-white/20">
+    <div className="fixed top-20 left-6 bg-black/90 text-white p-4 rounded-lg text-xs font-mono space-y-2 max-w-xs z-[100] backdrop-blur-sm border border-white/20 shadow-2xl max-h-[70vh] overflow-y-auto">
       <div className="text-sm font-bold border-b border-white/30 pb-2 mb-2">
         🎨 Gradient Debug Info
       </div>

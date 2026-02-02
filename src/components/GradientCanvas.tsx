@@ -180,18 +180,18 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
             }}
           />
         )}
-        
-        {/* Debug toggle button */}
-        <button
-          onClick={() => setShowDebug(!showDebug)}
-          className="absolute bottom-4 left-4 z-50 bg-black/70 hover:bg-black/90 text-white text-xs px-3 py-1.5 rounded-md font-mono transition-colors border border-white/20"
-        >
-          {showDebug ? '🔽 Hide Debug' : '🔼 Show Debug'}
-        </button>
-        
-        {/* Debug overlay */}
-        <GradientDebugOverlay config={config} visible={showDebug} />
       </div>
+      
+      {/* Debug toggle button - outside container to avoid overflow issues */}
+      <button
+        onClick={() => setShowDebug(!showDebug)}
+        className="fixed bottom-6 left-6 z-[100] bg-black/80 hover:bg-black/95 text-white text-xs px-4 py-2 rounded-lg font-mono transition-all border border-white/30 shadow-lg hover:shadow-xl"
+      >
+        {showDebug ? '🔽 Hide Debug' : '🔼 Show Debug'}
+      </button>
+      
+      {/* Debug overlay - fixed position */}
+      {showDebug && <GradientDebugOverlay config={config} visible={showDebug} />}
     </div>
   );
 };
