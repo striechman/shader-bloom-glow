@@ -398,19 +398,19 @@ void main() {
   // Smooth organic blending that prevents color0 from bleeding into later transitions
   // Each color layer only affects areas already "covered" by the previous color transition
   
-  // Blend factors - Plane mode uses ONE-SIDED blending to keep color0 pure for its 30%
+  // Blend factors - Plane mode uses REDUCED blur to keep color0 prominent but still blended
   float blend01, blend12, blend23, blend34;
   
   if (uGradientType == 2) {
-    // PLANE MODE: One-sided blending - transitions START at threshold (not centered)
-    // This ensures color0 stays pure for its full 30% weight range
-    float transitionWidth = blurFactor * 0.6;
-    blend01 = smoothstep(threshold0, threshold0 + transitionWidth, noise);
-    blend12 = smoothstep(threshold1, threshold1 + transitionWidth, noise);
-    blend23 = smoothstep(threshold2, threshold2 + transitionWidth, noise);
-    blend34 = smoothstep(threshold3, threshold3 + transitionWidth, noise);
+    // PLANE MODE: Centered blending with reduced blur (35% of standard)
+    // This allows color0 to blend organically while maintaining its 30% weight presence
+    float planeBlur = blurFactor * 0.35;
+    blend01 = smoothstep(threshold0 - planeBlur, threshold0 + planeBlur, noise);
+    blend12 = smoothstep(threshold1 - planeBlur, threshold1 + planeBlur, noise);
+    blend23 = smoothstep(threshold2 - planeBlur, threshold2 + planeBlur, noise);
+    blend34 = smoothstep(threshold3 - planeBlur, threshold3 + planeBlur, noise);
   } else {
-    // OTHER MODES: Centered blending for organic feel
+    // OTHER MODES: Full centered blending for maximum organic feel
     blend01 = smoothstep(threshold0 - blurFactor, threshold0 + blurFactor, noise);
     blend12 = smoothstep(threshold1 - blurFactor, threshold1 + blurFactor, noise);
     blend23 = smoothstep(threshold2 - blurFactor, threshold2 + blurFactor, noise);
