@@ -241,6 +241,12 @@ async function render4ColorGradientHighQuality(
         noise = baseNoise + organicNoise;
         noise = Math.max(0, Math.min(1, noise));
         
+        // HISTOGRAM EQUALIZATION for Plane: Apply same stretching to match weight distribution
+        // This ensures color weights accurately reflect screen area
+        const centeredNoise = noise - 0.5;
+        const stretchedNoise = Math.sign(centeredNoise) * Math.pow(Math.abs(centeredNoise) * 2.0, 0.7) * 0.5;
+        noise = stretchedNoise + 0.5;
+        
       } else if (gradientType === 4) {
         // CONIC MODE: Angular gradient with optional spiral
         const offsetCenterU = centeredU - conicOffsetX;
