@@ -265,16 +265,9 @@ void main() {
     // Ensure we have actual 0.0 values for color0 (black) - clamp before spread
     baseNoise = clamp(baseNoise, 0.0, 1.0);
     
-    // Apply spread (controls transition sharpness)
-    // 0% = very sharp edges, 50% = normal, 100% = extra soft
-    float sharpness = 1.0 - uPlaneSpread; // 0 = soft, 1 = sharp
-    if (sharpness > 0.1) {
-      // Apply sharpening using power function for smoother control
-      float center = 0.5;
-      float dist = baseNoise - center;
-      float sharpened = center + sign(dist) * pow(abs(dist * 2.0), 1.0 + sharpness * 2.0) * 0.5;
-      baseNoise = mix(baseNoise, clamp(sharpened, 0.0, 1.0), sharpness);
-    }
+    // NOTE: Do NOT warp baseNoise with pow() in Plane.
+    // Plane baseNoise is already monotonic/linear; warping breaks weight-to-area mapping.
+    // Spread is applied later by adjusting transition blur width during color mixing.
     
     // Add subtle organic noise for texture - reduced to not push away from 0
     vec3 noisePos = vec3(vUv * 2.0 * freq, uTime * 0.25);
@@ -283,11 +276,8 @@ void main() {
     noise = baseNoise + organicNoise;
     noise = clamp(noise, 0.0, 1.0);
     
-    // HISTOGRAM EQUALIZATION for Plane: Apply same stretching to match weight distribution
-    // This ensures color weights accurately reflect screen area
-    float centeredNoise = noise - 0.5;
-    float stretchedNoise = sign(centeredNoise) * pow(abs(centeredNoise) * 2.0, 0.7) * 0.5;
-    noise = stretchedNoise + 0.5;
+    // IMPORTANT: Do NOT apply histogram equalization in Plane.
+    // Plane noise is already uniform; equalization distorts area mapping.
     
   } else if (uGradientType == 4) {
     // CONIC MODE: Angular gradient with optional spiral
@@ -409,13 +399,15 @@ void main() {
     // =========================================================================
     // PLANE MODE: Weighted Segments - Direct Sequential Mix
     // =========================================================================
-    // Use WIDER blur for smooth transitions (prevents a hard black band)
-    float planeBlur = blurFactor * 1.2;
+    // Spread (0=sharp, 1=soft) controls transition width without changing segment areas.
+    float spreadBlurMult = mix(0.35, 1.8, uPlaneSpread);
+    float planeBlur = blurFactor * 1.2 * spreadBlurMult;
     
-    float seg01 = smoothstep(threshold0 - planeBlur, threshold0 + planeBlur, noise);
-    float seg12 = smoothstep(threshold1 - planeBlur, threshold1 + planeBlur, noise);
-    float seg23 = smoothstep(threshold2 - planeBlur, threshold2 + planeBlur, noise);
-    float seg34 = smoothstep(threshold3 - planeBlur, threshold3 + planeBlur, noise);
+    // Asymmetric transitions so Color0 is SOLID until threshold0 (true 30%+ black on screen)
+    float seg01 = smoothstep(threshold0, threshold0 + planeBlur * 2.0, noise);
+    float seg12 = smoothstep(threshold1, threshold1 + planeBlur * 2.0, noise);
+    float seg23 = smoothstep(threshold2, threshold2 + planeBlur * 2.0, noise);
+    float seg34 = smoothstep(threshold3, threshold3 + planeBlur * 2.0, noise);
     
     // Apply strength for edge control
     float strengthExp = 1.0 + strength * 0.5;

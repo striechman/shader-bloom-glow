@@ -240,12 +240,8 @@ async function render4ColorGradientHighQuality(
 
         noise = baseNoise + organicNoise;
         noise = Math.max(0, Math.min(1, noise));
-        
-        // HISTOGRAM EQUALIZATION for Plane: Apply same stretching to match weight distribution
-        // This ensures color weights accurately reflect screen area
-        const centeredNoise = noise - 0.5;
-        const stretchedNoise = Math.sign(centeredNoise) * Math.pow(Math.abs(centeredNoise) * 2.0, 0.7) * 0.5;
-        noise = stretchedNoise + 0.5;
+        // IMPORTANT: Do NOT apply histogram equalization in Plane.
+        // Plane noise is already monotonic/linear; equalization distorts area mapping.
         
       } else if (gradientType === 4) {
         // CONIC MODE: Angular gradient with optional spiral
@@ -324,12 +320,15 @@ async function render4ColorGradientHighQuality(
         // =========================================================================
         // PLANE MODE: Weighted Segments - Direct Sequential Mix
         // =========================================================================
-        const planeBlur = blurFactor * 1.2;
+        const planeSpread = (config.planeSpread ?? 50) / 100;
+        const spreadBlurMult = lerp(0.35, 1.8, planeSpread);
+        const planeBlur = blurFactor * 1.2 * spreadBlurMult;
         
-        let seg01 = smoothstep(threshold0 - planeBlur, threshold0 + planeBlur, noise);
-        let seg12 = smoothstep(threshold1 - planeBlur, threshold1 + planeBlur, noise);
-        let seg23 = smoothstep(threshold2 - planeBlur, threshold2 + planeBlur, noise);
-        let seg34 = hasColor4 ? smoothstep(threshold3 - planeBlur, threshold3 + planeBlur, noise) : 0;
+        // Asymmetric transitions so Color0 is SOLID until threshold0
+        let seg01 = smoothstep(threshold0, threshold0 + planeBlur * 2.0, noise);
+        let seg12 = smoothstep(threshold1, threshold1 + planeBlur * 2.0, noise);
+        let seg23 = smoothstep(threshold2, threshold2 + planeBlur * 2.0, noise);
+        let seg34 = hasColor4 ? smoothstep(threshold3, threshold3 + planeBlur * 2.0, noise) : 0;
         
         const strengthExp = 1.0 + strength * 0.5;
         seg01 = Math.pow(Math.max(0, Math.min(1, seg01)), strengthExp);
