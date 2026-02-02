@@ -235,10 +235,9 @@ async function render4ColorGradientHighQuality(
 
         baseNoise = Math.max(0, Math.min(1, baseNoise));
 
-        // Add subtle noise for organic feel (reduced so it won't wipe out weight regions)
-        const organicNoise = noise3D(u * 2 * freq, v * 2 * freq, time * 0.25) * 0.04 * density;
-
-        noise = baseNoise + organicNoise;
+        // NOTE: Plane mode must keep a monotonic 0..1 mapping so weight-to-area is accurate.
+        // Any additive noise here will shrink/expand the solid base segment (e.g., the first 30%).
+        noise = baseNoise;
         noise = Math.max(0, Math.min(1, noise));
         // IMPORTANT: Do NOT apply histogram equalization in Plane.
         // Plane noise is already monotonic/linear; equalization distorts area mapping.
@@ -326,7 +325,9 @@ async function render4ColorGradientHighQuality(
         let transitionWidth = spreadMult + blurFactor * 0.10;
         transitionWidth = transitionWidth / (1.0 + strength * 0.25);
 
-        const blend01 = smoothstep(threshold0 - transitionWidth, threshold0 + transitionWidth, noise);
+        // Keep Color0 SOLID up to threshold0 (true 30%+ region), then transition outward.
+        // Subsequent transitions remain centered so downstream colors keep their intended space.
+        const blend01 = smoothstep(threshold0, threshold0 + transitionWidth * 2.0, noise);
         const blend12 = smoothstep(threshold1 - transitionWidth, threshold1 + transitionWidth, noise);
         const blend23 = smoothstep(threshold2 - transitionWidth, threshold2 + transitionWidth, noise);
         const blend34 = hasColor4 ? smoothstep(threshold3 - transitionWidth, threshold3 + transitionWidth, noise) : 0;

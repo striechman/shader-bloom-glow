@@ -269,11 +269,9 @@ void main() {
     // Plane baseNoise is already monotonic/linear; warping breaks weight-to-area mapping.
     // Spread is applied later by adjusting transition blur width during color mixing.
     
-    // Add subtle organic noise for texture - reduced to not push away from 0
-    vec3 noisePos = vec3(vUv * 2.0 * freq, uTime * 0.25);
-    float organicNoise = snoise(noisePos) * 0.04 * density;
-    
-    noise = baseNoise + organicNoise;
+    // NOTE: Plane mode must keep a monotonic 0..1 mapping so weight-to-area is accurate.
+    // Any additive noise here will shrink/expand the solid base segment (e.g., the first 30%).
+    noise = baseNoise;
     noise = clamp(noise, 0.0, 1.0);
     
     // IMPORTANT: Do NOT apply histogram equalization in Plane.
@@ -413,7 +411,9 @@ void main() {
     // Calculate blend factors - transitions CENTERED on thresholds
     // This ensures Color0 gets exactly threshold0 (e.g., 30%) of the area,
     // not more and not less.
-    float blend01 = smoothstep(threshold0 - transitionWidth, threshold0 + transitionWidth, noise);
+    // Keep Color0 SOLID up to threshold0 (true 30%+ region), then transition outward.
+    // Subsequent transitions remain centered so downstream colors keep their intended space.
+    float blend01 = smoothstep(threshold0, threshold0 + transitionWidth * 2.0, noise);
     float blend12 = smoothstep(threshold1 - transitionWidth, threshold1 + transitionWidth, noise);
     float blend23 = smoothstep(threshold2 - transitionWidth, threshold2 + transitionWidth, noise);
     float blend34 = smoothstep(threshold3 - transitionWidth, threshold3 + transitionWidth, noise);
