@@ -166,9 +166,13 @@ void main() {
     noise = baseNoise * 0.5 + dist * 0.5;
   }
   // else uMeshStyle == 0 (ORGANIC): use baseNoise as-is
-
-  // IMPORTANT: Strength must NOT warp the noise distribution before weight thresholds,
-  // otherwise percentages stop matching perceived area. We apply strength later to blends.
+  
+  // HISTOGRAM EQUALIZATION: Simplex noise naturally clusters around 0.5 (Gaussian-like).
+  // To make color weights match screen area, we stretch the distribution to be more uniform.
+  // This uses a simplified S-curve that pushes values away from 0.5 toward 0 and 1.
+  float centered = noise - 0.5;
+  float stretched = sign(centered) * pow(abs(centered) * 2.0, 0.7) * 0.5;
+  noise = stretched + 0.5;
   noise = clamp(noise, 0.0, 1.0);
   
   // Apply blur (softness) - higher blur = smoother transitions

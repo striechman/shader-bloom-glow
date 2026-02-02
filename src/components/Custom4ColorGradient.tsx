@@ -181,6 +181,13 @@ void main() {
       noise = baseNoise;
     }
     
+    // HISTOGRAM EQUALIZATION: Simplex noise naturally clusters around 0.5 (Gaussian-like).
+    // To make color weights match screen area, we stretch the distribution to be more uniform.
+    // This uses a simplified S-curve that pushes values away from 0.5 toward 0 and 1.
+    float centered = noise - 0.5;
+    float stretched = sign(centered) * pow(abs(centered) * 2.0, 0.7) * 0.5;
+    noise = stretched + 0.5;
+    
   } else if (uGradientType == 1) {
     // SPHERE MODE: Classic 3D sphere with smooth color blending
     float dist = length(centeredUv);
@@ -351,13 +358,31 @@ void main() {
   float blurFactor = uBlur * 0.5;
   
   // Calculate cumulative thresholds for colors (4 or 5 depending on uHasColor4)
+  // IMPORTANT: Color1-4 weights are RELATIVE to remaining space after Color0
+  // e.g., if Color0=30% and Color1=28%, Color1 should occupy 28/70 = 40% of the remaining 70%
+  // This means Color1 appears in range [0.30, 0.30 + 0.28] = [0.30, 0.58]
+  // But 28% of the screen means: 28/70 of the 70% remaining = 0.28 absolute
+  // So we need: threshold1 = w0 + (w1 / (1-w0)) * (1-w0) = w0 + w1 ✗ WRONG
+  // Actually the weights already sum to 100, so threshold math is correct!
+  // The REAL issue: noise must be RESCALED so that after w0 threshold,
+  // the remaining range [w0, 1.0] is normalized to [0, 1] for Color1-4 weight distribution
+  
   float w0 = uWeight0 / 100.0;
   float w1 = uWeight1 / 100.0;
   float w2 = uWeight2 / 100.0;
   float w3 = uWeight3 / 100.0;
   float w4 = uWeight4 / 100.0;
   
+  // Rescale noise so that Color0's range [0, w0] maps to itself,
+  // but the remaining colors [w0, 1] are distributed according to their RELATIVE weights
+  // This ensures Color1's 28% (when w0=30%) means 28% of SCREEN, not 28% of remaining range
+  
+  // Color0 occupies [0, w0] of noise range
   float threshold0 = w0;
+  
+  // For colors 1-4, they share the remaining (1-w0) of noise range
+  // Their weights (w1,w2,w3,w4) should be interpreted as percentages of the TOTAL,
+  // meaning each color occupies exactly its weight percentage of the screen
   float threshold1 = w0 + w1;
   float threshold2 = w0 + w1 + w2;
   float threshold3 = w0 + w1 + w2 + w3;

@@ -199,7 +199,13 @@ async function render4ColorGradientHighQuality(
         const n1 = noise3D(noiseX, noiseY, time);
         const n2 = noise3D(noiseX * 2 + 100, noiseY * 2 + 100, time) * (0.20 + 0.10 * density);
         const n3 = noise3D(noiseX * 4 + 200, noiseY * 4 + 200, time) * (0.10 + 0.06 * density);
-        noise = (n1 + n2 + n3) / 1.375;
+        let meshNoise = (n1 + n2 + n3) / 1.375;
+        
+        // HISTOGRAM EQUALIZATION: Simplex noise clusters around 0.5.
+        // Stretch the distribution to be more uniform so weights match screen area.
+        const centered = meshNoise - 0.5;
+        const stretched = Math.sign(centered) * Math.pow(Math.abs(centered) * 2.0, 0.7) * 0.5;
+        noise = stretched + 0.5;
         
       } else if (gradientType === 1) {
         // SPHERE MODE: Classic 3D sphere

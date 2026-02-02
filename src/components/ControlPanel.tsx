@@ -82,77 +82,78 @@ const activeBrandColors = brandColors.slice(0, 5); // Yellow, Coral, Magenta, Vi
 
 // Color presets with 4 colors (color0 is always theme-based black/white)
 // Each preset uses at least 2 brand colors (not counting black/white)
-// BRANDING RULE: All presets must have weight0 (black/white base) at minimum 30%
+// BRANDING RULE: Color0 is FIXED at 30%. Color1-4 must sum to 70%.
 const colorPresets = [
   // Presets where color0 is the base (black/white based on theme), colors 1-3 are brand colors
-  // Note: color0 is always theme-based (black in dark mode), so we don't need to add black as color3
-  { name: 'Royal', color1: '#6A00F4', color2: '#EC008C', color3: '#00C2FF', color4: null, weight0: 30, weight1: 28, weight2: 28, weight3: 14, weight4: 0 },
-  { name: 'Sunset', color1: '#FDB515', color2: '#EC008C', color3: '#F2665F', color4: null, weight0: 30, weight1: 28, weight2: 28, weight3: 14, weight4: 0 },
-  { name: 'Ocean', color1: '#00C2FF', color2: '#6A00F4', color3: '#EC008C', color4: null, weight0: 30, weight1: 28, weight2: 28, weight3: 14, weight4: 0 },
-  { name: 'Coral', color1: '#F2665F', color2: '#6A00F4', color3: '#FDB515', color4: null, weight0: 30, weight1: 28, weight2: 28, weight3: 14, weight4: 0 },
-  { name: 'Neon', color1: '#EC008C', color2: '#00C2FF', color3: '#6A00F4', color4: null, weight0: 30, weight1: 28, weight2: 28, weight3: 14, weight4: 0 },
-  { name: 'Electric', color1: '#00C2FF', color2: '#EC008C', color3: '#FDB515', color4: null, weight0: 30, weight1: 28, weight2: 28, weight3: 14, weight4: 0 },
-  // Presets with white accent - still maintain 30% base
+  // Weight0 = 30% (fixed), Weight1-3 must sum to 70%
+  { name: 'Royal', color1: '#6A00F4', color2: '#EC008C', color3: '#00C2FF', color4: null, weight0: 30, weight1: 25, weight2: 25, weight3: 20, weight4: 0 },
+  { name: 'Sunset', color1: '#FDB515', color2: '#EC008C', color3: '#F2665F', color4: null, weight0: 30, weight1: 25, weight2: 25, weight3: 20, weight4: 0 },
+  { name: 'Ocean', color1: '#00C2FF', color2: '#6A00F4', color3: '#EC008C', color4: null, weight0: 30, weight1: 25, weight2: 25, weight3: 20, weight4: 0 },
+  { name: 'Coral', color1: '#F2665F', color2: '#6A00F4', color3: '#FDB515', color4: null, weight0: 30, weight1: 25, weight2: 25, weight3: 20, weight4: 0 },
+  { name: 'Neon', color1: '#EC008C', color2: '#00C2FF', color3: '#6A00F4', color4: null, weight0: 30, weight1: 25, weight2: 25, weight3: 20, weight4: 0 },
+  { name: 'Electric', color1: '#00C2FF', color2: '#EC008C', color3: '#FDB515', color4: null, weight0: 30, weight1: 25, weight2: 25, weight3: 20, weight4: 0 },
+  // Presets with white accent - still maintain 30% base, colors sum to 70%
   { name: 'Blush', color1: '#EC008C', color2: '#F2665F', color3: '#FFFFFF', color4: null, weight0: 30, weight1: 25, weight2: 25, weight3: 20, weight4: 0 },
   { name: 'Violet', color1: '#EC008C', color2: '#6A00F4', color3: '#00C2FF', color4: null, weight0: 30, weight1: 25, weight2: 25, weight3: 20, weight4: 0 },
   { name: 'Warm', color1: '#FDB515', color2: '#F2665F', color3: '#EC008C', color4: null, weight0: 30, weight1: 25, weight2: 25, weight3: 20, weight4: 0 },
 ];
 
 // Effect presets for each gradient type
+// BRANDING RULE: Color0 is FIXED at 30%. Color1-3 must sum to 70%.
 const effectPresets: Record<string, Partial<GradientConfig>> = {
   mesh: {
     uStrength: 1,
     uDensity: 1,
     uFrequency: 1,
     colorWeight0: 30,
-    colorWeight1: 20,
+    colorWeight1: 25,
     colorWeight2: 25,
-    colorWeight3: 25,
+    colorWeight3: 20,
   },
   plane: {
     uStrength: 1.5,
     uDensity: 0.5,
     uFrequency: 1,
     colorWeight0: 30,
-    colorWeight1: 23,
-    colorWeight2: 24,
-    colorWeight3: 23,
+    colorWeight1: 25,
+    colorWeight2: 25,
+    colorWeight3: 20,
   },
   water: {
     uStrength: 1.5,
     uDensity: 1.5,
     uFrequency: 2,
     colorWeight0: 30,
-    colorWeight1: 23,
-    colorWeight2: 24,
-    colorWeight3: 23,
+    colorWeight1: 25,
+    colorWeight2: 25,
+    colorWeight3: 20,
   },
   conic: {
     uStrength: 1,
     uDensity: 0.5,
     uFrequency: 1,
     colorWeight0: 30,
-    colorWeight1: 23,
-    colorWeight2: 24,
-    colorWeight3: 23,
+    colorWeight1: 25,
+    colorWeight2: 25,
+    colorWeight3: 20,
   },
   spiral: {
     uStrength: 1,
     uDensity: 0.6,
     uFrequency: 1,
     colorWeight0: 30,
-    colorWeight1: 23,
-    colorWeight2: 24,
-    colorWeight3: 23,
+    colorWeight1: 25,
+    colorWeight2: 25,
+    colorWeight3: 20,
   },
   waves: {
     uStrength: 1,
     uDensity: 1.2,
     uFrequency: 1.5,
     colorWeight0: 30,
-    colorWeight1: 23,
-    colorWeight2: 24,
-    colorWeight3: 23,
+    colorWeight1: 25,
+    colorWeight2: 25,
+    colorWeight3: 20,
   },
 };
 
@@ -187,107 +188,94 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
   const MIN_BASE_COLOR_WEIGHT = 30;
   
   const handleColorWeightChange = (colorIndex: number, newValue: number) => {
-    // Weights array: [0]=base, [1]=color1, [2]=color2, [3]=color3, [4]=color4
-    const hasColor4 = config.color4 !== null;
-    const activeCount = hasColor4 ? 5 : 4;
+    // Color0 is now FIXED - we only adjust Color1-4
+    // colorIndex 0 = Color0 (fixed, cannot change)
+    // colorIndex 1 = Color1, 2 = Color2, 3 = Color3, 4 = Color4
     
-    // Enforce minimum 30% for base color (colorIndex 0)
-    if (colorIndex === 0 && newValue < MIN_BASE_COLOR_WEIGHT) {
-      newValue = MIN_BASE_COLOR_WEIGHT;
+    if (colorIndex === 0) {
+      // Color0 is fixed, do nothing
+      return;
     }
     
+    const hasColor4 = config.color4 !== null;
+    const remainingWeight = 100 - config.colorWeight0; // e.g., 70% when Color0 is 30%
+    
+    // Current weights for Color1-4
     const weights = [
-      config.colorWeight0, 
       config.colorWeight1, 
       config.colorWeight2, 
       config.colorWeight3,
       hasColor4 ? config.colorWeight4 : 0
     ];
     
-    const oldValue = weights[colorIndex];
+    const activeCount = hasColor4 ? 4 : 3; // Only Color1-3 or Color1-4
+    const weightIndex = colorIndex - 1; // Convert to 0-indexed for weights array
+    
+    const oldValue = weights[weightIndex];
     const diff = newValue - oldValue;
     
-    // For non-base colors, check if reducing would push base below 30%
-    if (colorIndex !== 0) {
-      const potentialBase = weights[0] - (diff / (activeCount - 1));
-      if (potentialBase < MIN_BASE_COLOR_WEIGHT) {
-        // Limit the change to keep base at 30%
-        const maxDiff = (weights[0] - MIN_BASE_COLOR_WEIGHT) * (activeCount - 1);
-        newValue = oldValue + maxDiff;
-      }
-    }
+    // Ensure new value doesn't exceed remaining weight minus minimums for other colors
+    const minOtherWeight = 5;
+    const maxForThisColor = remainingWeight - (minOtherWeight * (activeCount - 1));
+    newValue = Math.min(newValue, maxForThisColor);
+    newValue = Math.max(newValue, minOtherWeight);
     
     const actualDiff = newValue - oldValue;
-    const otherIndices = Array.from({ length: activeCount }, (_, i) => i).filter(i => i !== colorIndex);
+    const otherIndices = Array.from({ length: activeCount }, (_, i) => i).filter(i => i !== weightIndex);
     const adjustment = actualDiff / otherIndices.length;
     
     const newWeights = weights.map((w, i) => {
-      if (i === colorIndex) return newValue;
       if (i >= activeCount) return 0;
-      // Ensure base color never goes below 30%
-      const minWeight = i === 0 ? MIN_BASE_COLOR_WEIGHT : 5;
-      return Math.max(minWeight, Math.min(90, w - adjustment));
+      if (i === weightIndex) return newValue;
+      return Math.max(minOtherWeight, w - adjustment);
     });
     
-    // Normalize to ensure sum = 100
+    // Normalize to ensure sum = remainingWeight (e.g., 70%)
     const total = newWeights.slice(0, activeCount).reduce((a, b) => a + b, 0);
-    if (total !== 100) {
-      // Only adjust non-base colors to keep base at minimum 30%
-      const nonBaseIndices = otherIndices.filter(i => i !== 0);
-      const correction = (100 - total) / (nonBaseIndices.length || 1);
-      nonBaseIndices.forEach(i => {
-        newWeights[i] = Math.max(5, Math.min(90, newWeights[i] + correction));
-      });
-      // If still not 100, adjust base but never below 30%
-      const newTotal = newWeights.slice(0, activeCount).reduce((a, b) => a + b, 0);
-      if (newTotal !== 100 && newWeights[0] + (100 - newTotal) >= MIN_BASE_COLOR_WEIGHT) {
-        newWeights[0] += 100 - newTotal;
+    if (Math.abs(total - remainingWeight) > 0.5) {
+      const correction = (remainingWeight - total) / activeCount;
+      for (let i = 0; i < activeCount; i++) {
+        newWeights[i] = Math.max(minOtherWeight, newWeights[i] + correction);
       }
     }
     
-    // Final normalization - ensure base is at least 30%
-    if (newWeights[0] < MIN_BASE_COLOR_WEIGHT) {
-      const deficit = MIN_BASE_COLOR_WEIGHT - newWeights[0];
-      newWeights[0] = MIN_BASE_COLOR_WEIGHT;
-      // Take from non-base colors proportionally
-      const nonBaseTotal = newWeights.slice(1, activeCount).reduce((a, b) => a + b, 0);
-      for (let i = 1; i < activeCount; i++) {
-        newWeights[i] = Math.max(5, newWeights[i] - (deficit * (newWeights[i] / nonBaseTotal)));
-      }
-    }
-    
-    // Final sum fix
+    // Final adjustment to hit exact target
     const finalTotal = newWeights.slice(0, activeCount).reduce((a, b) => a + b, 0);
-    if (finalTotal !== 100) {
-      // Find first non-base color that can absorb the difference
-      for (let i = 1; i < activeCount; i++) {
-        const needed = 100 - finalTotal;
-        if (newWeights[i] + needed >= 5) {
-          newWeights[i] += needed;
-          break;
+    if (finalTotal !== remainingWeight) {
+      // Adjust the changed color to absorb rounding
+      const needed = remainingWeight - finalTotal;
+      if (newWeights[weightIndex] + needed >= minOtherWeight) {
+        newWeights[weightIndex] += needed;
+      } else {
+        // Find another color that can absorb
+        for (let i = 0; i < activeCount; i++) {
+          if (newWeights[i] + needed >= minOtherWeight) {
+            newWeights[i] += needed;
+            break;
+          }
         }
       }
     }
     
     onConfigChange({
-      colorWeight0: Math.round(Math.max(MIN_BASE_COLOR_WEIGHT, newWeights[0])),
-      colorWeight1: Math.round(newWeights[1]),
-      colorWeight2: Math.round(newWeights[2]),
-      colorWeight3: Math.round(newWeights[3]),
-      colorWeight4: Math.round(newWeights[4])
+      colorWeight1: Math.round(newWeights[0]),
+      colorWeight2: Math.round(newWeights[1]),
+      colorWeight3: Math.round(newWeights[2]),
+      colorWeight4: Math.round(newWeights[3] || 0)
     });
   };
 
   // Add 4th color
   const handleAddColor4 = () => {
-    // Redistribute weights to include color4
-    const currentTotal = config.colorWeight0 + config.colorWeight1 + config.colorWeight2 + config.colorWeight3;
-    const newWeight4 = 15; // Give color4 15%
-    const scale = (100 - newWeight4) / currentTotal;
+    // Redistribute weights among Color1-4, keeping Color0 fixed
+    const remainingWeight = 100 - config.colorWeight0; // e.g., 70%
+    const currentTotal = config.colorWeight1 + config.colorWeight2 + config.colorWeight3;
+    const newWeight4 = Math.round(remainingWeight * 0.2); // Give color4 ~20% of remaining
+    const scale = (remainingWeight - newWeight4) / currentTotal;
     
     onConfigChange({
       color4: '#6A00F4', // Default to Deep Violet
-      colorWeight0: Math.round(config.colorWeight0 * scale),
+      // Color0 stays fixed
       colorWeight1: Math.round(config.colorWeight1 * scale),
       colorWeight2: Math.round(config.colorWeight2 * scale),
       colorWeight3: Math.round(config.colorWeight3 * scale),
@@ -297,14 +285,14 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
 
   // Remove 4th color
   const handleRemoveColor4 = () => {
-    // Redistribute color4's weight among other colors
-    const color4Weight = config.colorWeight4;
-    const remaining = config.colorWeight0 + config.colorWeight1 + config.colorWeight2 + config.colorWeight3;
-    const scale = 100 / remaining;
+    // Redistribute color4's weight among Color1-3, keeping Color0 fixed
+    const remainingWeight = 100 - config.colorWeight0; // e.g., 70%
+    const currentTotal = config.colorWeight1 + config.colorWeight2 + config.colorWeight3;
+    const scale = remainingWeight / currentTotal;
     
     onConfigChange({
       color4: null,
-      colorWeight0: Math.round(config.colorWeight0 * scale),
+      // Color0 stays fixed
       colorWeight1: Math.round(config.colorWeight1 * scale),
       colorWeight2: Math.round(config.colorWeight2 * scale),
       colorWeight3: Math.round(config.colorWeight3 * scale),
@@ -634,28 +622,19 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
               </div>
             )}
             <div className="space-y-4">
-              {/* Base Color Weight Control (theme-based: black in dark, white in light) */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <Label className="text-muted-foreground flex items-center gap-2">
-                    <span 
-                      className="w-4 h-4 rounded border border-border inline-block"
-                      style={{ backgroundColor: getThemeColor0(theme) }}
-                    ></span>
-                    {isDark ? 'Black' : 'White'}
-                  </Label>
-                  <span className="text-xs text-muted-foreground font-mono">
-                    {config.colorWeight0}%
-                  </span>
-                </div>
-                <Slider
-                  value={[config.colorWeight0]}
-                  onValueChange={([value]) => handleColorWeightChange(0, value)}
-                  min={MIN_BASE_COLOR_WEIGHT}
-                  max={60}
-                  step={1}
-                  className="w-full"
-                />
+              {/* Base Color Weight Display (theme-based: black in dark, white in light) */}
+              {/* NOTE: Color0 weight is FIXED at 30% as per branding rules */}
+              <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-secondary/30">
+                <Label className="text-muted-foreground flex items-center gap-2">
+                  <span 
+                    className="w-4 h-4 rounded border border-border inline-block"
+                    style={{ backgroundColor: getThemeColor0(theme) }}
+                  ></span>
+                  {isDark ? 'Black' : 'White'} (base)
+                </Label>
+                <span className="text-xs text-muted-foreground font-mono">
+                  {config.colorWeight0}% <span className="opacity-60">(fixed)</span>
+                </span>
               </div>
               
               {(() => {

@@ -83,10 +83,10 @@ export const defaultGradientConfig: GradientConfig = {
   color2: '#EC008C',
   color3: '#000000',
   color4: null, // Optional 4th color - disabled by default
-  colorWeight0: 30, // Base color weight (black/white based on theme)
-  colorWeight1: 28,
-  colorWeight2: 28,
-  colorWeight3: 14,
+  colorWeight0: 30, // Base color weight (FIXED at 30%)
+  colorWeight1: 25, // Color1-3 must sum to 70%
+  colorWeight2: 25,
+  colorWeight3: 20,
   colorWeight4: 0, // 0 when color4 is not used
   hoverColor1: '#EC008C',
   hoverColor2: '#6A00F4',

@@ -120,7 +120,12 @@ void main() {
   float n3 = snoise(noisePos * 4.0 + 200.0) * (0.10 + 0.06 * density);
   
   float noise = n1 + n2 + n3;
-   noise = clamp(noise / 1.375, 0.0, 1.0);
+  noise = clamp(noise / 1.375, 0.0, 1.0);
+  
+  // HISTOGRAM EQUALIZATION: Stretch distribution to be more uniform.
+  float centered = noise - 0.5;
+  float stretched = sign(centered) * pow(abs(centered) * 2.0, 0.7) * 0.5;
+  noise = stretched + 0.5;
   
   float blurFactor = uBlur * 0.5;
   float w1 = uWeight1 / 100.0;
