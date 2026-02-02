@@ -318,44 +318,39 @@ async function render4ColorGradientHighQuality(
       
       if (isPlane) {
         // =========================================================================
-        // PLANE MODE: Weighted Segments - Direct Sequential Mix
+        // PLANE MODE: Weighted Segments (matches WebGL shader)
         // =========================================================================
+        // Spread controls softness; Strength tightens transition width (without warping area mapping).
         const planeSpread = (config.planeSpread ?? 50) / 100;
-        const spreadBlurMult = lerp(0.35, 1.8, planeSpread);
-        const planeBlur = blurFactor * 1.2 * spreadBlurMult;
-        
-        // Asymmetric transitions so Color0 is SOLID until threshold0
-        let seg01 = smoothstep(threshold0, threshold0 + planeBlur * 2.0, noise);
-        let seg12 = smoothstep(threshold1, threshold1 + planeBlur * 2.0, noise);
-        let seg23 = smoothstep(threshold2, threshold2 + planeBlur * 2.0, noise);
-        let seg34 = hasColor4 ? smoothstep(threshold3, threshold3 + planeBlur * 2.0, noise) : 0;
-        
-        const strengthExp = 1.0 + strength * 0.5;
-        seg01 = Math.pow(Math.max(0, Math.min(1, seg01)), strengthExp);
-        seg12 = Math.pow(Math.max(0, Math.min(1, seg12)), strengthExp);
-        seg23 = Math.pow(Math.max(0, Math.min(1, seg23)), strengthExp);
-        seg34 = Math.pow(Math.max(0, Math.min(1, seg34)), strengthExp);
-        
+        const spreadMult = lerp(0.004, 0.08, planeSpread);
+        let transitionWidth = spreadMult + blurFactor * 0.10;
+        transitionWidth = transitionWidth / (1.0 + strength * 0.25);
+
+        const blend01 = smoothstep(threshold0 - transitionWidth, threshold0 + transitionWidth, noise);
+        const blend12 = smoothstep(threshold1 - transitionWidth, threshold1 + transitionWidth, noise);
+        const blend23 = smoothstep(threshold2 - transitionWidth, threshold2 + transitionWidth, noise);
+        const blend34 = hasColor4 ? smoothstep(threshold3 - transitionWidth, threshold3 + transitionWidth, noise) : 0;
+
         r = color0.r;
         g = color0.g;
         b = color0.b;
-        
-        r = lerp(r, color1.r, seg01);
-        g = lerp(g, color1.g, seg01);
-        b = lerp(b, color1.b, seg01);
-        
-        r = lerp(r, color2.r, seg12);
-        g = lerp(g, color2.g, seg12);
-        b = lerp(b, color2.b, seg12);
-        
-        r = lerp(r, color3.r, seg23);
-        g = lerp(g, color3.g, seg23);
-        b = lerp(b, color3.b, seg23);
-        
+
+        r = lerp(r, color1.r, blend01);
+        g = lerp(g, color1.g, blend01);
+        b = lerp(b, color1.b, blend01);
+
+        r = lerp(r, color2.r, blend12);
+        g = lerp(g, color2.g, blend12);
+        b = lerp(b, color2.b, blend12);
+
+        r = lerp(r, color3.r, blend23);
+        g = lerp(g, color3.g, blend23);
+        b = lerp(b, color3.b, blend23);
+
         if (hasColor4 && color4) {
-          r = lerp(r, color4.r, seg34);
-          g = lerp(g, color4.g, seg34);
-          b = lerp(b, color4.b, seg34);
+          r = lerp(r, color4.r, blend34);
+          g = lerp(g, color4.g, blend34);
+          b = lerp(b, color4.b, blend34);
         }
       } else {
         // =========================================================================
