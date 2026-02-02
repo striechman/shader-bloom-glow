@@ -182,10 +182,18 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
     };
   }, [config.animate, config.frozenTime, config.speed]);
 
+  // BRANDING RULE: Base color (black/white) must always be at least 30%
+  const MIN_BASE_COLOR_WEIGHT = 30;
+  
   const handleColorWeightChange = (colorIndex: number, newValue: number) => {
     // Weights array: [0]=base, [1]=color1, [2]=color2, [3]=color3, [4]=color4
     const hasColor4 = config.color4 !== null;
     const activeCount = hasColor4 ? 5 : 4;
+    
+    // Enforce minimum 30% for base color (colorIndex 0)
+    if (colorIndex === 0 && newValue < MIN_BASE_COLOR_WEIGHT) {
+      newValue = MIN_BASE_COLOR_WEIGHT;
+    }
     
     const weights = [
       config.colorWeight0, 
@@ -198,32 +206,70 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
     const oldValue = weights[colorIndex];
     const diff = newValue - oldValue;
     
+    // For non-base colors, check if reducing would push base below 30%
+    if (colorIndex !== 0) {
+      const potentialBase = weights[0] - (diff / (activeCount - 1));
+      if (potentialBase < MIN_BASE_COLOR_WEIGHT) {
+        // Limit the change to keep base at 30%
+        const maxDiff = (weights[0] - MIN_BASE_COLOR_WEIGHT) * (activeCount - 1);
+        newValue = oldValue + maxDiff;
+      }
+    }
+    
+    const actualDiff = newValue - oldValue;
     const otherIndices = Array.from({ length: activeCount }, (_, i) => i).filter(i => i !== colorIndex);
-    const adjustment = diff / otherIndices.length;
+    const adjustment = actualDiff / otherIndices.length;
     
     const newWeights = weights.map((w, i) => {
       if (i === colorIndex) return newValue;
       if (i >= activeCount) return 0;
-      return Math.max(5, Math.min(90, w - adjustment));
+      // Ensure base color never goes below 30%
+      const minWeight = i === 0 ? MIN_BASE_COLOR_WEIGHT : 5;
+      return Math.max(minWeight, Math.min(90, w - adjustment));
     });
     
     // Normalize to ensure sum = 100
     const total = newWeights.slice(0, activeCount).reduce((a, b) => a + b, 0);
     if (total !== 100) {
-      const correction = (100 - total) / otherIndices.length;
-      otherIndices.forEach(i => {
+      // Only adjust non-base colors to keep base at minimum 30%
+      const nonBaseIndices = otherIndices.filter(i => i !== 0);
+      const correction = (100 - total) / (nonBaseIndices.length || 1);
+      nonBaseIndices.forEach(i => {
         newWeights[i] = Math.max(5, Math.min(90, newWeights[i] + correction));
       });
+      // If still not 100, adjust base but never below 30%
+      const newTotal = newWeights.slice(0, activeCount).reduce((a, b) => a + b, 0);
+      if (newTotal !== 100 && newWeights[0] + (100 - newTotal) >= MIN_BASE_COLOR_WEIGHT) {
+        newWeights[0] += 100 - newTotal;
+      }
     }
     
-    // Final normalization
+    // Final normalization - ensure base is at least 30%
+    if (newWeights[0] < MIN_BASE_COLOR_WEIGHT) {
+      const deficit = MIN_BASE_COLOR_WEIGHT - newWeights[0];
+      newWeights[0] = MIN_BASE_COLOR_WEIGHT;
+      // Take from non-base colors proportionally
+      const nonBaseTotal = newWeights.slice(1, activeCount).reduce((a, b) => a + b, 0);
+      for (let i = 1; i < activeCount; i++) {
+        newWeights[i] = Math.max(5, newWeights[i] - (deficit * (newWeights[i] / nonBaseTotal)));
+      }
+    }
+    
+    // Final sum fix
     const finalTotal = newWeights.slice(0, activeCount).reduce((a, b) => a + b, 0);
     if (finalTotal !== 100) {
-      newWeights[otherIndices[0]] += 100 - finalTotal;
+      // Find first non-base color that can absorb the difference
+      for (let i = 1; i < activeCount; i++) {
+        const needed = 100 - finalTotal;
+        if (newWeights[i] + needed >= 5) {
+          newWeights[i] += needed;
+          break;
+        }
+      }
     }
     
     onConfigChange({
-      colorWeight0: Math.round(newWeights[0]),
+      colorWeight0: Math.round(Math.max(MIN_BASE_COLOR_WEIGHT, newWeights[0])),
       colorWeight1: Math.round(newWeights[1]),
       colorWeight2: Math.round(newWeights[2]),
       colorWeight3: Math.round(newWeights[3]),
@@ -604,7 +650,7 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                 <Slider
                   value={[config.colorWeight0]}
                   onValueChange={([value]) => handleColorWeightChange(0, value)}
-                  min={5}
+                  min={MIN_BASE_COLOR_WEIGHT}
                   max={60}
                   step={1}
                   className="w-full"
