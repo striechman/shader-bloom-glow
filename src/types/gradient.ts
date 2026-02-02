@@ -83,7 +83,7 @@ export const defaultGradientConfig: GradientConfig = {
   color2: '#EC008C',
   color3: '#000000',
   color4: null, // Optional 4th color - disabled by default
-  colorWeight0: 30, // Base color weight (FIXED at 30%)
+  colorWeight0: 30, // Base color weight (minimum 30%, can go up to 100%)
   colorWeight1: 25, // Color1-3 must sum to 70%
   colorWeight2: 25,
   colorWeight3: 20,

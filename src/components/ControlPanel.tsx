@@ -187,13 +187,40 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
   // BRANDING RULE: Base color (black/white) must always be at least 30%
   const MIN_BASE_COLOR_WEIGHT = 30;
   
+  // Handler for base color (Color0) weight changes - scales other colors proportionally
+  const handleBaseWeightChange = (newWeight0: number) => {
+    const oldRemaining = 100 - config.colorWeight0;
+    const newRemaining = 100 - newWeight0;
+    
+    // If newRemaining = 0, all other colors become 0
+    if (newRemaining <= 0) {
+      onConfigChange({
+        colorWeight0: 100,
+        colorWeight1: 0,
+        colorWeight2: 0,
+        colorWeight3: 0,
+        colorWeight4: 0
+      });
+      return;
+    }
+    
+    // Proportional scale for Color1-4
+    const scale = newRemaining / oldRemaining;
+    
+    onConfigChange({
+      colorWeight0: newWeight0,
+      colorWeight1: Math.round(config.colorWeight1 * scale),
+      colorWeight2: Math.round(config.colorWeight2 * scale),
+      colorWeight3: Math.round(config.colorWeight3 * scale),
+      colorWeight4: config.color4 ? Math.round(config.colorWeight4 * scale) : 0
+    });
+  };
+  
   const handleColorWeightChange = (colorIndex: number, newValue: number) => {
-    // Color0 is now FIXED - we only adjust Color1-4
-    // colorIndex 0 = Color0 (fixed, cannot change)
     // colorIndex 1 = Color1, 2 = Color2, 3 = Color3, 4 = Color4
+    // Color0 is handled by handleBaseWeightChange
     
     if (colorIndex === 0) {
-      // Color0 is fixed, do nothing
       return;
     }
     
@@ -622,19 +649,32 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
               </div>
             )}
             <div className="space-y-4">
-              {/* Base Color Weight Display (theme-based: black in dark, white in light) */}
-              {/* NOTE: Color0 weight is FIXED at 30% as per branding rules */}
-              <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-secondary/30">
-                <Label className="text-muted-foreground flex items-center gap-2">
-                  <span 
-                    className="w-4 h-4 rounded border border-border inline-block"
-                    style={{ backgroundColor: getThemeColor0(theme) }}
-                  ></span>
-                  {isDark ? 'Black' : 'White'} (base)
-                </Label>
-                <span className="text-xs text-muted-foreground font-mono">
-                  {config.colorWeight0}% <span className="opacity-60">(fixed)</span>
-                </span>
+              {/* Base Color Weight Slider (theme-based: black in dark, white in light) */}
+              {/* Minimum 30%, can go up to 100% */}
+              <div className="space-y-2 py-2 px-3 rounded-lg bg-secondary/30">
+                <div className="flex items-center justify-between">
+                  <Label className="text-muted-foreground flex items-center gap-2">
+                    <span 
+                      className="w-4 h-4 rounded border border-border inline-block"
+                      style={{ backgroundColor: getThemeColor0(theme) }}
+                    ></span>
+                    {isDark ? 'Black' : 'White'} (base)
+                  </Label>
+                  <span className="text-xs text-foreground font-mono">
+                    {config.colorWeight0}%
+                  </span>
+                </div>
+                <Slider
+                  value={[config.colorWeight0]}
+                  onValueChange={([value]) => handleBaseWeightChange(value)}
+                  min={30}
+                  max={100}
+                  step={1}
+                  className="w-full"
+                />
+                <p className="text-xs text-muted-foreground/70">
+                  Minimum 30% for brand consistency
+                </p>
               </div>
               
               {(() => {
