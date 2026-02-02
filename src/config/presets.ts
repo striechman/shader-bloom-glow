@@ -89,9 +89,6 @@ export const PRESET_DEEP_AURORA: BuiltInPreset = {
     meshStyle: 'organic',
     meshNoiseScale: 0.4,   // Very low = huge smooth areas (key to aurora!)
     meshBlur: 95,          // Near-maximum blur for silky transitions
-    meshStretchX: 2.2,     // Strong horizontal stretch = curtain bands
-    meshStretchY: 0.5,     // Strong vertical compress = horizontal flow
-    meshWarpAmount: 35,    // Wave distortion for organic movement
     
     // Shader params - reduced for smoothness
     uStrength: 0.5,
@@ -175,9 +172,6 @@ export const PRESET_NEON_NIGHTS: BuiltInPreset = {
     meshFlowAngle: 45,
     meshNoiseScale: 0.6,    // Lower for smoother
     meshBlur: 80,
-    meshStretchX: 1.5,
-    meshStretchY: 0.8,
-    meshWarpAmount: 25,
     
     uStrength: 0.8,
     uDensity: 1.2,
@@ -248,9 +242,6 @@ export const PRESET_OCEAN_DEPTH: BuiltInPreset = {
     meshStyle: 'organic',
     meshNoiseScale: 0.5,
     meshBlur: 85,
-    meshStretchX: 1.6,
-    meshStretchY: 0.7,
-    meshWarpAmount: 40,
     
     uStrength: 0.6,
     uDensity: 1.0,
@@ -292,9 +283,6 @@ export const PRESET_MORNING_MIST: BuiltInPreset = {
     meshStyle: 'organic',
     meshNoiseScale: 0.4,
     meshBlur: 98,        // Maximum softness
-    meshStretchX: 1.8,
-    meshStretchY: 0.6,
-    meshWarpAmount: 20,
     
     uStrength: 0.3,
     uDensity: 0.8,
