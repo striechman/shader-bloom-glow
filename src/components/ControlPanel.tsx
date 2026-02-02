@@ -189,30 +189,70 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
   
   // Handler for base color (Color0) weight changes - scales other colors proportionally
   const handleBaseWeightChange = (newWeight0: number) => {
+    const hasColor4 = config.color4 !== null;
     const oldRemaining = 100 - config.colorWeight0;
-    const newRemaining = 100 - newWeight0;
-    
-    // If newRemaining = 0, all other colors become 0
-    if (newRemaining <= 0) {
+    const targetRemaining = 100 - newWeight0;
+
+    // If targetRemaining = 0, all other colors become 0
+    if (targetRemaining <= 0) {
       onConfigChange({
         colorWeight0: 100,
         colorWeight1: 0,
         colorWeight2: 0,
         colorWeight3: 0,
-        colorWeight4: 0
+        colorWeight4: 0,
       });
       return;
     }
-    
-    // Proportional scale for Color1-4
-    const scale = newRemaining / oldRemaining;
-    
+
+    // Safety: if oldRemaining is 0 (should only happen at 100%), just reset proportionally
+    const safeOldRemaining = Math.max(1, oldRemaining);
+    const scale = targetRemaining / safeOldRemaining;
+
+    // Scale as floats first
+    const baseWeights = [
+      config.colorWeight1,
+      config.colorWeight2,
+      config.colorWeight3,
+      hasColor4 ? config.colorWeight4 : 0,
+    ];
+
+    const activeCount = hasColor4 ? 4 : 3;
+    const scaled = baseWeights.slice(0, activeCount).map((w) => Math.max(0, w * scale));
+
+    // Integer rounding while preserving exact sum == targetRemaining
+    const floors = scaled.map((v) => Math.floor(v));
+    let sum = floors.reduce((a, b) => a + b, 0);
+    let remainder = targetRemaining - sum;
+
+    const fracs = scaled
+      .map((v, i) => ({ i, frac: v - Math.floor(v) }))
+      .sort((a, b) => b.frac - a.frac);
+
+    const ints = [...floors];
+    for (let k = 0; k < remainder; k++) {
+      ints[fracs[k % fracs.length].i] += 1;
+    }
+
+    // If rounding overshoots (shouldn't), trim from smallest frac
+    sum = ints.reduce((a, b) => a + b, 0);
+    if (sum > targetRemaining) {
+      let extra = sum - targetRemaining;
+      const asc = [...fracs].reverse();
+      for (const { i } of asc) {
+        if (extra <= 0) break;
+        const canDrop = Math.min(extra, ints[i]);
+        ints[i] -= canDrop;
+        extra -= canDrop;
+      }
+    }
+
     onConfigChange({
       colorWeight0: newWeight0,
-      colorWeight1: Math.round(config.colorWeight1 * scale),
-      colorWeight2: Math.round(config.colorWeight2 * scale),
-      colorWeight3: Math.round(config.colorWeight3 * scale),
-      colorWeight4: config.color4 ? Math.round(config.colorWeight4 * scale) : 0
+      colorWeight1: ints[0] ?? 0,
+      colorWeight2: ints[1] ?? 0,
+      colorWeight3: ints[2] ?? 0,
+      colorWeight4: hasColor4 ? (ints[3] ?? 0) : 0,
     });
   };
   
