@@ -183,113 +183,60 @@ void main() {
   
   if (uGradientType == 0) {
     // =========================================================================
-    // MESH MODE: Radial Light Sources → produces a scalar noise field.
+    // MESH MODE: Noise-based color distribution like other modes
     // =========================================================================
-    // IMPORTANT:
-    // We do NOT output color directly here.
-    // Instead we generate a 0..1 scalar "noise" field and let the shared
-    // weight-threshold mixer below map it to Color0..Color4.
-    // This guarantees:
-    // - Color0 respects its weight segment (e.g. 30% minimum base)
-    // - Brand colors remain exact (no extra per-mode blending logic)
-    float baseWeight = uWeight0 / 100.0;
+    // Uses simplex noise with mesh-specific parameters to create the "soft blob"
+    // aesthetic while respecting color weights through the standard threshold system.
     
-    // Softness factor: higher blur = more spread/softer lights
-    // At blur=0%, lights should still be visible but smaller
-    float minSpread = 0.4;  // Minimum spread so lights are always visible
-    float maxSpread = 2.5;  // Maximum spread at 100% blur
-    float softness = minSpread + uBlur * (maxSpread - minSpread);
+    // Animated time for organic movement
+    float t = uTime * 0.3;
     
-    // Scale affects blob size (inverse relationship for intuitive control)
-    // Low scale = larger blobs, high scale = smaller blobs
-    float sizeMultiplier = 1.0 / max(0.3, uNoiseScale);
-    float spread = softness * sizeMultiplier;
-    
-    // Animated light positions - continuous smooth movement
-    float t = uTime * 0.5; // Animation speed
-    
-    // Base positions for 4 light sources (distributed across canvas)
-    vec2 basePos1, basePos2, basePos3, basePos4;
-    
-    // Apply mesh style to positions
-    if (uMeshStyle == 1) {
-      // FLOW: Lights arranged along a direction
-      vec2 flowDir = vec2(cos(uMeshFlowAngle), sin(uMeshFlowAngle));
-      vec2 perpDir = vec2(-flowDir.y, flowDir.x);
-      basePos1 = vec2(0.5, 0.5) + flowDir * 0.35 + perpDir * 0.2;
-      basePos2 = vec2(0.5, 0.5) + flowDir * 0.05 - perpDir * 0.25;
-      basePos3 = vec2(0.5, 0.5) - flowDir * 0.25 + perpDir * 0.15;
-      basePos4 = vec2(0.5, 0.5) - flowDir * 0.4 - perpDir * 0.1;
-    } else if (uMeshStyle == 2) {
-      // CENTER: Lights clustered toward center with good base color visibility
-      float centerBias = uMeshCenterInward ? 0.2 : 0.4;
-      basePos1 = vec2(0.5 + centerBias * 0.6, 0.5 - centerBias * 0.4);
-      basePos2 = vec2(0.5 - centerBias * 0.5, 0.5 - centerBias * 0.6);
-      basePos3 = vec2(0.5 - centerBias * 0.4, 0.5 + centerBias * 0.5);
-      basePos4 = vec2(0.5 + centerBias * 0.7, 0.5 + centerBias * 0.3);
-    } else {
-      // ORGANIC: Well-distributed positions that leave corners for base color
-      basePos1 = vec2(0.3, 0.3);
-      basePos2 = vec2(0.7, 0.25);
-      basePos3 = vec2(0.65, 0.7);
-      basePos4 = vec2(0.25, 0.65);
-    }
-    
-    // Animate positions with smooth organic movement
-    vec2 pos1 = basePos1 + vec2(sin(t * 0.7) * 0.1, cos(t * 0.9) * 0.08);
-    vec2 pos2 = basePos2 + vec2(cos(t * 0.8) * 0.09, sin(t * 0.65) * 0.11);
-    vec2 pos3 = basePos3 + vec2(sin(t * 0.55 + 1.2) * 0.11, cos(t * 0.75 + 2.1) * 0.09);
-    vec2 pos4 = basePos4 + vec2(cos(t * 0.65 + 1.7) * 0.08, sin(t * 0.85 + 0.6) * 0.1);
-    
-    // For Aurora mode (stretch enabled): stretch coordinates vertically to create curtain effect
+    // For Aurora mode: apply coordinate stretching
     vec2 sampleUv = vUv;
     if (uMeshStretch) {
-      // Stretch Y axis to create vertical curtain shapes
       sampleUv.y = (sampleUv.y - 0.5) / uMeshStretchAmount + 0.5;
-      // Add wave distortion for aurora curtain look
-      sampleUv.x += sin(sampleUv.y * 8.0 + t * 0.3) * 0.03;
+      sampleUv.x += sin(sampleUv.y * 6.0 + t) * 0.05;
     }
     
-    // Calculate distances from current pixel to each light source
-    float dist1 = length(sampleUv - pos1);
-    float dist2 = length(sampleUv - pos2);
-    float dist3 = length(sampleUv - pos3);
-    float dist4 = length(sampleUv - pos4);
+    // Create base noise using low frequency for large, soft blobs
+    // uNoiseScale controls blob size (lower = larger blobs)
+    float noiseScale = max(0.3, uNoiseScale) * 0.8;
     
-    // Radial light falloff function: smooth exponential decay
-    // Scale spread so that lights don't overwhelm the base color
-    float spreadSq = spread * spread * 0.08;
-    float light1 = exp(-dist1 * dist1 / spreadSq);
-    float light2 = exp(-dist2 * dist2 / (spreadSq * 0.9));
-    float light3 = exp(-dist3 * dist3 / (spreadSq * 1.1));
-    float light4 = exp(-dist4 * dist4 / spreadSq);
+    // Multiple octaves of noise for rich, organic look
+    vec3 noisePos = vec3(sampleUv * noiseScale, t * 0.2);
+    float n1 = snoise(noisePos) * 0.5 + 0.5;
+    float n2 = snoise(noisePos * 1.7 + 30.0) * 0.5 + 0.5;
+    float n3 = snoise(noisePos * 0.5 + 60.0) * 0.5 + 0.5;
     
-    // Convert color weights to normalized "energy" only for shaping the scalar field.
-    // The actual area/weight mapping is handled by the shared thresholds below.
-    float remainingWeight = max(0.0, 1.0 - baseWeight);
-    float w1 = (uWeight1 / 100.0) / max(0.01, remainingWeight);
-    float w2 = (uWeight2 / 100.0) / max(0.01, remainingWeight);
-    float w3 = (uWeight3 / 100.0) / max(0.01, remainingWeight);
-    float w4 = (uWeight4 / 100.0) / max(0.01, remainingWeight);
-
-    // Weight-shape the local light contributions.
-    light1 *= clamp(w1, 0.0, 2.0);
-    light2 *= clamp(w2, 0.0, 2.0);
-    light3 *= clamp(w3, 0.0, 2.0);
-    light4 *= clamp(w4, 0.0, 2.0);
-
-    float totalLight = light1 + light2 + light3 + (uHasColor4 ? light4 : 0.0);
-
-    // Map light energy to a 0..1 scalar field.
-    // The exp() mapping gives us more dark range (helps keep Color0 dominant).
-    float baseNoise = 1.0 - exp(-totalLight * 1.1);
-
-    // Histogram-ish stretch (S-curve) for more even distribution in organic modes.
-    // This helps weights map more consistently to visible area.
+    // Apply mesh style variations
+    float styleMod = 0.0;
+    if (uMeshStyle == 1) {
+      // FLOW: Add directional bias
+      vec2 flowDir = vec2(cos(uMeshFlowAngle), sin(uMeshFlowAngle));
+      styleMod = dot(sampleUv - 0.5, flowDir) * 0.3;
+    } else if (uMeshStyle == 2) {
+      // CENTER: Radial influence
+      float dist = length(sampleUv - 0.5);
+      styleMod = uMeshCenterInward ? -dist * 0.4 : dist * 0.4;
+    }
+    
+    // Combine noise layers with blur-based weighting
+    // Higher blur = smoother, more blended result
+    float blurWeight = uBlur;
+    float baseNoise = n1 * (0.5 + blurWeight * 0.3) + 
+                      n2 * (0.3 - blurWeight * 0.1) + 
+                      n3 * (0.2 - blurWeight * 0.1);
+    
+    baseNoise += styleMod;
+    
+    // Ensure full 0-1 range for proper weight distribution
+    // This is critical for Color0 (black) to get its 30% minimum
+    baseNoise = clamp(baseNoise, 0.0, 1.0);
+    
+    // Light S-curve for slightly more defined blobs while keeping smooth transitions
     baseNoise = smoothstep(0.0, 1.0, baseNoise);
-    baseNoise = pow(baseNoise, 0.85);
-
-    noise = clamp(baseNoise, 0.0, 1.0);
+    
+    noise = baseNoise;
     
   } else if (uGradientType == 1) {
     // SPHERE MODE: Classic 3D sphere with smooth color blending
