@@ -1,128 +1,175 @@
 
-# תוכנית: תיקון ערבוב הצבעים - חזרה לגרדיינטים חלקים
+# תוכנית: תיקון הגרדיינט ב-Plane - 30% שחור עם מעברים חלקים
 
-## הבעיה שזוהתה
+## אבחון מעמיק
 
-השינוי האחרון הפך את מערבבת הצבעים מ-**Progressive Mix** (ערבוב מתקדם חלק) ל-**Zone-Based Blending** (אזורי צבע נפרדים עם מעברים צרים). זה גרם לתוצאה שנראית כמו "פסים" או "בלוקים" במקום גרדיינט זורם וחלק.
+### למה יש פסים ב-Plane?
 
-### השוואה בין הגישות:
+הבעיה נוצרת משילוב של שני גורמים:
 
 ```text
-PROGRESSIVE MIX (הגישה הישנה - חלקה):
-┌─────────────────────────────────────────────┐
-│  צבע0 ──▶ מעבר רך ──▶ צבע1 ──▶ מעבר רך ──▶  │
-│       ◀── ערבוב מתמשך ללא גבולות חדים ──▶   │
-└─────────────────────────────────────────────┘
-
-ZONE-BASED (הגישה הנוכחית - קשה):
-┌─────────────────────────────────────────────┐
-│ [צבע0] │ מעבר │ [צבע1] │ מעבר │ [צבע2] │   │
-│   ◀── בלוקים נפרדים עם גבולות ברורים ──▶   │
-└─────────────────────────────────────────────┘
+הגישה הנוכחית:
+┌────────────────────────────────────────────────────────┐
+│ 1. blurFactor מופחת ל-35% (כדי לשמור 30% שחור)        │
+│ 2. Layer Masking מונע color0 מלהופיע במעברים אחרים    │
+│                                                        │
+│ התוצאה: מעברים צרים מדי = "פסים"                      │
+└────────────────────────────────────────────────────────┘
 ```
 
-## פתרון מוצע: Progressive Mix עם מניעת דליפה
+### למה Plane צריך גישה אחרת?
 
-נחזיר את הגישה המקורית (Progressive Mix) שנותנת ערבוב חלק, אבל נוסיף מנגנון שמונע מ-color0 לחזור ולהופיע במעברים בין צבעים אחרים (הבעיה המקורית של שחור בין ורוד לכתום).
+ב-**Mesh/Water** הרעש אורגני ומפוזר - Layer Masking עובד מצוין.
+ב-**Plane** הרעש לינארי (noise מ-0 ל-1 בהתאם לכיוון) - צריך גישה שמכבדת את הסדר הזה.
+
+## פתרון: "Weighted Segments" עבור Plane
+
+במקום להשתמש ב-Layer Masking (שנועד למנוע דליפות ברעש אורגני), נשתמש בגישת **Weighted Segments** - כל צבע מקבל סגמנט משלו בטווח ה-noise, עם מעברים רחבים וחלקים ביניהם.
 
 ### עיקרון הפתרון:
 
-במקום לערבב באופן קומולטיבי כל הצבעים, נשתמש ב-**weighted layering** - כל צבע "דורס" את הקודם לו בלבד, כך ש-color0 לא יכול לחזור אחרי שעברנו אותו.
+```text
+NOISE RANGE:    0.0 ────────────────────────────────── 1.0
 
-```glsl
-// במקום:
-finalColor = mix(color0, color1, blend01);
-finalColor = mix(finalColor, color2, blend12);  // בעיה: blend12 קטן מחזיר color0!
+COLOR0 (30%):   ████████████████████░░░░░░░░░░░░░░░░░░░░
+                [0.0 ─── 0.30] מעבר רחב
 
-// נשתמש ב:
-float layer1 = blend01;                          // כמה color1 מכסה את color0
-float layer2 = blend12 * layer1;                 // color2 מכסה רק מה שכבר color1
-finalColor = mix(color0, color1, layer1);
-finalColor = mix(finalColor, color2, layer2);   // בלי לחזור ל-color0
+COLOR1 (23%):   ░░░░░░░░░░░░░░░████████████████░░░░░░░░░
+                       [0.30 ─── 0.53] מעבר רחב
+
+COLOR2 (24%):   ░░░░░░░░░░░░░░░░░░░░░░░░░████████████████
+                              [0.53 ─── 0.77] מעבר רחב
+
+COLOR3 (23%):   ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░█████████
+                                     [0.77 ─── 1.0]
+
+מעברים רחבים וחופפים = חלק ואורגני
 ```
 
-## שינויים נדרשים
+### הלוגיקה החדשה ל-Plane:
 
-### קובץ: `src/components/Custom4ColorGradient.tsx`
-
-**מה נשנה:**
-1. הסרת כל מבנה ה-if/else של Zone-Based (שורות 397-451)
-2. החזרת Progressive Mix עם Layering מתקדם
-3. שמירה על רוחב מעבר רחב יותר (blurFactor) לערבוב חלק
-
-**לוגיקה חדשה:**
 ```glsl
-// Progressive mix with layer masking (prevents color0 bleeding)
-float blurFactor = uBlur * 0.5;
+// PLANE MODE: Direct Weighted Segments (no layer masking)
+// Each color blends smoothly into the next in sequence
 
-// Blend factors with smooth transitions
-float blend01 = smoothstep(threshold0 - blurFactor, threshold0 + blurFactor, noise);
-float blend12 = smoothstep(threshold1 - blurFactor, threshold1 + blurFactor, noise);
-float blend23 = smoothstep(threshold2 - blurFactor, threshold2 + blurFactor, noise);
-float blend34 = smoothstep(threshold3 - blurFactor, threshold3 + blurFactor, noise);
+float bigBlur = blurFactor * 1.5; // רחב יותר למעברים חלקים
 
-// Apply strength for edge control
-float strengthExp = 1.0 + strength * 0.5;
-blend01 = pow(blend01, strengthExp);
-blend12 = pow(blend12, strengthExp);
-blend23 = pow(blend23, strengthExp);
-blend34 = pow(blend34, strengthExp);
+// שלב 1: Color0 דועך ל-Color1
+float seg01 = smoothstep(threshold0 - bigBlur, threshold0 + bigBlur, noise);
 
-// LAYER MASKING: Each layer only affects what's "above" the previous threshold
-// This prevents color0 from appearing in color2-color3 transitions
+// שלב 2: Color1 דועך ל-Color2  
+float seg12 = smoothstep(threshold1 - bigBlur, threshold1 + bigBlur, noise);
+
+// שלב 3: Color2 דועך ל-Color3
+float seg23 = smoothstep(threshold2 - bigBlur, threshold2 + bigBlur, noise);
+
+// שלב 4: Color3 דועך ל-Color4 (אם קיים)
+float seg34 = smoothstep(threshold3 - bigBlur, threshold3 + bigBlur, noise);
+
+// ערבוב ישיר בין צבעים עוקבים - ללא masks!
 vec3 finalColor = uColor0;
-finalColor = mix(finalColor, uColor1, blend01);
-
-// For subsequent colors, only blend where we're already past the previous threshold
-float mask12 = blend01;  // Only blend color2 where color1 exists
-finalColor = mix(finalColor, uColor2, blend12 * mask12);
-
-float mask23 = max(blend01, blend12);  // Only blend color3 where color1 or color2 exist
-finalColor = mix(finalColor, uColor3, blend23 * mask23);
-
+finalColor = mix(finalColor, uColor1, seg01);
+finalColor = mix(finalColor, uColor2, seg12);
+finalColor = mix(finalColor, uColor3, seg23);
 if (uHasColor4) {
-  float mask34 = max(mask23, blend23);
-  finalColor = mix(finalColor, uColor4, blend34 * mask34);
+  finalColor = mix(finalColor, uColor4, seg34);
 }
 ```
 
-### קובץ: `src/components/ExportModal.tsx`
+### למה זה עובד?
 
-יש לעדכן את לוגיקת הייצוא כדי להתאים לשינוי בשיידר, כך שהתמונה המיוצאת תהיה זהה לפריוויו.
+ב-Plane, ה-noise הוא **מונוטוני עולה** (0 בצד אחד, 1 בצד השני).
+זה אומר שאם noise < threshold0, אנחנו בהכרח באזור של color0.
+אם noise > threshold0 ו-< threshold1, אנחנו במעבר color0→color1 או ב-color1.
 
-## סיכום
+**אין צורך ב-Layer Masking** כי אין "קפיצות" ברעש - הוא תמיד עולה!
 
-| קריטריון | לפני | אחרי |
-|----------|------|------|
-| ערבוב צבעים | קשה ומופרד (Zone-Based) | חלק וזורם (Progressive Mix) |
-| דליפת color0 | נמנעה | נמנעת (עם Layer Masking) |
-| איכות ויזואלית | בלוקים נפרדים | גרדיינט אורגני |
-| תאימות Export | צריכה עדכון | מסונכרנת |
+## קבצים שישתנו
+
+### 1. `src/components/Custom4ColorGradient.tsx`
+
+**שינויים בשיידר (שורות 420-469):**
+
+נחליף את הלוגיקה הנוכחית של Plane mode:
+
+```glsl
+// לפני:
+if (uGradientType == 2) {
+  float planeBlur = blurFactor * 0.35; // blur מופחת
+  // ... layer masking
+}
+
+// אחרי:
+if (uGradientType == 2) {
+  // PLANE MODE: Weighted Segments - wider blur, no layer masking
+  float planeBlur = blurFactor * 1.2; // blur רחב יותר
+  
+  float seg01 = smoothstep(threshold0 - planeBlur, threshold0 + planeBlur, noise);
+  float seg12 = smoothstep(threshold1 - planeBlur, threshold1 + planeBlur, noise);
+  float seg23 = smoothstep(threshold2 - planeBlur, threshold2 + planeBlur, noise);
+  float seg34 = smoothstep(threshold3 - planeBlur, threshold3 + planeBlur, noise);
+  
+  // Direct sequential mix - no layer masking needed for linear noise
+  finalColor = uColor0;
+  finalColor = mix(finalColor, uColor1, seg01);
+  finalColor = mix(finalColor, uColor2, seg12);
+  finalColor = mix(finalColor, uColor3, seg23);
+  if (uHasColor4) {
+    finalColor = mix(finalColor, uColor4, seg34);
+  }
+}
+```
+
+**נשמור על Layer Masking לשאר המצבים** (Mesh, Water, Conic, וכו') כי הם צריכים את זה למניעת דליפות.
+
+### 2. `src/components/ExportModal.tsx`
+
+**שינויים בפונקציה `render4ColorGradientHighQuality` (שורות 316-376):**
+
+נעדכן את לוגיקת הייצוא של Plane להתאים לשיידר החדש.
+
+## סיכום השינויים
+
+| היבט | Mesh/Water/Conic | Plane |
+|------|------------------|-------|
+| סוג רעש | אורגני, מפוזר | לינארי, מונוטוני |
+| גישת ערבוב | Layer Masking | Weighted Segments |
+| blurFactor | 100% (מלא) | 120% (רחב יותר) |
+| מניעת דליפות | masks מונעים color0 | לא צריך - הרעש לינארי |
+
+## תוצאה צפויה
+
+- **30% שחור** - נשמר כי threshold0 = 0.30 וה-noise מתחיל מ-0
+- **מעברים חלקים** - blur רחב יותר ללא Layer Masking
+- **ללא פסים** - כי אין "חיתוכים" חדים בין הצבעים
+- **שאר המצבים** - ללא שינוי, עדיין משתמשים ב-Layer Masking
 
 ---
 
 ## פרטים טכניים
 
-### הסבר Layer Masking:
+### למה Layer Masking גורם לפסים ב-Plane?
 
-הרעיון הוא שכל צבע יכול להופיע רק באזורים שכבר "נכבשו" על ידי הצבע הקודם לו. כך color0 נשאר רק באזור שלו (0 עד threshold0), ולא יכול "לדלוף" למעברים בין color2 ל-color3.
-
-```text
-noise:     0.0 ────────────────────────── 1.0
-           
-color0:    ████████░░░░░░░░░░░░░░░░░░░░░░░
-           (100% עד threshold0, אז דועך)
-           
-color1:    ░░░░░░░████████████░░░░░░░░░░░░
-           (מתחיל רק אחרי threshold0)
-           
-color2:    ░░░░░░░░░░░░░░░████████████░░░░
-           (מתחיל רק אחרי threshold1, מוגבל ל-mask)
-           
-color3:    ░░░░░░░░░░░░░░░░░░░░░░░███████░
-           (מתחיל רק אחרי threshold2, מוגבל ל-mask)
+ב-Layer Masking, כל שכבה מוכפלת במסכה של השכבה הקודמת:
+```glsl
+finalColor = mix(finalColor, uColor2, blend12 * mask12);
+//                                      ↑         ↑
+//                                      │         └── תלוי ב-blend01
+//                                      └── smoothstep קטן
 ```
 
-### קבצים שישתנו:
-1. `src/components/Custom4ColorGradient.tsx` - השיידר הראשי
-2. `src/components/ExportModal.tsx` - לוגיקת הייצוא
+כש-blend01 וגם blend12 קטנים (באזור המעבר), המכפלה שלהם **קטנה מאוד**.
+זה יוצר "חור" במעבר שבו לא מספיק צבע מהשכבה החדשה נכנס.
+
+ב-Plane לינארי, זה יוצר פסים ברורים.
+ב-Mesh אורגני, זה פחות מורגש כי הרעש מפוזר.
+
+### למה ב-Plane אין צורך ב-Layer Masking?
+
+ב-Plane, ה-noise הוא **מונוטוני עולה**.
+אם noise = 0.4 (למשל), אז:
+- seg01 ≈ 1.0 (עברנו את threshold0 = 0.30)
+- seg12 ≈ 0.5 (באמצע המעבר ל-threshold1 = 0.53)
+- seg23 = 0.0 (עוד לא הגענו ל-threshold2)
+
+ה-mix הרגיל נותן תוצאה נכונה בלי masks!
