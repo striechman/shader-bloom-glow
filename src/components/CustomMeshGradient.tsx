@@ -167,8 +167,9 @@ void main() {
   }
   // else uMeshStyle == 0 (ORGANIC): use baseNoise as-is
 
-  // Strength = more contrast in the blobs
-  noise = pow(clamp(noise, 0.0, 1.0), 1.0 + strength * 0.18);
+  // IMPORTANT: Strength must NOT warp the noise distribution before weight thresholds,
+  // otherwise percentages stop matching perceived area. We apply strength later to blends.
+  noise = clamp(noise, 0.0, 1.0);
   
   // Apply blur (softness) - higher blur = smoother transitions
   float blurFactor = uBlur * 0.5;
@@ -192,6 +193,13 @@ void main() {
   float blend12 = smoothstep(threshold1 - blurFactor, threshold1 + blurFactor, noise);
   float blend23 = smoothstep(threshold2 - blurFactor, threshold2 + blurFactor, noise);
   float blend34 = smoothstep(threshold3 - blurFactor, threshold3 + blurFactor, noise);
+
+  // Strength as edge sharpening (preserves weight ranges)
+  float strengthExp = 1.0 + strength * 1.25;
+  blend01 = pow(clamp(blend01, 0.0, 1.0), strengthExp);
+  blend12 = pow(clamp(blend12, 0.0, 1.0), strengthExp);
+  blend23 = pow(clamp(blend23, 0.0, 1.0), strengthExp);
+  blend34 = pow(clamp(blend34, 0.0, 1.0), strengthExp);
   
   // Start with color0 and progressively blend to other colors (in linear space)
   finalColor = uColor0;

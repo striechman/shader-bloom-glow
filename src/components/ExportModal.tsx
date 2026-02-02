@@ -213,22 +213,26 @@ async function render4ColorGradientHighQuality(
         noise = Math.max(0, Math.min(1, noise));
         
       } else if (gradientType === 2) {
-        // PLANE MODE: Linear or radial gradient with custom angle
+        // PLANE MODE: Match shader normalization so weights map predictably.
         let baseNoise: number;
-        
+
         if (planeRadial) {
-          baseNoise = Math.sqrt(centeredU * centeredU + centeredV * centeredV) * 1.4;
+          // Match Custom4ColorGradient: use stronger scaling to cover full 0..1 range
+          baseNoise = Math.sqrt(centeredU * centeredU + centeredV * centeredV) * 2.0;
         } else {
           const dirX = Math.cos(planeAngle);
           const dirY = Math.sin(planeAngle);
-          baseNoise = centeredU * dirX + centeredV * dirY + 0.5;
+          const dotProduct = centeredU * dirX + centeredV * dirY;
+          const maxDot = Math.abs(dirX) * 0.5 + Math.abs(dirY) * 0.5;
+          baseNoise = (dotProduct / (maxDot || 1)) * 0.5 + 0.5;
         }
-        
-        // Add subtle noise for organic feel
-        const organicNoise = noise3D(u * 2 * freq, v * 2 * freq, time * 0.25) * 0.12 * density;
-        const wave = Math.sin(baseNoise * 6.28 + time * 0.4) * 0.06 * strength;
-        
-        noise = baseNoise + organicNoise + wave;
+
+        baseNoise = Math.max(0, Math.min(1, baseNoise));
+
+        // Add subtle noise for organic feel (reduced so it won't wipe out weight regions)
+        const organicNoise = noise3D(u * 2 * freq, v * 2 * freq, time * 0.25) * 0.04 * density;
+
+        noise = baseNoise + organicNoise;
         noise = Math.max(0, Math.min(1, noise));
         
       } else if (gradientType === 4) {
@@ -293,14 +297,37 @@ async function render4ColorGradientHighQuality(
         noise = Math.max(0, Math.min(1, noise));
       }
       
-      // Apply strength for contrast
-      noise = Math.pow(Math.max(0, Math.min(1, noise)), 1.0 + strength * 0.15);
-      
+      // IMPORTANT: Strength must NOT warp the noise distribution before thresholds,
+      // otherwise percentages stop matching perceived area. We sharpen edges instead.
+      noise = Math.max(0, Math.min(1, noise));
+
       // Color mixing with smooth edges (supports 4 or 5 colors)
-      const edge0 = smoothstep(threshold0 - blurFactor, threshold0 + blurFactor, noise);
-      const edge1 = smoothstep(threshold1 - blurFactor, threshold1 + blurFactor, noise);
-      const edge2 = smoothstep(threshold2 - blurFactor, threshold2 + blurFactor, noise);
-      const edge3 = hasColor4 ? smoothstep(threshold3 - blurFactor, threshold3 + blurFactor, noise) : 0;
+      let edge0: number;
+      let edge1: number;
+      let edge2: number;
+      let edge3: number;
+
+      const isPlane = gradientType === 2;
+      if (isPlane) {
+        // One-sided blending (keeps base color pure for its full weight)
+        const transitionWidth = blurFactor * 0.4;
+        edge0 = smoothstep(threshold0, threshold0 + transitionWidth, noise);
+        edge1 = smoothstep(threshold1, threshold1 + transitionWidth, noise);
+        edge2 = smoothstep(threshold2, threshold2 + transitionWidth, noise);
+        edge3 = hasColor4 ? smoothstep(threshold3, threshold3 + transitionWidth, noise) : 0;
+      } else {
+        edge0 = smoothstep(threshold0 - blurFactor, threshold0 + blurFactor, noise);
+        edge1 = smoothstep(threshold1 - blurFactor, threshold1 + blurFactor, noise);
+        edge2 = smoothstep(threshold2 - blurFactor, threshold2 + blurFactor, noise);
+        edge3 = hasColor4 ? smoothstep(threshold3 - blurFactor, threshold3 + blurFactor, noise) : 0;
+      }
+
+      // Strength as edge sharpening (preserves weight ranges)
+      const strengthExp = 1.0 + strength * 1.25;
+      edge0 = Math.pow(Math.max(0, Math.min(1, edge0)), strengthExp);
+      edge1 = Math.pow(Math.max(0, Math.min(1, edge1)), strengthExp);
+      edge2 = Math.pow(Math.max(0, Math.min(1, edge2)), strengthExp);
+      edge3 = Math.pow(Math.max(0, Math.min(1, edge3)), strengthExp);
       
       // Progressive color mixing
       let r = lerp(color0.r, color1.r, edge0);

@@ -343,8 +343,9 @@ void main() {
     noise = clamp(baseNoise, 0.0, 1.0);
   }
   
-  // Apply strength for contrast
-  noise = pow(clamp(noise, 0.0, 1.0), 1.0 + strength * 0.15);
+  // NOTE: Strength should not distort the noise distribution BEFORE weight thresholds,
+  // otherwise color weights stop matching perceived area (e.g. high weights barely visible).
+  // We apply strength later to the blend factors to sharpen transitions without shifting ranges.
   
   // Apply blur (softness)
   float blurFactor = uBlur * 0.5;
@@ -380,6 +381,13 @@ void main() {
     blend23 = smoothstep(threshold2 - blurFactor, threshold2 + blurFactor, noise);
     blend34 = smoothstep(threshold3 - blurFactor, threshold3 + blurFactor, noise);
   }
+
+  // Apply strength as edge sharpening (preserves weight ranges)
+  float strengthExp = 1.0 + strength * 1.25;
+  blend01 = pow(clamp(blend01, 0.0, 1.0), strengthExp);
+  blend12 = pow(clamp(blend12, 0.0, 1.0), strengthExp);
+  blend23 = pow(clamp(blend23, 0.0, 1.0), strengthExp);
+  blend34 = pow(clamp(blend34, 0.0, 1.0), strengthExp);
   
   // Progressive color mixing in linear space
   vec3 finalColor = uColor0;
