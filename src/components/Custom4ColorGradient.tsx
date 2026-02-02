@@ -347,13 +347,7 @@ void main() {
   noise = pow(clamp(noise, 0.0, 1.0), 1.0 + strength * 0.15);
   
   // Apply blur (softness)
-  // NOTE: Plane needs stricter transitions so the mandatory 30% base color (black/white)
-  // is visually present; otherwise high blur makes it look like it disappears.
   float blurFactor = uBlur * 0.5;
-  float effectiveBlurFactor = blurFactor;
-  if (uGradientType == 2) {
-    effectiveBlurFactor = blurFactor * 0.35;
-  }
   
   // Calculate cumulative thresholds for colors (4 or 5 depending on uHasColor4)
   float w0 = uWeight0 / 100.0;
@@ -367,11 +361,25 @@ void main() {
   float threshold2 = w0 + w1 + w2;
   float threshold3 = w0 + w1 + w2 + w3;
   
-  // Smooth color blending (in linear space - uColors are already linear from THREE.Color)
-  float blend01 = smoothstep(threshold0 - effectiveBlurFactor, threshold0 + effectiveBlurFactor, noise);
-  float blend12 = smoothstep(threshold1 - effectiveBlurFactor, threshold1 + effectiveBlurFactor, noise);
-  float blend23 = smoothstep(threshold2 - effectiveBlurFactor, threshold2 + effectiveBlurFactor, noise);
-  float blend34 = smoothstep(threshold3 - effectiveBlurFactor, threshold3 + effectiveBlurFactor, noise);
+  // BRANDING RULE: For Plane mode, color0 (black/white) must be PURE for its full weight (30%+)
+  // The blend should start AFTER the threshold, not centered on it
+  // This ensures 30% black means 30% of the gradient is actually pure black
+  float blend01, blend12, blend23, blend34;
+  
+  if (uGradientType == 2) {
+    // PLANE MODE: One-sided blending - color0 is pure until threshold0, then transitions
+    float transitionWidth = blurFactor * 0.4; // Narrow transition zone
+    blend01 = smoothstep(threshold0, threshold0 + transitionWidth, noise);
+    blend12 = smoothstep(threshold1, threshold1 + transitionWidth, noise);
+    blend23 = smoothstep(threshold2, threshold2 + transitionWidth, noise);
+    blend34 = smoothstep(threshold3, threshold3 + transitionWidth, noise);
+  } else {
+    // OTHER MODES: Centered blending for smooth organic look
+    blend01 = smoothstep(threshold0 - blurFactor, threshold0 + blurFactor, noise);
+    blend12 = smoothstep(threshold1 - blurFactor, threshold1 + blurFactor, noise);
+    blend23 = smoothstep(threshold2 - blurFactor, threshold2 + blurFactor, noise);
+    blend34 = smoothstep(threshold3 - blurFactor, threshold3 + blurFactor, noise);
+  }
   
   // Progressive color mixing in linear space
   vec3 finalColor = uColor0;
