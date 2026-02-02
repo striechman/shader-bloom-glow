@@ -417,55 +417,84 @@ void main() {
   float threshold3 = w0 + w1 + w2 + w3;
   // threshold4 is implicitly 1.0
   
-  // PROGRESSIVE MIX WITH LAYER MASKING
-  // Smooth organic blending that prevents color0 from bleeding into later transitions
-  // Each color layer only affects areas already "covered" by the previous color transition
+  // PROGRESSIVE MIX - Different strategies for different gradient types
+  // Plane uses direct sequential mix (no layer masking needed for linear noise)
+  // Other modes use layer masking to prevent color0 from bleeding into later transitions
   
-  // Blend factors - Plane mode uses REDUCED blur to keep color0 prominent but still blended
-  float blend01, blend12, blend23, blend34;
+  vec3 finalColor;
   
   if (uGradientType == 2) {
-    // PLANE MODE: Centered blending with reduced blur (35% of standard)
-    // This allows color0 to blend organically while maintaining its 30% weight presence
-    float planeBlur = blurFactor * 0.35;
-    blend01 = smoothstep(threshold0 - planeBlur, threshold0 + planeBlur, noise);
-    blend12 = smoothstep(threshold1 - planeBlur, threshold1 + planeBlur, noise);
-    blend23 = smoothstep(threshold2 - planeBlur, threshold2 + planeBlur, noise);
-    blend34 = smoothstep(threshold3 - planeBlur, threshold3 + planeBlur, noise);
+    // =========================================================================
+    // PLANE MODE: Weighted Segments - Direct Sequential Mix
+    // =========================================================================
+    // Plane noise is MONOTONIC (always increasing from 0 to 1 in gradient direction).
+    // This means we don't need layer masking - simple sequential mix() works perfectly
+    // and produces smooth transitions without "stripes".
+    
+    // Use WIDER blur for smooth organic transitions
+    float planeBlur = blurFactor * 1.2;
+    
+    // Calculate segment transitions - each color blends into the next
+    float seg01 = smoothstep(threshold0 - planeBlur, threshold0 + planeBlur, noise);
+    float seg12 = smoothstep(threshold1 - planeBlur, threshold1 + planeBlur, noise);
+    float seg23 = smoothstep(threshold2 - planeBlur, threshold2 + planeBlur, noise);
+    float seg34 = smoothstep(threshold3 - planeBlur, threshold3 + planeBlur, noise);
+    
+    // Apply strength for edge control
+    float strengthExp = 1.0 + strength * 0.5;
+    seg01 = pow(seg01, strengthExp);
+    seg12 = pow(seg12, strengthExp);
+    seg23 = pow(seg23, strengthExp);
+    seg34 = pow(seg34, strengthExp);
+    
+    // Direct sequential mix - no layer masking needed for linear monotonic noise!
+    // This produces smooth organic blending while respecting weight thresholds
+    finalColor = uColor0;
+    finalColor = mix(finalColor, uColor1, seg01);
+    finalColor = mix(finalColor, uColor2, seg12);
+    finalColor = mix(finalColor, uColor3, seg23);
+    if (uHasColor4) {
+      finalColor = mix(finalColor, uColor4, seg34);
+    }
+    
   } else {
-    // OTHER MODES: Full centered blending for maximum organic feel
-    blend01 = smoothstep(threshold0 - blurFactor, threshold0 + blurFactor, noise);
-    blend12 = smoothstep(threshold1 - blurFactor, threshold1 + blurFactor, noise);
-    blend23 = smoothstep(threshold2 - blurFactor, threshold2 + blurFactor, noise);
-    blend34 = smoothstep(threshold3 - blurFactor, threshold3 + blurFactor, noise);
-  }
-  
-  // Apply strength for edge control (sharpens transitions without shifting ranges)
-  float strengthExp = 1.0 + strength * 0.5;
-  blend01 = pow(blend01, strengthExp);
-  blend12 = pow(blend12, strengthExp);
-  blend23 = pow(blend23, strengthExp);
-  blend34 = pow(blend34, strengthExp);
-  
-  // LAYER MASKING: Each color only affects areas already past the previous threshold
-  // This prevents color0 from appearing in color2-color3 or color3-color4 transitions
-  vec3 finalColor = uColor0;
-  
-  // Color1 blends over color0
-  finalColor = mix(finalColor, uColor1, blend01);
-  
-  // Color2 only blends where color1 has already started (mask = blend01)
-  float mask12 = blend01;
-  finalColor = mix(finalColor, uColor2, blend12 * mask12);
-  
-  // Color3 only blends where color1 or color2 exist
-  float mask23 = max(blend01, blend12);
-  finalColor = mix(finalColor, uColor3, blend23 * mask23);
-  
-  // Color4 (if enabled) only blends where previous colors exist
-  if (uHasColor4) {
-    float mask34 = max(mask23, blend23);
-    finalColor = mix(finalColor, uColor4, blend34 * mask34);
+    // =========================================================================
+    // OTHER MODES (Mesh, Water, Conic, Spiral, Waves): Layer Masking
+    // =========================================================================
+    // These modes use organic/scattered noise where layer masking prevents
+    // color0 from appearing in later color transitions.
+    
+    float blend01 = smoothstep(threshold0 - blurFactor, threshold0 + blurFactor, noise);
+    float blend12 = smoothstep(threshold1 - blurFactor, threshold1 + blurFactor, noise);
+    float blend23 = smoothstep(threshold2 - blurFactor, threshold2 + blurFactor, noise);
+    float blend34 = smoothstep(threshold3 - blurFactor, threshold3 + blurFactor, noise);
+    
+    // Apply strength for edge control
+    float strengthExp = 1.0 + strength * 0.5;
+    blend01 = pow(blend01, strengthExp);
+    blend12 = pow(blend12, strengthExp);
+    blend23 = pow(blend23, strengthExp);
+    blend34 = pow(blend34, strengthExp);
+    
+    // LAYER MASKING: Each color only affects areas already past the previous threshold
+    finalColor = uColor0;
+    
+    // Color1 blends over color0
+    finalColor = mix(finalColor, uColor1, blend01);
+    
+    // Color2 only blends where color1 has already started
+    float mask12 = blend01;
+    finalColor = mix(finalColor, uColor2, blend12 * mask12);
+    
+    // Color3 only blends where color1 or color2 exist
+    float mask23 = max(blend01, blend12);
+    finalColor = mix(finalColor, uColor3, blend23 * mask23);
+    
+    // Color4 (if enabled) only blends where previous colors exist
+    if (uHasColor4) {
+      float mask34 = max(mask23, blend23);
+      finalColor = mix(finalColor, uColor4, blend34 * mask34);
+    }
   }
   
   // Convert from Linear RGB back to sRGB for correct display
