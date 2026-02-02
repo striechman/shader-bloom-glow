@@ -7,6 +7,10 @@ interface GradientDebugOverlayProps {
 
 export function GradientDebugOverlay({ config, visible = true }: GradientDebugOverlayProps) {
   if (!visible) return null;
+
+  const activeMode = config.type === 'plane' && config.wireframe ? 'mesh' : config.type;
+  const isMeshMode = activeMode === 'mesh' || activeMode === 'sphere' || activeMode === 'waterPlane';
+  const isPlaneMode = activeMode === 'plane';
   
   const colors = [
     { label: 'Base (Color 0)', color: config.color0, weight: config.colorWeight0 },
@@ -28,11 +32,11 @@ export function GradientDebugOverlay({ config, visible = true }: GradientDebugOv
       {/* Type */}
       <div className="flex justify-between">
         <span className="text-white/60">Type:</span>
-        <span className="text-cyan-400 uppercase">{config.type}</span>
+        <span className="text-cyan-400 uppercase">{activeMode}</span>
       </div>
       
       {/* Mesh Style */}
-      {config.type === 'sphere' && (
+      {isMeshMode && (
         <div className="flex justify-between">
           <span className="text-white/60">Mesh Style:</span>
           <span className="text-purple-400">{config.meshStyle}</span>
@@ -79,10 +83,30 @@ export function GradientDebugOverlay({ config, visible = true }: GradientDebugOv
       <div className="border-t border-white/20 pt-2 mt-2">
         <div className="text-white/80 mb-1">Effects:</div>
         <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
-          <span className="text-white/60">Blur:</span>
-          <span className="text-white">{config.meshBlur ?? 50}</span>
-          <span className="text-white/60">Noise Scale:</span>
-          <span className="text-white">{config.meshNoiseScale ?? 1.0}</span>
+          {isMeshMode ? (
+            <>
+              <span className="text-white/60">Mesh Blur:</span>
+              <span className="text-white">{config.meshBlur ?? 50}</span>
+              <span className="text-white/60">Noise Scale:</span>
+              <span className="text-white">{config.meshNoiseScale ?? 1.0}</span>
+            </>
+          ) : null}
+
+          {isPlaneMode ? (
+            <>
+              <span className="text-white/60">Plane Angle:</span>
+              <span className="text-white">{config.planeAngle}</span>
+              <span className="text-white/60">Plane Spread:</span>
+              <span className="text-white">{config.planeSpread}</span>
+              <span className="text-white/60">Plane Wave:</span>
+              <span className="text-white">{config.planeWave}</span>
+              <span className="text-white/60">Radial:</span>
+              <span className={config.planeRadial ? 'text-green-400' : 'text-white/40'}>
+                {config.planeRadial ? 'ON' : 'OFF'}
+              </span>
+            </>
+          ) : null}
+
           <span className="text-white/60">Strength:</span>
           <span className="text-white">{config.uStrength}</span>
           <span className="text-white/60">Density:</span>

@@ -557,6 +557,37 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
             <div>
               <h3 className="font-display text-lg font-medium mb-4 text-foreground">Mesh Gradient</h3>
               <div className="space-y-4">
+                {/* Quick look presets */}
+                <div className="rounded-lg bg-secondary/40 p-3 border border-border">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-medium text-foreground">Aurora</div>
+                      <div className="text-xs text-muted-foreground">Smooth curtains (scale↓, blur↑)</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onConfigChange({
+                          // Ensure we're still in Mesh mode (plane+wireframe)
+                          type: 'plane',
+                          wireframe: true,
+                          meshStyle: 'organic',
+                          meshNoiseScale: 0.4,
+                          meshBlur: 95,
+                          uFrequency: 3.0,
+                          uDensity: 1.2,
+                          grain: true,
+                          grainIntensity: 10,
+                          speed: 0.15,
+                        })
+                      }
+                      className="px-3 py-2 rounded-lg text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                    >
+                      Apply
+                    </button>
+                  </div>
+                </div>
+
                 {/* Noise Scale - controls blob size */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
@@ -566,9 +597,9 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                   <Slider
                     value={[config.meshNoiseScale ?? 1]}
                     onValueChange={([value]) => onConfigChange({ meshNoiseScale: value })}
-                    min={0.5}
+                    min={0.3}
                     max={3}
-                    step={0.1}
+                    step={0.05}
                     className="w-full"
                   />
                   <p className="text-xs text-muted-foreground/70">Lower = larger color areas, Higher = more detail</p>
