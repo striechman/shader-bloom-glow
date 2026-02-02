@@ -260,6 +260,12 @@ void main() {
     noise = baseNoise + organicNoise;
     noise = clamp(noise, 0.0, 1.0);
     
+    // HISTOGRAM EQUALIZATION for Plane: Apply same stretching to match weight distribution
+    // This ensures color weights accurately reflect screen area
+    float centeredNoise = noise - 0.5;
+    float stretchedNoise = sign(centeredNoise) * pow(abs(centeredNoise) * 2.0, 0.7) * 0.5;
+    noise = stretchedNoise + 0.5;
+    
   } else if (uGradientType == 4) {
     // CONIC MODE: Angular gradient with optional spiral
     vec2 offsetCenter = centeredUv - uConicOffset;
