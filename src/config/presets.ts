@@ -67,7 +67,7 @@ export const PRESET_DEEP_AURORA: BuiltInPreset = {
   id: 'deep-aurora',
   name: 'Deep Aurora',
   nameHe: 'אורורה עמוקה',
-  description: 'Organic mesh with blue, violet, and magenta clouds on black',
+  description: 'Silky aurora curtains with smooth color bands flowing like northern lights',
   category: 'dark',
   config: {
     type: 'sphere',  // Uses Mesh shader
@@ -85,22 +85,25 @@ export const PRESET_DEEP_AURORA: BuiltInPreset = {
     colorWeight3: 20,
     colorWeight4: 0,
     
-    // Critical Mesh settings for aurora look
+    // === AURORA SETTINGS ===
     meshStyle: 'organic',
-    meshNoiseScale: 2.5,   // Low scale = large blobs
-    meshBlur: 90,          // Maximum blur! Key to aurora look
+    meshNoiseScale: 0.4,   // Very low = huge smooth areas (key to aurora!)
+    meshBlur: 95,          // Near-maximum blur for silky transitions
+    meshStretchX: 2.2,     // Strong horizontal stretch = curtain bands
+    meshStretchY: 0.5,     // Strong vertical compress = horizontal flow
+    meshWarpAmount: 35,    // Wave distortion for organic movement
     
-    // Shader params
-    uStrength: 0.8,
-    uDensity: 1.2,
-    uFrequency: 4.0,
+    // Shader params - reduced for smoothness
+    uStrength: 0.5,
+    uDensity: 1.0,
+    uFrequency: 3.0,       // Lower frequency = smoother
     
     // Slow dreamy animation
     animate: true,
-    speed: 0.2,
+    speed: 0.15,
     
     grain: true,
-    grainIntensity: 12,
+    grainIntensity: 10,
   },
 };
 
@@ -170,15 +173,18 @@ export const PRESET_NEON_NIGHTS: BuiltInPreset = {
     
     meshStyle: 'flow',
     meshFlowAngle: 45,
-    meshNoiseScale: 3.0,
-    meshBlur: 70,
+    meshNoiseScale: 0.6,    // Lower for smoother
+    meshBlur: 80,
+    meshStretchX: 1.5,
+    meshStretchY: 0.8,
+    meshWarpAmount: 25,
     
-    uStrength: 1.2,
-    uDensity: 1.5,
-    uFrequency: 5.0,
+    uStrength: 0.8,
+    uDensity: 1.2,
+    uFrequency: 4.0,
     
     animate: true,
-    speed: 0.35,
+    speed: 0.3,
     
     grain: false,
   },
@@ -240,15 +246,18 @@ export const PRESET_OCEAN_DEPTH: BuiltInPreset = {
     colorWeight4: 0,
     
     meshStyle: 'organic',
-    meshNoiseScale: 2.0,
-    meshBlur: 80,
+    meshNoiseScale: 0.5,
+    meshBlur: 85,
+    meshStretchX: 1.6,
+    meshStretchY: 0.7,
+    meshWarpAmount: 40,
     
-    uStrength: 1.0,
+    uStrength: 0.6,
     uDensity: 1.0,
-    uFrequency: 4.5,
+    uFrequency: 3.5,
     
     animate: true,
-    speed: 0.18,
+    speed: 0.15,
     
     grain: true,
     grainIntensity: 8,
@@ -281,15 +290,18 @@ export const PRESET_MORNING_MIST: BuiltInPreset = {
     colorWeight4: 0,
     
     meshStyle: 'organic',
-    meshNoiseScale: 2.5,
-    meshBlur: 95,        // Maximum softness
+    meshNoiseScale: 0.4,
+    meshBlur: 98,        // Maximum softness
+    meshStretchX: 1.8,
+    meshStretchY: 0.6,
+    meshWarpAmount: 20,
     
-    uStrength: 0.5,
+    uStrength: 0.3,
     uDensity: 0.8,
-    uFrequency: 3.5,
+    uFrequency: 2.5,
     
     animate: true,
-    speed: 0.15,
+    speed: 0.12,
     
     grain: false,
   },
