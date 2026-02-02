@@ -397,32 +397,38 @@ void main() {
   
   if (uGradientType == 2) {
     // =========================================================================
-    // PLANE MODE: Weighted Segments - Direct Sequential Mix
+    // PLANE MODE: Weighted Segments with Proper Color Distribution
     // =========================================================================
-    // Spread (0=sharp, 1=soft) controls transition width without changing segment areas.
-    float spreadBlurMult = mix(0.35, 1.8, uPlaneSpread);
-    float planeBlur = blurFactor * 1.2 * spreadBlurMult;
+    // Each color occupies its weight as a percentage of the noise range [0,1]
+    // Color0: [0, threshold0], Color1: [threshold0, threshold1], etc.
+    // Transitions are CENTERED on thresholds so each color gets its fair area.
     
-    // Asymmetric transitions so Color0 is SOLID until threshold0 (true 30%+ black on screen)
-    float seg01 = smoothstep(threshold0, threshold0 + planeBlur * 2.0, noise);
-    float seg12 = smoothstep(threshold1, threshold1 + planeBlur * 2.0, noise);
-    float seg23 = smoothstep(threshold2, threshold2 + planeBlur * 2.0, noise);
-    float seg34 = smoothstep(threshold3, threshold3 + planeBlur * 2.0, noise);
+    // Spread controls transition softness (0=sharp edges, 1=soft blend)
+    float spreadMult = mix(0.02, 0.12, uPlaneSpread);
+    float transitionWidth = spreadMult + blurFactor * 0.08;
     
-    // Apply strength for edge control
-    float strengthExp = 1.0 + strength * 0.5;
-    seg01 = pow(seg01, strengthExp);
-    seg12 = pow(seg12, strengthExp);
-    seg23 = pow(seg23, strengthExp);
-    seg34 = pow(seg34, strengthExp);
+    // Calculate blend factors - transitions CENTERED on thresholds
+    // This ensures Color0 gets exactly threshold0 (e.g., 30%) of the area,
+    // not more and not less.
+    float blend01 = smoothstep(threshold0 - transitionWidth, threshold0 + transitionWidth, noise);
+    float blend12 = smoothstep(threshold1 - transitionWidth, threshold1 + transitionWidth, noise);
+    float blend23 = smoothstep(threshold2 - transitionWidth, threshold2 + transitionWidth, noise);
+    float blend34 = smoothstep(threshold3 - transitionWidth, threshold3 + transitionWidth, noise);
     
-    // Direct sequential mix - no layer masking needed for linear monotonic noise
+    // Apply strength for sharper/softer transitions
+    float strengthExp = 1.0 + strength * 0.3;
+    blend01 = pow(blend01, strengthExp);
+    blend12 = pow(blend12, strengthExp);
+    blend23 = pow(blend23, strengthExp);
+    blend34 = pow(blend34, strengthExp);
+    
+    // Sequential mix - each color replaces the previous in its segment
     finalColor = uColor0;
-    finalColor = mix(finalColor, uColor1, seg01);
-    finalColor = mix(finalColor, uColor2, seg12);
-    finalColor = mix(finalColor, uColor3, seg23);
+    finalColor = mix(finalColor, uColor1, blend01);
+    finalColor = mix(finalColor, uColor2, blend12);
+    finalColor = mix(finalColor, uColor3, blend23);
     if (uHasColor4) {
-      finalColor = mix(finalColor, uColor4, seg34);
+      finalColor = mix(finalColor, uColor4, blend34);
     }
     
   } else {
