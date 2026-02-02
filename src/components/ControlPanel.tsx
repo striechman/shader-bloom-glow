@@ -187,6 +187,7 @@ const effectPresets: Record<string, Partial<GradientConfig>> = {
     uFrequency: 1.5,
     wavesCount: 5,
     wavesAmplitude: 50,
+    wavesAngle: 0, // Horizontal direction
     meshStretch: false,
     speed: 0.25,
     grain: false,
@@ -1108,6 +1109,45 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
             <div>
               <h3 className="font-display text-lg font-medium mb-4 text-foreground">Waves</h3>
               <div className="space-y-4">
+                {/* Direction Preset Buttons */}
+                <div className="flex gap-2">
+                  {planeDirectionPresets.filter(p => !p.isRadial).map((preset) => {
+                    const Icon = preset.icon;
+                    const isActive = (config.wavesAngle ?? 0) === preset.angle;
+                    
+                    return (
+                      <button
+                        key={preset.label}
+                        onClick={() => onConfigChange({ wavesAngle: preset.angle })}
+                        className={`flex-1 py-2 px-2 rounded-lg text-xs font-medium transition-all flex flex-col items-center gap-1 ${
+                          isActive
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                        }`}
+                        title={preset.label}
+                      >
+                        <Icon className="w-4 h-4" />
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                {/* Angle Slider */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-muted-foreground">Angle</Label>
+                    <span className="text-xs text-muted-foreground">{config.wavesAngle ?? 0}°</span>
+                  </div>
+                  <Slider
+                    value={[config.wavesAngle ?? 0]}
+                    onValueChange={([value]) => onConfigChange({ wavesAngle: value })}
+                    min={0}
+                    max={360}
+                    step={5}
+                    className="w-full"
+                  />
+                </div>
+                
                 {/* Wave Count */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">

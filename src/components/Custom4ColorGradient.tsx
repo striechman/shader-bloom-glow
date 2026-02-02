@@ -185,77 +185,113 @@ void main() {
     // =========================================================================
     // MESH MODE: Radial Light Sources (Soft Light Blobs / Atmospheric Lighting)
     // =========================================================================
-    // Each color acts as a "light source" with exponential falloff, blended additively
-    // onto the base color (Color0 - typically black). This creates the atmospheric
-    // "light emerging from darkness" effect seen in premium dark mode gradients.
+    // Color0 (base/black) is guaranteed minimum 30% of the screen area.
+    // Colors 1-4 act as "light sources" with exponential falloff, overlaid onto base.
+    
+    // Get base weight (minimum 30%) - this determines how much area stays pure base color
+    float baseWeight = uWeight0 / 100.0; // e.g., 0.30 for 30%
     
     // Softness factor: higher blur = more spread/softer lights
-    float softness = 0.3 + uBlur * 0.7; // Range: 0.3 (sharp) to 1.0 (very soft)
-    float spread = softness * (1.5 + uNoiseScale * 0.5); // Combine with scale
+    // At blur=0%, lights should still be visible but smaller
+    float minSpread = 0.4;  // Minimum spread so lights are always visible
+    float maxSpread = 2.5;  // Maximum spread at 100% blur
+    float softness = minSpread + uBlur * (maxSpread - minSpread);
     
-    // Animated light positions with organic movement
-    float t = uTime * 0.3;
+    // Scale affects blob size (inverse relationship for intuitive control)
+    // Low scale = larger blobs, high scale = smaller blobs
+    float sizeMultiplier = 1.0 / max(0.3, uNoiseScale);
+    float spread = softness * sizeMultiplier;
+    
+    // Animated light positions - continuous smooth movement
+    float t = uTime * 0.5; // Animation speed
     
     // Base positions for 4 light sources (distributed across canvas)
-    vec2 basePos1 = vec2(0.25, 0.25);
-    vec2 basePos2 = vec2(0.75, 0.25);
-    vec2 basePos3 = vec2(0.75, 0.75);
-    vec2 basePos4 = vec2(0.25, 0.75);
+    vec2 basePos1, basePos2, basePos3, basePos4;
     
     // Apply mesh style to positions
     if (uMeshStyle == 1) {
       // FLOW: Lights arranged along a direction
       vec2 flowDir = vec2(cos(uMeshFlowAngle), sin(uMeshFlowAngle));
       vec2 perpDir = vec2(-flowDir.y, flowDir.x);
-      basePos1 = vec2(0.5, 0.5) + flowDir * 0.3 + perpDir * 0.15;
-      basePos2 = vec2(0.5, 0.5) + flowDir * 0.1 - perpDir * 0.2;
-      basePos3 = vec2(0.5, 0.5) - flowDir * 0.2 + perpDir * 0.1;
-      basePos4 = vec2(0.5, 0.5) - flowDir * 0.35 - perpDir * 0.15;
+      basePos1 = vec2(0.5, 0.5) + flowDir * 0.35 + perpDir * 0.2;
+      basePos2 = vec2(0.5, 0.5) + flowDir * 0.05 - perpDir * 0.25;
+      basePos3 = vec2(0.5, 0.5) - flowDir * 0.25 + perpDir * 0.15;
+      basePos4 = vec2(0.5, 0.5) - flowDir * 0.4 - perpDir * 0.1;
     } else if (uMeshStyle == 2) {
-      // CENTER: Lights clustered toward or away from center
-      float centerBias = uMeshCenterInward ? 0.15 : 0.35;
-      basePos1 = vec2(0.5 + centerBias * 0.7, 0.5 - centerBias * 0.5);
-      basePos2 = vec2(0.5 - centerBias * 0.6, 0.5 - centerBias * 0.7);
-      basePos3 = vec2(0.5 - centerBias * 0.5, 0.5 + centerBias * 0.6);
-      basePos4 = vec2(0.5 + centerBias * 0.8, 0.5 + centerBias * 0.4);
+      // CENTER: Lights clustered toward center with good base color visibility
+      float centerBias = uMeshCenterInward ? 0.2 : 0.4;
+      basePos1 = vec2(0.5 + centerBias * 0.6, 0.5 - centerBias * 0.4);
+      basePos2 = vec2(0.5 - centerBias * 0.5, 0.5 - centerBias * 0.6);
+      basePos3 = vec2(0.5 - centerBias * 0.4, 0.5 + centerBias * 0.5);
+      basePos4 = vec2(0.5 + centerBias * 0.7, 0.5 + centerBias * 0.3);
+    } else {
+      // ORGANIC: Well-distributed positions that leave corners for base color
+      basePos1 = vec2(0.3, 0.3);
+      basePos2 = vec2(0.7, 0.25);
+      basePos3 = vec2(0.65, 0.7);
+      basePos4 = vec2(0.25, 0.65);
     }
     
     // Animate positions with smooth organic movement
-    vec2 pos1 = basePos1 + vec2(sin(t * 0.7) * 0.08, cos(t * 0.9) * 0.06);
-    vec2 pos2 = basePos2 + vec2(cos(t * 0.8) * 0.07, sin(t * 0.6) * 0.09);
-    vec2 pos3 = basePos3 + vec2(sin(t * 0.5 + 1.0) * 0.09, cos(t * 0.7 + 2.0) * 0.07);
-    vec2 pos4 = basePos4 + vec2(cos(t * 0.6 + 1.5) * 0.06, sin(t * 0.8 + 0.5) * 0.08);
+    vec2 pos1 = basePos1 + vec2(sin(t * 0.7) * 0.1, cos(t * 0.9) * 0.08);
+    vec2 pos2 = basePos2 + vec2(cos(t * 0.8) * 0.09, sin(t * 0.65) * 0.11);
+    vec2 pos3 = basePos3 + vec2(sin(t * 0.55 + 1.2) * 0.11, cos(t * 0.75 + 2.1) * 0.09);
+    vec2 pos4 = basePos4 + vec2(cos(t * 0.65 + 1.7) * 0.08, sin(t * 0.85 + 0.6) * 0.1);
     
     // For Aurora mode (stretch enabled): stretch coordinates vertically to create curtain effect
-    vec2 stretchedUv = vUv;
+    vec2 sampleUv = vUv;
     if (uMeshStretch) {
       // Stretch Y axis to create vertical curtain shapes
-      stretchedUv.y = (stretchedUv.y - 0.5) / uMeshStretchAmount + 0.5;
+      sampleUv.y = (sampleUv.y - 0.5) / uMeshStretchAmount + 0.5;
+      // Add wave distortion for aurora curtain look
+      sampleUv.x += sin(sampleUv.y * 8.0 + t * 0.3) * 0.03;
     }
     
     // Calculate distances from current pixel to each light source
-    float dist1 = length(stretchedUv - pos1);
-    float dist2 = length(stretchedUv - pos2);
-    float dist3 = length(stretchedUv - pos3);
-    float dist4 = length(stretchedUv - pos4);
+    float dist1 = length(sampleUv - pos1);
+    float dist2 = length(sampleUv - pos2);
+    float dist3 = length(sampleUv - pos3);
+    float dist4 = length(sampleUv - pos4);
     
     // Radial light falloff function: smooth exponential decay
-    // Higher spread = slower falloff = larger, softer lights
-    float light1 = exp(-dist1 * dist1 / (spread * spread * 0.15));
-    float light2 = exp(-dist2 * dist2 / (spread * spread * 0.12));
-    float light3 = exp(-dist3 * dist3 / (spread * spread * 0.14));
-    float light4 = exp(-dist4 * dist4 / (spread * spread * 0.13));
+    // Scale spread so that lights don't overwhelm the base color
+    float spreadSq = spread * spread * 0.08;
+    float light1 = exp(-dist1 * dist1 / spreadSq);
+    float light2 = exp(-dist2 * dist2 / (spreadSq * 0.9));
+    float light3 = exp(-dist3 * dist3 / (spreadSq * 1.1));
+    float light4 = exp(-dist4 * dist4 / spreadSq);
     
-    // Apply color weights as intensity multipliers
-    float w1 = uWeight1 / 100.0;
-    float w2 = uWeight2 / 100.0;
-    float w3 = uWeight3 / 100.0;
-    float w4 = uWeight4 / 100.0;
+    // Apply color weights as intensity multipliers (normalized to remaining space after base)
+    float remainingWeight = 1.0 - baseWeight;
+    float w1 = (uWeight1 / 100.0) / max(0.01, remainingWeight);
+    float w2 = (uWeight2 / 100.0) / max(0.01, remainingWeight);
+    float w3 = (uWeight3 / 100.0) / max(0.01, remainingWeight);
+    float w4 = (uWeight4 / 100.0) / max(0.01, remainingWeight);
     
-    light1 *= w1 * 3.0;
-    light2 *= w2 * 3.0;
-    light3 *= w3 * 3.0;
-    light4 *= w4 * 3.0;
+    // Scale lights by their weights (capped to prevent oversaturation)
+    light1 *= min(w1 * 2.0, 1.0);
+    light2 *= min(w2 * 2.0, 1.0);
+    light3 *= min(w3 * 2.0, 1.0);
+    light4 *= min(w4 * 2.0, 1.0);
+    
+    // Calculate total light coverage (how much area is lit)
+    float totalLight = light1 + light2 + light3 + light4;
+    if (uHasColor4) {
+      totalLight = light1 + light2 + light3 + light4;
+    } else {
+      totalLight = light1 + light2 + light3;
+      light4 = 0.0;
+    }
+    
+    // Ensure base color maintains its minimum weight
+    // by limiting how much the lights can cover
+    float maxLightCoverage = remainingWeight * 1.5; // Allow some overlap
+    float lightScale = totalLight > maxLightCoverage ? maxLightCoverage / totalLight : 1.0;
+    
+    light1 *= lightScale;
+    light2 *= lightScale;
+    light3 *= lightScale;
+    light4 *= lightScale;
     
     // Additive-style blending: lights emerge from base color
     vec3 baseColor = srgbToLinear(uColor0);
@@ -264,7 +300,7 @@ void main() {
     vec3 c3 = srgbToLinear(uColor3);
     vec3 c4 = srgbToLinear(uColor4);
     
-    // Start with base, then mix in each light source
+    // Start with pure base color, then overlay lights
     vec3 result = baseColor;
     result = mix(result, c1, clamp(light1, 0.0, 1.0));
     result = mix(result, c2, clamp(light2, 0.0, 1.0));
@@ -273,10 +309,10 @@ void main() {
       result = mix(result, c4, clamp(light4, 0.0, 1.0));
     }
     
-    // Convert back to sRGB and output directly (skip the noise-based blending below)
+    // Convert back to sRGB
     result = linearToSrgb(result);
     
-    // Subtle ordered dithering
+    // Subtle ordered dithering to prevent banding
     float d = bayer8x8(gl_FragCoord.xy);
     result = clamp(result + d * (0.75 / 255.0), 0.0, 1.0);
     
@@ -413,20 +449,28 @@ void main() {
     noise = clamp(noise, 0.0, 1.0);
     
   } else if (uGradientType == 6) {
-    // WAVES MODE: Horizontal/vertical waves like ocean
+    // WAVES MODE: Horizontal/vertical waves like ocean with direction support
     float waveFreq = uWavesCount;
     float amplitude = uWavesAmplitude;
     
-    // Create layered waves
-    float wave1 = sin(vUv.y * waveFreq * 3.14159 + uTime * 0.5) * amplitude;
-    float wave2 = sin(vUv.y * waveFreq * 2.0 * 3.14159 + uTime * 0.3 + 1.0) * amplitude * 0.5;
-    float wave3 = sin(vUv.y * waveFreq * 0.5 * 3.14159 + uTime * 0.2 + 2.0) * amplitude * 0.3;
+    // Use planeAngle for wave direction (0=horizontal waves moving right, 90=vertical waves moving down)
+    vec2 waveDir = vec2(cos(uPlaneAngle), sin(uPlaneAngle));
+    vec2 perpDir = vec2(-waveDir.y, waveDir.x);
     
-    // Offset x position by waves
-    float wavyX = vUv.x + (wave1 + wave2 + wave3) * 0.1;
+    // Project UV onto wave direction
+    float alongWave = dot(vUv - 0.5, waveDir) + 0.5;
+    float acrossWave = dot(vUv - 0.5, perpDir);
     
-    // Base gradient on wavy x position
-    float baseNoise = clamp(wavyX, 0.0, 1.0);
+    // Create layered waves along the perpendicular direction
+    float wave1 = sin(acrossWave * waveFreq * 6.28318 + uTime * 0.5) * amplitude;
+    float wave2 = sin(acrossWave * waveFreq * 2.0 * 6.28318 + uTime * 0.3 + 1.0) * amplitude * 0.5;
+    float wave3 = sin(acrossWave * waveFreq * 0.5 * 6.28318 + uTime * 0.2 + 2.0) * amplitude * 0.3;
+    
+    // Offset position by waves
+    float wavyPos = alongWave + (wave1 + wave2 + wave3) * 0.15;
+    
+    // Base gradient on wavy position
+    float baseNoise = clamp(wavyPos, 0.0, 1.0);
     
     // Add flowing noise
     vec3 noisePos = vec3(vUv * 2.0 * freq, uTime * 0.2);
@@ -653,7 +697,12 @@ export function Custom4ColorGradient({ config }: Custom4ColorGradientProps) {
     mat.uniforms.uGradientType.value = typeToInt[currentType] ?? 0;
     
     // Update plane direction uniforms
-    mat.uniforms.uPlaneAngle.value = (config.planeAngle ?? 45) * Math.PI / 180;
+    // For waves mode, use wavesAngle instead of planeAngle
+    if (currentType === 'waves') {
+      mat.uniforms.uPlaneAngle.value = (config.wavesAngle ?? 0) * Math.PI / 180;
+    } else {
+      mat.uniforms.uPlaneAngle.value = (config.planeAngle ?? 45) * Math.PI / 180;
+    }
     mat.uniforms.uPlaneRadial.value = config.planeRadial ?? false;
     mat.uniforms.uPlaneWave.value = (config.planeWave ?? 0) / 100;
     mat.uniforms.uPlaneSpread.value = (config.planeSpread ?? 50) / 100;
