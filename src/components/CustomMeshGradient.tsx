@@ -7,8 +7,73 @@ interface CustomMeshGradientProps {
   config: GradientConfig;
 }
 
-// Simplex 3D Noise GLSL - based on Stefan Gustavson's implementation
-const simplexNoiseGLSL = `
+const vertexShader = `
+varying vec2 vUv;
+
+void main() {
+  vUv = uv;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}
+`;
+
+// New shader approach: Radial light sources with heavy blur
+// Inspired by "Dark Mode Gradients" / "Atmospheric Lighting" style
+const fragmentShader = `
+uniform vec3 uColor0;
+uniform vec3 uColor1;
+uniform vec3 uColor2;
+uniform vec3 uColor3;
+uniform vec3 uColor4;
+uniform float uWeight0;
+uniform float uWeight1;
+uniform float uWeight2;
+uniform float uWeight3;
+uniform float uWeight4;
+uniform bool uHasColor4;
+uniform float uTime;
+uniform float uBlur;
+uniform float uStrength;
+uniform float uDensity;
+uniform float uFrequency;
+uniform float uGrain;
+uniform int uMeshStyle;
+uniform float uMeshFlowAngle;
+uniform bool uMeshCenterInward;
+
+varying vec2 vUv;
+
+// sRGB to Linear RGB conversion
+vec3 srgbToLinear(vec3 srgb) {
+  vec3 low = srgb / 12.92;
+  vec3 high = pow((srgb + 0.055) / 1.055, vec3(2.4));
+  return mix(low, high, step(0.04045, srgb));
+}
+
+// Linear RGB to sRGB conversion
+vec3 linearToSrgb(vec3 linear) {
+  vec3 low = linear * 12.92;
+  vec3 high = 1.055 * pow(linear, vec3(1.0 / 2.4)) - 0.055;
+  return mix(low, high, step(0.0031308, linear));
+}
+
+// 8x8 Bayer dithering to prevent banding
+float bayer8x8(vec2 p) {
+  int x = int(mod(p.x, 8.0));
+  int y = int(mod(p.y, 8.0));
+  int i = x + y * 8;
+  float m[64];
+  m[0]=0.0;  m[1]=48.0; m[2]=12.0; m[3]=60.0; m[4]=3.0;  m[5]=51.0; m[6]=15.0; m[7]=63.0;
+  m[8]=32.0; m[9]=16.0; m[10]=44.0; m[11]=28.0; m[12]=35.0; m[13]=19.0; m[14]=47.0; m[15]=31.0;
+  m[16]=8.0; m[17]=56.0; m[18]=4.0;  m[19]=52.0; m[20]=11.0; m[21]=59.0; m[22]=7.0;  m[23]=55.0;
+  m[24]=40.0; m[25]=24.0; m[26]=36.0; m[27]=20.0; m[28]=43.0; m[29]=27.0; m[30]=39.0; m[31]=23.0;
+  m[32]=2.0; m[33]=50.0; m[34]=14.0; m[35]=62.0; m[36]=1.0; m[37]=49.0; m[38]=13.0; m[39]=61.0;
+  m[40]=34.0; m[41]=18.0; m[42]=46.0; m[43]=30.0; m[44]=33.0; m[45]=17.0; m[46]=45.0; m[47]=29.0;
+  m[48]=10.0; m[49]=58.0; m[50]=6.0;  m[51]=54.0; m[52]=9.0;  m[53]=57.0; m[54]=5.0;  m[55]=53.0;
+  m[56]=42.0; m[57]=26.0; m[58]=38.0; m[59]=22.0; m[60]=41.0; m[61]=25.0; m[62]=37.0; m[63]=21.0;
+  return (m[i] / 64.0) - 0.5;
+}
+
+// Simplex-like noise for subtle animation
 vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
@@ -73,203 +138,137 @@ float snoise(vec3 v) {
   m = m * m;
   return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
 }
-`;
 
-const vertexShader = `
-varying vec2 vUv;
-varying vec3 vPosition;
-
-void main() {
-  vUv = uv;
-  vPosition = position;
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-}
-`;
-
-const fragmentShader = `
-${simplexNoiseGLSL}
-
-uniform vec3 uColor0;
-uniform vec3 uColor1;
-uniform vec3 uColor2;
-uniform vec3 uColor3;
-uniform vec3 uColor4;
-uniform float uWeight0;
-uniform float uWeight1;
-uniform float uWeight2;
-uniform float uWeight3;
-uniform float uWeight4;
-uniform bool uHasColor4;
-uniform float uTime;
-uniform float uNoiseScale;
-uniform float uBlur;
-uniform float uStrength;
-uniform float uDensity;
-uniform float uFrequency;
-uniform float uGrain;
-uniform int uMeshStyle; // 0=organic, 1=flow, 2=center
-uniform float uMeshFlowAngle; // radians
-uniform bool uMeshCenterInward;
-
-varying vec2 vUv;
-varying vec3 vPosition;
-
-// sRGB to Linear RGB conversion (gamma decoding)
-vec3 srgbToLinear(vec3 srgb) {
-  vec3 low = srgb / 12.92;
-  vec3 high = pow((srgb + 0.055) / 1.055, vec3(2.4));
-  return mix(low, high, step(0.04045, srgb));
-}
-
-// Linear RGB to sRGB conversion (gamma encoding)
-vec3 linearToSrgb(vec3 linear) {
-  vec3 low = linear * 12.92;
-  vec3 high = 1.055 * pow(linear, vec3(1.0 / 2.4)) - 0.055;
-  return mix(low, high, step(0.0031308, linear));
-}
-
-// 8x8 Bayer ordered dithering (Eliminates banding in dark gradients)
-float bayer8x8(vec2 p) {
-    int x = int(mod(p.x, 8.0));
-    int y = int(mod(p.y, 8.0));
-    int i = x + y * 8;
-    float m[64];
-    m[0]=0.0;  m[1]=48.0; m[2]=12.0; m[3]=60.0; m[4]=3.0;  m[5]=51.0; m[6]=15.0; m[7]=63.0;
-    m[8]=32.0; m[9]=16.0; m[10]=44.0; m[11]=28.0; m[12]=35.0; m[13]=19.0; m[14]=47.0; m[15]=31.0;
-    m[16]=8.0; m[17]=56.0; m[18]=4.0;  m[19]=52.0; m[20]=11.0; m[21]=59.0; m[22]=7.0;  m[23]=55.0;
-    m[24]=40.0; m[25]=24.0; m[26]=36.0; m[27]=20.0; m[28]=43.0; m[29]=27.0; m[30]=39.0; m[31]=23.0;
-    m[32]=2.0; m[33]=50.0; m[34]=14.0; m[35]=62.0; m[36]=1.0; m[37]=49.0; m[38]=13.0; m[39]=61.0;
-    m[40]=34.0; m[41]=18.0; m[42]=46.0; m[43]=30.0; m[44]=33.0; m[45]=17.0; m[46]=45.0; m[47]=29.0;
-    m[48]=10.0; m[49]=58.0; m[50]=6.0;  m[51]=54.0; m[52]=9.0;  m[53]=57.0; m[54]=5.0;  m[55]=53.0;
-    m[56]=42.0; m[57]=26.0; m[58]=38.0; m[59]=22.0; m[60]=41.0; m[61]=25.0; m[62]=37.0; m[63]=21.0;
-    float v = m[i] / 64.0;
-    return v - 0.5;
+// Smooth radial falloff for light sources
+float radialLight(vec2 uv, vec2 center, float radius, float softness) {
+  float dist = length(uv - center);
+  // Exponential falloff for realistic light
+  float falloff = exp(-dist * dist / (radius * radius * softness));
+  return falloff;
 }
 
 void main() {
-  float freq = max(0.1, uFrequency);
-  float density = max(0.0, uDensity);
-  float strength = max(0.0, uStrength);
+  vec2 uv = vUv;
   
-  vec2 centeredUv = vUv - 0.5;
+  // Softness factor from blur (higher = softer, more spread out light)
+  float softness = 0.3 + uBlur * 1.5;
   
-  // --- IMPROVEMENT: ANISOTROPIC STRETCHING ---
-  // Instead of round blobs, we stretch the coordinates to create "curtains"
-  // This is the secret to the Aurora/Silky look.
-  vec2 coords = vUv;
+  // Radius based on weights - larger weight = larger light source
+  float baseRadius = 0.4 + uBlur * 0.3;
   
-  if (uMeshStyle == 0) { // Organic mode specific tweak
-      coords.y *= 0.6; // Stretch vertically (lower frequency)
-      coords.x *= 1.4; // Compress horizontally (higher frequency)
-      // Add subtle wave warping
-      coords.x += sin(coords.y * 3.5 + uTime * 0.15) * 0.15;
-  }
+  // Subtle animation offset
+  float timeOffset = uTime * 0.08;
+  float slowTime = uTime * 0.03;
   
-  vec3 noisePos = vec3(coords * uNoiseScale * freq, uTime * 0.25);
+  // Light source positions - spread across the canvas
+  // These positions create the "atmospheric" feel
+  vec2 pos1 = vec2(
+    0.2 + sin(slowTime * 0.7) * 0.1,
+    0.7 + cos(slowTime * 0.5) * 0.1
+  );
+  vec2 pos2 = vec2(
+    0.8 + cos(slowTime * 0.6) * 0.1,
+    0.3 + sin(slowTime * 0.8) * 0.1
+  );
+  vec2 pos3 = vec2(
+    0.5 + sin(slowTime * 0.4) * 0.15,
+    0.2 + cos(slowTime * 0.9) * 0.1
+  );
+  vec2 pos4 = vec2(
+    0.3 + cos(slowTime * 0.5) * 0.1,
+    0.5 + sin(slowTime * 0.7) * 0.1
+  );
   
-  // Base noise calculation
-  float n1 = snoise(noisePos) * 0.5 + 0.5;
-  float n2 = snoise(noisePos * 2.0 + 100.0) * (0.20 + 0.10 * density);
-  float n3 = snoise(noisePos * 4.0 + 200.0) * (0.10 + 0.06 * density);
-  
-  float baseNoise = n1 + n2 + n3;
-  baseNoise = baseNoise / 1.375; // Normalize to 0-1 range
-  
-  // Apply mesh style modifications
-  float noise = baseNoise;
-  
+  // Adjust positions based on mesh style
   if (uMeshStyle == 1) {
-    // FLOW
-    vec2 flowDir = vec2(cos(uMeshFlowAngle), sin(uMeshFlowAngle));
-    float directionalBias = dot(centeredUv, flowDir) * 0.5 + 0.5;
-    noise = baseNoise * 0.6 + directionalBias * 0.4;
+    // Flow style - lights aligned along angle
+    float angle = uMeshFlowAngle;
+    vec2 flowDir = vec2(cos(angle), sin(angle));
+    pos1 = vec2(0.5, 0.5) + flowDir * 0.3;
+    pos2 = vec2(0.5, 0.5) - flowDir * 0.3;
+    pos3 = vec2(0.5, 0.5) + vec2(-flowDir.y, flowDir.x) * 0.2;
+    pos4 = vec2(0.5, 0.5) - vec2(-flowDir.y, flowDir.x) * 0.2;
   } else if (uMeshStyle == 2) {
-    // CENTER
-    float dist = length(centeredUv) * 1.4;
-    if (!uMeshCenterInward) dist = 1.0 - dist;
-    noise = baseNoise * 0.5 + dist * 0.5;
+    // Center style - lights radiate from center
+    if (uMeshCenterInward) {
+      pos1 = vec2(0.5, 0.5);
+      pos2 = vec2(0.2, 0.2);
+      pos3 = vec2(0.8, 0.8);
+      pos4 = vec2(0.2, 0.8);
+    } else {
+      pos1 = vec2(0.1, 0.1);
+      pos2 = vec2(0.9, 0.1);
+      pos3 = vec2(0.9, 0.9);
+      pos4 = vec2(0.1, 0.9);
+    }
   }
   
-  // HISTOGRAM EQUALIZATION
-  float centered = noise - 0.5;
-  float stretched = sign(centered) * pow(abs(centered) * 2.0, 0.7) * 0.5;
-  noise = stretched + 0.5;
-  noise = clamp(noise, 0.0, 1.0);
-  
-  float blurFactor = uBlur * 0.5;
-  
-  // Weights setup
+  // Calculate light intensities based on weights
   float w0 = uWeight0 / 100.0;
   float w1 = uWeight1 / 100.0;
   float w2 = uWeight2 / 100.0;
   float w3 = uWeight3 / 100.0;
   float w4 = uWeight4 / 100.0;
   
-  float threshold0 = w0;
-  float threshold1 = w0 + w1;
-  float threshold2 = w0 + w1 + w2;
-  float threshold3 = w0 + w1 + w2 + w3;
+  // Radial light contributions - each color is a "light source"
+  float light1 = radialLight(uv, pos1, baseRadius * (0.5 + w1), softness) * w1 * 2.0;
+  float light2 = radialLight(uv, pos2, baseRadius * (0.5 + w2), softness) * w2 * 2.0;
+  float light3 = radialLight(uv, pos3, baseRadius * (0.5 + w3), softness) * w3 * 2.0;
+  float light4 = uHasColor4 ? radialLight(uv, pos4, baseRadius * (0.5 + w4), softness) * w4 * 2.0 : 0.0;
   
-  // --- IMPROVEMENT: WIDER BLENDING ---
-  // Increased base width and multiplier to allow for very deep overlaps (Aurora look)
-  float baseTransitionWidth = 0.20; 
-  float transitionWidth = baseTransitionWidth + blurFactor * 0.6; // Can go up to ~0.8
+  // Strength affects how concentrated the lights are
+  float strengthMod = 1.0 + uStrength * 0.5;
+  light1 = pow(light1, 1.0 / strengthMod);
+  light2 = pow(light2, 1.0 / strengthMod);
+  light3 = pow(light3, 1.0 / strengthMod);
+  light4 = pow(light4, 1.0 / strengthMod);
   
-  float blend01 = smoothstep(threshold0 - transitionWidth * 0.5, threshold0 + transitionWidth * 1.5, noise);
-  float blend12 = smoothstep(threshold1 - transitionWidth, threshold1 + transitionWidth, noise);
-  float blend23 = smoothstep(threshold2 - transitionWidth, threshold2 + transitionWidth, noise);
-  float blend34 = smoothstep(threshold3 - transitionWidth, threshold3 + transitionWidth, noise);
-
-  // Strength
-  float strengthExp = 1.0 + strength * 0.4;
-  blend01 = pow(clamp(blend01, 0.0, 1.0), strengthExp);
-  blend12 = pow(clamp(blend12, 0.0, 1.0), strengthExp);
-  blend23 = pow(clamp(blend23, 0.0, 1.0), strengthExp);
-  blend34 = pow(clamp(blend34, 0.0, 1.0), strengthExp);
+  // Clamp lights
+  light1 = clamp(light1, 0.0, 1.0);
+  light2 = clamp(light2, 0.0, 1.0);
+  light3 = clamp(light3, 0.0, 1.0);
+  light4 = clamp(light4, 0.0, 1.0);
   
-  vec3 finalColor;
+  // Start with base color (typically black)
+  vec3 baseColor = uColor0;
   
-  // Progressive Mixing
-  finalColor = uColor0;
+  // Additive blending of light sources onto black base
+  // This creates the "light emerging from darkness" effect
+  vec3 finalColor = baseColor;
   
-  // Mix 0->1
-  finalColor = mix(finalColor, uColor1, blend01);
-  
-  // Mix 1->2
-  finalColor = mix(finalColor, uColor2, blend12);
-  
-  // Mix 2->3
-  finalColor = mix(finalColor, uColor3, blend23);
-  
-  // Mix 3->4
+  // Add each light source - they blend additively like real lights
+  finalColor = mix(finalColor, uColor1, light1);
+  finalColor = mix(finalColor, uColor2, light2);
+  finalColor = mix(finalColor, uColor3, light3);
   if (uHasColor4) {
-    finalColor = mix(finalColor, uColor4, blend34);
+    finalColor = mix(finalColor, uColor4, light4);
   }
   
-  // Convert to sRGB
-  finalColor = linearToSrgb(finalColor);
+  // Apply density for color saturation boost
+  float densityBoost = 1.0 + uDensity * 0.3;
+  vec3 gray = vec3(dot(finalColor, vec3(0.299, 0.587, 0.114)));
+  finalColor = mix(gray, finalColor, densityBoost);
   
-  // --- IMPROVEMENT: DITHERING ---
-  // Apply Bayer dithering to prevent banding in dark gradients
-  float d = bayer8x8(gl_FragCoord.xy);
-  finalColor = clamp(finalColor + d * (0.8 / 255.0), 0.0, 1.0);
+  // Convert to sRGB
+  finalColor = linearToSrgb(clamp(finalColor, 0.0, 1.0));
+  
+  // Apply dithering to prevent banding in dark areas
+  float dither = bayer8x8(gl_FragCoord.xy);
+  finalColor = clamp(finalColor + dither * (1.0 / 255.0), 0.0, 1.0);
   
   gl_FragColor = vec4(finalColor, 1.0);
-
-  // Film grain
+  
+  // Film grain overlay
   if (uGrain > 0.0) {
-    float g = snoise(vec3(vUv * 220.0, uTime * 0.7));
-    float grainAmt = (g * 0.5 + 0.5 - 0.5) * (uGrain * 0.18);
+    float g = snoise(vec3(vUv * 200.0, uTime * 0.5));
+    float grainAmt = g * uGrain * 0.1;
     gl_FragColor.rgb = clamp(gl_FragColor.rgb + grainAmt, 0.0, 1.0);
   }
 }
 `;
 
-// Simple function component - no forwardRef needed for R3F child components
 export function CustomMeshGradient({ config }: CustomMeshGradientProps) {
   const materialRef = useRef<THREE.ShaderMaterial>(null);
-  
-  const hasColor4 = config.color4 !== null;
   
   const uniforms = useMemo(() => ({
     uColor0: { value: new THREE.Color(config.color0) },
@@ -284,7 +283,6 @@ export function CustomMeshGradient({ config }: CustomMeshGradientProps) {
     uWeight4: { value: config.colorWeight4 ?? 0 },
     uHasColor4: { value: config.color4 !== null },
     uTime: { value: 0 },
-    uNoiseScale: { value: config.meshNoiseScale ?? 3.0 },
     uBlur: { value: (config.meshBlur ?? 50) / 100 },
     uStrength: { value: config.uStrength },
     uDensity: { value: config.uDensity },
@@ -312,7 +310,6 @@ export function CustomMeshGradient({ config }: CustomMeshGradientProps) {
     mat.uniforms.uWeight3.value = config.colorWeight3;
     mat.uniforms.uWeight4.value = config.colorWeight4 ?? 0;
     mat.uniforms.uHasColor4.value = config.color4 !== null;
-    mat.uniforms.uNoiseScale.value = config.meshNoiseScale ?? 3.0;
     mat.uniforms.uBlur.value = (config.meshBlur ?? 50) / 100;
     mat.uniforms.uStrength.value = config.uStrength;
     mat.uniforms.uDensity.value = config.uDensity;
