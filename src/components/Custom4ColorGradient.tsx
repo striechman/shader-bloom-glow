@@ -203,6 +203,7 @@ void main() {
     
   } else if (uGradientType == 2) {
     // PLANE MODE: Linear or radial gradient with custom angle, wave, spread, offset
+    // IMPORTANT: Ensure noise covers full 0.0 to 1.0 range to respect color weights (especially 30% black)
     float baseNoise;
     
     // Apply offset to center (only when radial)
@@ -212,14 +213,16 @@ void main() {
     }
     
     if (uPlaneRadial) {
-      // Radial gradient from offset center outward
-      baseNoise = length(offsetCenter) * 1.4;
+      // Radial gradient from offset center outward - start from 0 at center
+      baseNoise = length(offsetCenter) * 2.0; // Increased from 1.4 to ensure full range
     } else {
-      // Linear gradient with custom angle (original working logic)
+      // Linear gradient with custom angle - ensure full 0 to 1 range
       vec2 direction = vec2(cos(uPlaneAngle), sin(uPlaneAngle));
       float dotProduct = dot(centeredUv, direction);
-      float maxDist = length(direction * 0.5);
-      baseNoise = (dotProduct / maxDist) * 0.5 + 0.5;
+      // Calculate max possible dot product for normalization
+      float maxDot = abs(direction.x) * 0.5 + abs(direction.y) * 0.5;
+      // Normalize to full 0-1 range
+      baseNoise = (dotProduct / maxDot) * 0.5 + 0.5;
     }
     
     // Add wave distortion (only when enabled)
@@ -228,6 +231,9 @@ void main() {
       float waveNoise = snoise(wavePos) * uPlaneWave * 0.25;
       baseNoise += waveNoise;
     }
+    
+    // Ensure we have actual 0.0 values for color0 (black) - clamp before spread
+    baseNoise = clamp(baseNoise, 0.0, 1.0);
     
     // Apply spread (controls transition sharpness)
     // 0% = very sharp edges, 50% = normal, 100% = extra soft
@@ -240,9 +246,9 @@ void main() {
       baseNoise = mix(baseNoise, clamp(sharpened, 0.0, 1.0), sharpness);
     }
     
-    // Add subtle organic noise for texture
+    // Add subtle organic noise for texture - reduced to not push away from 0
     vec3 noisePos = vec3(vUv * 2.0 * freq, uTime * 0.25);
-    float organicNoise = snoise(noisePos) * 0.06 * density;
+    float organicNoise = snoise(noisePos) * 0.04 * density;
     
     noise = baseNoise + organicNoise;
     noise = clamp(noise, 0.0, 1.0);
