@@ -248,25 +248,32 @@ void main() {
     
     baseNoise += styleMod;
     
-    // Clamp to valid range before histogram stretch
+    // Clamp to valid range before processing
     baseNoise = clamp(baseNoise, 0.0, 1.0);
     
     // =========================================================================
-    // HISTOGRAM STRETCH: Spread values toward 0 and 1
+    // AGGRESSIVE HISTOGRAM STRETCH: Ensure full 0-1 coverage
     // =========================================================================
-    // Problem: Procedural noise tends to cluster around 0.5, leaving Color0 
-    // (at the low end) with almost no pixels even when weight is 30-50%.
+    // Problem: Multi-octave simplex noise clusters around 0.5 (central limit theorem).
+    // Even with normalization, actual values rarely go below 0.25 or above 0.75.
+    // This starves Color0 (low end) and Color3/4 (high end) of screen area.
     //
-    // Solution: Apply power-curve stretch centered at 0.5:
-    //   centered = noise - 0.5                    (shift to [-0.5, 0.5])
-    //   stretched = sign(centered) * pow(|centered| * 2, gamma) * 0.5
-    //   result = stretched + 0.5                  (shift back to [0, 1])
+    // Solution: Two-stage stretching:
+    // 1. CONTRAST BOOST: Expand the actual range before stretching
+    // 2. POWER STRETCH: Push mid-values toward extremes
     //
-    // With gamma < 1.0 (e.g., 0.7), values near 0.5 get pushed toward extremes,
-    // "opening the tails" so Color0 and Color3/4 get their fair share of area.
-    //
+    // This ensures Color0 at 30-50% weight actually gets ~30-50% of pixels.
+    
+    // Stage 1: Contrast boost - expand from typical [0.25, 0.75] to [0, 1]
+    // Center around 0.5, scale up, then clamp
+    float contrastBoost = 1.8; // How much to expand the range
+    baseNoise = (baseNoise - 0.5) * contrastBoost + 0.5;
+    baseNoise = clamp(baseNoise, 0.0, 1.0);
+    
+    // Stage 2: Power-curve histogram stretch
+    // gamma < 1.0 pushes values away from 0.5 toward 0 and 1
     float centered = baseNoise - 0.5;
-    float stretchGamma = 0.7; // Lower = more aggressive stretch
+    float stretchGamma = 0.55; // More aggressive (was 0.7) - lower = more spread
     float stretched = sign(centered) * pow(abs(centered) * 2.0, stretchGamma) * 0.5;
     baseNoise = clamp(stretched + 0.5, 0.0, 1.0);
 

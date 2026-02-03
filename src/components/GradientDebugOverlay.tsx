@@ -48,7 +48,8 @@ export function GradientDebugOverlay({ config, visible = true }: GradientDebugOv
   transitionWidth = Math.max(transitionWidth, 0.06);
   
   // Histogram stretch info
-  const stretchGamma = 0.7;
+  const contrastBoost = 1.8;
+  const stretchGamma = 0.55;
   const histogramStretchEnabled = uGradientType === 0; // Only Mesh mode
   
   // Thresholds
@@ -256,7 +257,7 @@ export function GradientDebugOverlay({ config, visible = true }: GradientDebugOv
           <span className="text-cyan-300">{transitionWidth.toFixed(4)}</span>
           <span className="text-white/60">Histogram Stretch:</span>
           <span className={histogramStretchEnabled ? 'text-green-400' : 'text-white/40'}>
-            {histogramStretchEnabled ? `pow(${stretchGamma})` : 'OFF (Plane)'}
+            {histogramStretchEnabled ? `boost ${contrastBoost}x → pow(${stretchGamma})` : 'OFF (Plane)'}
           </span>
         </div>
       </div>
