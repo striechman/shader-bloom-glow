@@ -39,10 +39,10 @@ export function GradientDebugOverlay({ config, visible = true }: GradientDebugOv
   // DERIVED VALUES (match shader logic for debugging)
   // =========================================================================
   const blurFactor = (config.meshBlur ?? 50) / 100 * 0.5;
-  const effectiveNoiseScale = Math.max(0.2, config.meshNoiseScale ?? 3.0) * 0.4;
+  const effectiveNoiseScale = Math.max(0.5, config.meshNoiseScale ?? 3.0) * 0.8;
   
   // Transition width calculation (from shader)
-  const baseTrans = uGradientType === 0 ? 0.18 : (isPlaneMode ? 0.008 : 0.08);
+  const baseTrans = uGradientType === 0 ? 0.12 : (isPlaneMode ? 0.008 : 0.08);
   const strengthMod = 1.0 + (config.uStrength ?? 2) * 0.15;
   let transitionWidth = (baseTrans + blurFactor * (isPlaneMode ? 0.14 : 0.25)) / strengthMod;
   transitionWidth = Math.max(transitionWidth, 0.06);
