@@ -41,16 +41,18 @@ export function GradientDebugOverlay({ config, visible = true }: GradientDebugOv
   const blurFactor = (config.meshBlur ?? 50) / 100 * 0.5;
   const effectiveNoiseScale = Math.max(0.5, config.meshNoiseScale ?? 3.0) * 0.8;
   
-  // Transition width calculation (from shader) - updated values
-  const baseTrans = uGradientType === 0 ? 0.18 : (isPlaneMode ? 0.008 : 0.08);
-  const strengthMod = 1.0 + (config.uStrength ?? 2) * 0.15;
-  // Mesh mode uses 0.4 multiplier, Plane uses 0.14, others use 0.25
-  const blurMult = uGradientType === 0 ? 0.4 : (isPlaneMode ? 0.14 : 0.25);
+  // Transition width calculation (from shader) - tighter values
+  const baseTrans = uGradientType === 0 ? 0.08 : (isPlaneMode ? 0.008 : 0.08);
+  const strengthMod = 1.0 + (config.uStrength ?? 2) * 0.2;
+  const blurMult = uGradientType === 0 ? 0.15 : (isPlaneMode ? 0.14 : 0.15);
   let transitionWidth = (baseTrans + blurFactor * blurMult) / strengthMod;
-  transitionWidth = Math.max(transitionWidth, 0.08);
+  transitionWidth = Math.max(transitionWidth, 0.04);
+  if (uGradientType === 0) {
+    transitionWidth = Math.min(transitionWidth, 0.10);
+  }
   
-  // Overlap factor for Mesh mode
-  const overlapFactor = uGradientType === 0 ? 0.5 : 0;
+  // No overlap in new design
+  const overlapFactor = 0;
   
   // Histogram stretch info
   const contrastBoost = 1.8;
@@ -262,10 +264,10 @@ export function GradientDebugOverlay({ config, visible = true }: GradientDebugOv
           <span className="text-cyan-300">{transitionWidth.toFixed(4)}</span>
           {isMeshMode && (
             <>
-              <span className="text-white/60">Overlap Factor:</span>
-              <span className="text-purple-400">{overlapFactor}</span>
+              <span className="text-white/60">Blending:</span>
+              <span className="text-purple-400">No Overlap</span>
               <span className="text-white/60">Edge Fade:</span>
-              <span className="text-purple-400">0.5 → 1.4</span>
+              <span className="text-purple-400">0.85 → 1.25</span>
             </>
           )}
           <span className="text-white/60">Histogram Stretch:</span>
