@@ -183,60 +183,72 @@ void main() {
   
   if (uGradientType == 0) {
     // =========================================================================
-    // MESH MODE: Noise-based color distribution like other modes
+    // MESH MODE: Premium Soft Light Blobs
     // =========================================================================
-    // Uses simplex noise with mesh-specific parameters to create the "soft blob"
-    // aesthetic while respecting color weights through the standard threshold system.
+    // Multi-layered simplex noise for silky-smooth, atmospheric color blending.
+    // The key is VERY low frequency noise + high blur for that liquid, premium feel.
     
-    // Animated time for organic movement
-    float t = uTime * 0.3;
+    // Slow, dreamy animation
+    float t = uTime * 0.15;
     
     // For Aurora mode: apply coordinate stretching
     vec2 sampleUv = vUv;
     if (uMeshStretch) {
       sampleUv.y = (sampleUv.y - 0.5) / uMeshStretchAmount + 0.5;
-      sampleUv.x += sin(sampleUv.y * 6.0 + t) * 0.05;
+      sampleUv.x += sin(sampleUv.y * 4.0 + t) * 0.08;
     }
     
-    // Create base noise using low frequency for large, soft blobs
-    // uNoiseScale controls blob size (lower = larger blobs)
-    float noiseScale = max(0.3, uNoiseScale) * 0.8;
+    // Very low frequency for LARGE, cloud-like blobs
+    // Lower scale = bigger, softer shapes
+    float noiseScale = max(0.2, uNoiseScale) * 0.4;
     
-    // Multiple octaves of noise for rich, organic look
-    vec3 noisePos = vec3(sampleUv * noiseScale, t * 0.2);
-    float n1 = snoise(noisePos) * 0.5 + 0.5;
-    float n2 = snoise(noisePos * 1.7 + 30.0) * 0.5 + 0.5;
-    float n3 = snoise(noisePos * 0.5 + 60.0) * 0.5 + 0.5;
+    // Layer 1: Primary large-scale structure
+    vec3 pos1 = vec3(sampleUv * noiseScale, t * 0.3);
+    float n1 = snoise(pos1);
+    
+    // Layer 2: Secondary movement (offset in space and time)
+    vec3 pos2 = vec3(sampleUv * noiseScale * 0.7, t * 0.2 + 100.0);
+    pos2.xy += vec2(sin(t * 0.1), cos(t * 0.13)) * 0.3;
+    float n2 = snoise(pos2);
+    
+    // Layer 3: Tertiary ultra-smooth base
+    vec3 pos3 = vec3(sampleUv * noiseScale * 0.4, t * 0.1 + 200.0);
+    float n3 = snoise(pos3);
+    
+    // Layer 4: Very subtle high-frequency detail (keeps it from being too flat)
+    vec3 pos4 = vec3(sampleUv * noiseScale * 1.5, t * 0.25 + 300.0);
+    float n4 = snoise(pos4);
     
     // Apply mesh style variations
     float styleMod = 0.0;
     if (uMeshStyle == 1) {
-      // FLOW: Add directional bias
+      // FLOW: Gentle directional bias
       vec2 flowDir = vec2(cos(uMeshFlowAngle), sin(uMeshFlowAngle));
-      styleMod = dot(sampleUv - 0.5, flowDir) * 0.3;
+      styleMod = dot(sampleUv - 0.5, flowDir) * 0.2;
     } else if (uMeshStyle == 2) {
-      // CENTER: Radial influence
+      // CENTER: Subtle radial influence
       float dist = length(sampleUv - 0.5);
-      styleMod = uMeshCenterInward ? -dist * 0.4 : dist * 0.4;
+      styleMod = uMeshCenterInward ? -dist * 0.25 : dist * 0.25;
     }
     
-    // Combine noise layers with blur-based weighting
-    // Higher blur = smoother, more blended result
-    float blurWeight = uBlur;
-    float baseNoise = n1 * (0.5 + blurWeight * 0.3) + 
-                      n2 * (0.3 - blurWeight * 0.1) + 
-                      n3 * (0.2 - blurWeight * 0.1);
+    // Blend layers with emphasis on smoothness
+    // Primary layer dominates, others add subtle movement
+    float baseNoise = n1 * 0.45 + n2 * 0.30 + n3 * 0.20 + n4 * 0.05;
+    
+    // Normalize from [-1, 1] to [0, 1]
+    baseNoise = baseNoise * 0.5 + 0.5;
     
     baseNoise += styleMod;
     
-    // Ensure full 0-1 range for proper weight distribution
-    // This is critical for Color0 (black) to get its 30% minimum
+    // Clamp and apply VERY gentle S-curve for premium look
+    // Not too much contrast - we want creamy, soft transitions
     baseNoise = clamp(baseNoise, 0.0, 1.0);
     
-    // Light S-curve for slightly more defined blobs while keeping smooth transitions
-    baseNoise = smoothstep(0.0, 1.0, baseNoise);
+    // Gentle S-curve: less aggressive than smoothstep for softer blending
+    float t_curve = baseNoise;
+    baseNoise = t_curve * t_curve * (3.0 - 2.0 * t_curve) * 0.8 + t_curve * 0.2;
     
-    noise = baseNoise;
+    noise = clamp(baseNoise, 0.0, 1.0);
     
   } else if (uGradientType == 1) {
     // SPHERE MODE: Classic 3D sphere with smooth color blending
@@ -470,27 +482,33 @@ void main() {
     
   } else {
     // =========================================================================
-    // OTHER MODES (Mesh, Water, Conic, Spiral, Waves): Sequential Mix
+    // OTHER MODES (Mesh, Water, Conic, Spiral, Waves): Premium Smooth Blending
     // =========================================================================
-    // Use the same sequential mixing approach as Plane mode, but with blur-based
-    // transitions. This ensures all colors remain visible as Color0 weight changes.
+    // Wide, silky transitions for that premium gradient feel.
+    // Key: Much wider transition zones than Plane mode.
     
-    // Transition width based on blur
-    float transitionWidth = blurFactor * 0.15 + 0.02;
+    // For Mesh mode, use MUCH wider transitions for soft blob look
+    // Other modes can use slightly tighter transitions
+    float baseTrans = (uGradientType == 0) ? 0.18 : 0.08;
     
-    // Apply strength to sharpen/soften transitions
-    float strengthMod = 1.0 + strength * 0.3;
+    // Transition width: blur adds more softness
+    float transitionWidth = baseTrans + blurFactor * 0.25;
+    
+    // Strength REDUCES transition width for sharper edges (but keep it soft)
+    float strengthMod = 1.0 + strength * 0.15;
     transitionWidth = transitionWidth / strengthMod;
     
-    // Calculate blend factors - transitions CENTERED on thresholds
-    // This ensures each color gets exactly its weight percentage of the area
-    float blend01 = smoothstep(threshold0, threshold0 + transitionWidth * 2.0, noise);
+    // Minimum width to prevent harsh edges
+    transitionWidth = max(transitionWidth, 0.06);
+    
+    // Calculate blend factors with wide, overlapping transitions
+    // Each transition zone spans 2x transitionWidth, centered on threshold
+    float blend01 = smoothstep(threshold0 - transitionWidth * 0.3, threshold0 + transitionWidth * 1.5, noise);
     float blend12 = smoothstep(threshold1 - transitionWidth, threshold1 + transitionWidth, noise);
     float blend23 = smoothstep(threshold2 - transitionWidth, threshold2 + transitionWidth, noise);
     float blend34 = smoothstep(threshold3 - transitionWidth, threshold3 + transitionWidth, noise);
     
-    // Sequential mix - each color replaces the previous in its segment
-    // This preserves all colors even when Color0 weight is high (e.g., 80%)
+    // Sequential mix with smooth transitions
     finalColor = uColor0;
     finalColor = mix(finalColor, uColor1, blend01);
     finalColor = mix(finalColor, uColor2, blend12);
