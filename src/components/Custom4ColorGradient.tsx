@@ -178,8 +178,9 @@ void main() {
   
   // Edge fade (vignette) for Mesh mode - smooth fade to black at edges
   // This creates a premium "floating in darkness" look
+  // Wider fade range (0.5-1.4) for softer, more fog-like transition
   float edgeDist = length(centeredUv) * 2.0; // 0 at center, ~1.4 at corners
-  float edgeFade = 1.0 - smoothstep(0.7, 1.3, edgeDist); // Fade starts at 70% from center
+  float edgeFade = 1.0 - smoothstep(0.5, 1.4, edgeDist); // Fade starts at 50% from center, very gradual
   
   float noise;
   
@@ -518,29 +519,36 @@ void main() {
     // Wide, silky transitions for that premium gradient feel.
     // Key: Much wider transition zones than Plane mode.
     
-    // For Mesh mode, use moderate transitions (not too wide = visible shape)
-    // Other modes can use slightly tighter transitions
-    float baseTrans = (uGradientType == 0) ? 0.12 : 0.08;
+    // For Mesh mode, use WIDER transitions for creamy blending
+    // Increased from 0.12 to 0.18 for smoother color-to-color transitions
+    float baseTrans = (uGradientType == 0) ? 0.18 : 0.08;
     
-    // Transition width: blur adds more softness
-    float transitionWidth = baseTrans + blurFactor * 0.25;
+    // Transition width: blur has stronger influence for creamy feel
+    // Increased multiplier from 0.25 to 0.4
+    float transitionWidth = baseTrans + blurFactor * 0.4;
     
     // Strength REDUCES transition width for sharper edges (but keep it soft)
     float strengthMod = 1.0 + strength * 0.15;
     transitionWidth = transitionWidth / strengthMod;
     
-    // Minimum width to prevent harsh edges
-    transitionWidth = max(transitionWidth, 0.06);
+    // Minimum width to prevent harsh edges - increased for creamier look
+    transitionWidth = max(transitionWidth, 0.08);
+    
+    // OVERLAP BLENDING: Each color "enters" before the previous "exits"
+    // This creates smooth, overlapping transitions without visible seams
+    float overlapFactor = 0.5; // How much overlap between transitions
+    float tw = transitionWidth * (1.0 + overlapFactor);
     
     // IMPORTANT: Keep Color0 SOLID up to threshold0.
-    // If blend01 starts before threshold0, Color1 bleeds into the base area
-    // and makes it look like there's no black even at 50%+.
-    float blend01 = smoothstep(threshold0, threshold0 + transitionWidth * 2.0, noise);
-    float blend12 = smoothstep(threshold1 - transitionWidth, threshold1 + transitionWidth, noise);
-    float blend23 = smoothstep(threshold2 - transitionWidth, threshold2 + transitionWidth, noise);
-    float blend34 = smoothstep(threshold3 - transitionWidth, threshold3 + transitionWidth, noise);
+    // Color0→Color1 transition starts at threshold0, ends at threshold0 + tw
+    float blend01 = smoothstep(threshold0 - tw * 0.3, threshold0 + tw, noise);
     
-    // Sequential mix with smooth transitions
+    // Subsequent transitions have full overlap on both sides
+    float blend12 = smoothstep(threshold1 - tw, threshold1 + tw, noise);
+    float blend23 = smoothstep(threshold2 - tw, threshold2 + tw, noise);
+    float blend34 = smoothstep(threshold3 - tw, threshold3 + tw, noise);
+    
+    // Sequential mix with overlapping transitions
     finalColor = uColor0;
     finalColor = mix(finalColor, uColor1, blend01);
     finalColor = mix(finalColor, uColor2, blend12);
