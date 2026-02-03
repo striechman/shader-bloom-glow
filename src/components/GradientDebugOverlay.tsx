@@ -1,4 +1,7 @@
+import { useState } from 'react';
 import { GradientConfig } from '@/types/gradient';
+import { toast } from 'sonner';
+import { Copy, Check } from 'lucide-react';
 
 interface GradientDebugOverlayProps {
   config: GradientConfig;
@@ -6,11 +9,20 @@ interface GradientDebugOverlayProps {
 }
 
 export function GradientDebugOverlay({ config, visible = true }: GradientDebugOverlayProps) {
+  const [copied, setCopied] = useState(false);
+
   if (!visible) return null;
 
-  const activeMode = config.type === 'plane' && config.wireframe ? 'mesh' : config.type;
+  const activeMode = config.type === 'plane' && config.wireframe ? 'mesh' : (config.wireframe ? 'mesh' : config.type);
   const isMeshMode = activeMode === 'mesh' || activeMode === 'sphere' || activeMode === 'waterPlane';
   const isPlaneMode = activeMode === 'plane';
+  
+  // Compute gradient type int (same logic as shader)
+  const typeToInt: Record<string, number> = {
+    'mesh': 0, 'sphere': 1, 'plane': 2, 'waterPlane': 3,
+    'conic': 4, 'spiral': 5, 'waves': 6,
+  };
+  const uGradientType = typeToInt[activeMode] ?? 0;
   
   const colors = [
     { label: 'Base (Color 0)', color: config.color0, weight: config.colorWeight0 },
@@ -23,16 +35,123 @@ export function GradientDebugOverlay({ config, visible = true }: GradientDebugOv
     colors.push({ label: 'Color 4', color: config.color4, weight: config.colorWeight4 });
   }
   
+  // =========================================================================
+  // DERIVED VALUES (match shader logic for debugging)
+  // =========================================================================
+  const blurFactor = (config.meshBlur ?? 50) / 100 * 0.5;
+  const effectiveNoiseScale = Math.max(0.2, config.meshNoiseScale ?? 3.0) * 0.4;
+  
+  // Transition width calculation (from shader)
+  const baseTrans = uGradientType === 0 ? 0.18 : (isPlaneMode ? 0.008 : 0.08);
+  const strengthMod = 1.0 + (config.uStrength ?? 2) * 0.15;
+  let transitionWidth = (baseTrans + blurFactor * (isPlaneMode ? 0.14 : 0.25)) / strengthMod;
+  transitionWidth = Math.max(transitionWidth, 0.06);
+  
+  // Histogram stretch info
+  const stretchGamma = 0.7;
+  const histogramStretchEnabled = uGradientType === 0; // Only Mesh mode
+  
+  // Thresholds
+  const threshold0 = config.colorWeight0;
+  const threshold1 = config.colorWeight0 + config.colorWeight1;
+  const threshold2 = threshold1 + config.colorWeight2;
+  const threshold3 = threshold2 + config.colorWeight3;
+  
+  const handleCopy = async () => {
+    const debugData = {
+      config: {
+        type: config.type,
+        wireframe: config.wireframe,
+        activeMode,
+        colors: {
+          color0: config.color0,
+          color1: config.color1,
+          color2: config.color2,
+          color3: config.color3,
+          color4: config.color4,
+        },
+        weights: {
+          colorWeight0: config.colorWeight0,
+          colorWeight1: config.colorWeight1,
+          colorWeight2: config.colorWeight2,
+          colorWeight3: config.colorWeight3,
+          colorWeight4: config.colorWeight4,
+        },
+        animation: {
+          animate: config.animate,
+          speed: config.speed,
+          frozenTime: config.frozenTime,
+        },
+        meshSettings: {
+          meshBlur: config.meshBlur,
+          meshNoiseScale: config.meshNoiseScale,
+          meshStyle: config.meshStyle,
+          meshStretch: config.meshStretch,
+          meshFlowAngle: config.meshFlowAngle,
+          meshCenterInward: config.meshCenterInward,
+        },
+        planeSettings: {
+          planeAngle: config.planeAngle,
+          planeRadial: config.planeRadial,
+          planeWave: config.planeWave,
+          planeSpread: config.planeSpread,
+          planeOffsetX: config.planeOffsetX,
+          planeOffsetY: config.planeOffsetY,
+        },
+        effects: {
+          uStrength: config.uStrength,
+          uDensity: config.uDensity,
+          uFrequency: config.uFrequency,
+          grain: config.grain,
+          grainIntensity: config.grainIntensity,
+        },
+      },
+      derived: {
+        uGradientType,
+        effectiveNoiseScale: effectiveNoiseScale.toFixed(3),
+        transitionWidth: transitionWidth.toFixed(4),
+        histogramStretch: histogramStretchEnabled ? `pow ${stretchGamma}` : 'OFF',
+        thresholds: {
+          T0: threshold0,
+          T1: threshold1,
+          T2: threshold2,
+          T3: threshold3,
+        },
+      },
+    };
+    
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(debugData, null, 2));
+      setCopied(true);
+      toast.success('Debug config copied to clipboard!');
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      toast.error('Failed to copy');
+    }
+  };
+  
   return (
     <div className="fixed top-20 left-6 bg-black/90 text-white p-4 rounded-lg text-xs font-mono space-y-2 max-w-xs z-[100] backdrop-blur-sm border border-white/20 shadow-2xl max-h-[70vh] overflow-y-auto">
-      <div className="text-sm font-bold border-b border-white/30 pb-2 mb-2">
-        🎨 Gradient Debug Info
+      <div className="flex items-center justify-between border-b border-white/30 pb-2 mb-2">
+        <span className="text-sm font-bold">🎨 Gradient Debug Info</span>
+        <button
+          onClick={handleCopy}
+          className="flex items-center gap-1 px-2 py-1 bg-white/10 hover:bg-white/20 rounded text-[10px] transition-colors"
+          title="Copy config to clipboard"
+        >
+          {copied ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+          {copied ? 'Copied!' : 'Copy'}
+        </button>
       </div>
       
-      {/* Type */}
+      {/* Type & Internal ID */}
       <div className="flex justify-between">
         <span className="text-white/60">Type:</span>
         <span className="text-cyan-400 uppercase">{activeMode}</span>
+      </div>
+      <div className="flex justify-between">
+        <span className="text-white/60">uGradientType:</span>
+        <span className="text-cyan-400">{uGradientType}</span>
       </div>
       
       {/* Mesh Style */}
@@ -57,6 +176,9 @@ export function GradientDebugOverlay({ config, visible = true }: GradientDebugOv
             <span className="text-white/40 text-[10px]">{c.color}</span>
           </div>
         ))}
+        <div className="text-white/50 text-[10px] mt-1">
+          HasColor4: {config.color4 ? 'YES' : 'NO'}
+        </div>
       </div>
       
       {/* Animation */}
@@ -124,14 +246,29 @@ export function GradientDebugOverlay({ config, visible = true }: GradientDebugOv
         </div>
       </div>
       
+      {/* Derived Shader Values */}
+      <div className="border-t border-white/20 pt-2 mt-2">
+        <div className="text-white/80 mb-1">🔧 Derived (Shader Internal):</div>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-[10px]">
+          <span className="text-white/60">Eff. Noise Scale:</span>
+          <span className="text-cyan-300">{effectiveNoiseScale.toFixed(3)}</span>
+          <span className="text-white/60">Transition Width:</span>
+          <span className="text-cyan-300">{transitionWidth.toFixed(4)}</span>
+          <span className="text-white/60">Histogram Stretch:</span>
+          <span className={histogramStretchEnabled ? 'text-green-400' : 'text-white/40'}>
+            {histogramStretchEnabled ? `pow(${stretchGamma})` : 'OFF (Plane)'}
+          </span>
+        </div>
+      </div>
+      
       {/* Shader Logic Summary */}
       <div className="border-t border-white/20 pt-2 mt-2 text-[10px] text-white/50">
         <div>Thresholds (cumulative):</div>
         <div className="text-cyan-300">
-          T0: {config.colorWeight0}% | 
-          T1: {config.colorWeight0 + config.colorWeight1}% | 
-          T2: {config.colorWeight0 + config.colorWeight1 + config.colorWeight2}% | 
-          T3: {config.colorWeight0 + config.colorWeight1 + config.colorWeight2 + config.colorWeight3}%
+          T0: {threshold0}% | 
+          T1: {threshold1}% | 
+          T2: {threshold2}% | 
+          T3: {threshold3}%
         </div>
       </div>
     </div>
