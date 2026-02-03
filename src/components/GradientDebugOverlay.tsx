@@ -258,16 +258,21 @@ export function GradientDebugOverlay({ config, visible = true }: GradientDebugOv
       <div className="border-t border-white/20 pt-2 mt-2">
         <div className="text-white/80 mb-1">🔧 Derived (Shader Internal):</div>
         <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-[10px]">
-          <span className="text-white/60">Eff. Noise Scale:</span>
-          <span className="text-cyan-300">{effectiveNoiseScale.toFixed(3)}</span>
-          <span className="text-white/60">Transition Width:</span>
-          <span className="text-cyan-300">{transitionWidth.toFixed(4)}</span>
-          {isMeshMode && (
+          {isMeshMode ? (
             <>
-              <span className="text-white/60">Blending:</span>
-              <span className="text-purple-400">No Overlap</span>
+              <span className="text-white/60">Blend Mode:</span>
+              <span className="text-purple-400">Radial Light</span>
+              <span className="text-white/60">Sharpness:</span>
+              <span className="text-cyan-300">{(2.5 + (1 - (config.meshBlur ?? 50) / 100) * 2.0).toFixed(1)}</span>
               <span className="text-white/60">Edge Fade:</span>
               <span className="text-purple-400">0.85 → 1.25</span>
+            </>
+          ) : (
+            <>
+              <span className="text-white/60">Eff. Noise Scale:</span>
+              <span className="text-cyan-300">{effectiveNoiseScale.toFixed(3)}</span>
+              <span className="text-white/60">Transition Width:</span>
+              <span className="text-cyan-300">{transitionWidth.toFixed(4)}</span>
             </>
           )}
           <span className="text-white/60">Histogram Stretch:</span>

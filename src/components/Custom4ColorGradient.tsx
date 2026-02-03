@@ -185,101 +185,120 @@ void main() {
   
   if (uGradientType == 0) {
     // =========================================================================
-    // MESH MODE: Premium Soft Light Blobs
+    // MESH MODE: Radial Light Sources on Dark Background
     // =========================================================================
-    // Multi-layered simplex noise for silky-smooth, atmospheric color blending.
-    // The key is VERY low frequency noise + high blur for that liquid, premium feel.
+    // Inspired by Linear.app/Stripe: Each color is an independent "light source"
+    // that fades smoothly into the black background using exponential falloff.
+    // This preserves the black base naturally in areas where no light is present.
     
-    // Slow, dreamy animation
     float t = uTime * 0.15;
+    vec2 sampleUv = vUv;
     
     // For Aurora mode: apply coordinate stretching
-    vec2 sampleUv = vUv;
     if (uMeshStretch) {
       sampleUv.y = (sampleUv.y - 0.5) / uMeshStretchAmount + 0.5;
       sampleUv.x += sin(sampleUv.y * 4.0 + t) * 0.08;
     }
     
-    // Noise scale: Higher = smaller blobs, more detail
-    // Default noiseScale=3.0 with multiplier gives good variety
     float noiseScale = max(0.5, uNoiseScale) * 0.8;
     
-    // Layer 1: Primary large-scale structure
-    vec3 pos1 = vec3(sampleUv * noiseScale, t * 0.3);
-    float n1 = snoise(pos1);
+    // Generate independent noise fields for each color's position/intensity
+    // Each color blob moves independently for organic feel
+    vec3 pos1 = vec3(sampleUv * noiseScale * 0.6, t * 0.25);
+    vec3 pos2 = vec3(sampleUv * noiseScale * 0.5, t * 0.2 + 100.0);
+    vec3 pos3 = vec3(sampleUv * noiseScale * 0.7, t * 0.15 + 200.0);
+    vec3 pos4 = vec3(sampleUv * noiseScale * 0.55, t * 0.18 + 300.0);
     
-    // Layer 2: Secondary movement (offset in space and time)
-    vec3 pos2 = vec3(sampleUv * noiseScale * 0.7, t * 0.2 + 100.0);
-    pos2.xy += vec2(sin(t * 0.1), cos(t * 0.13)) * 0.3;
-    float n2 = snoise(pos2);
+    float n1 = snoise(pos1) * 0.5 + 0.5;
+    float n2 = snoise(pos2) * 0.5 + 0.5;
+    float n3 = snoise(pos3) * 0.5 + 0.5;
+    float n4 = snoise(pos4) * 0.5 + 0.5;
     
-    // Layer 3: Tertiary ultra-smooth base
-    vec3 pos3 = vec3(sampleUv * noiseScale * 0.4, t * 0.1 + 200.0);
-    float n3 = snoise(pos3);
-    
-    // Layer 4: Very subtle high-frequency detail (keeps it from being too flat)
-    vec3 pos4 = vec3(sampleUv * noiseScale * 1.5, t * 0.25 + 300.0);
-    float n4 = snoise(pos4);
-    
-    // Apply mesh style variations
-    float styleMod = 0.0;
+    // Apply mesh style variations to blob positions
     if (uMeshStyle == 1) {
-      // FLOW: Gentle directional bias
       vec2 flowDir = vec2(cos(uMeshFlowAngle), sin(uMeshFlowAngle));
-      styleMod = dot(sampleUv - 0.5, flowDir) * 0.2;
+      float flowBias = dot(sampleUv - 0.5, flowDir);
+      n1 += flowBias * 0.15;
+      n2 -= flowBias * 0.1;
     } else if (uMeshStyle == 2) {
-      // CENTER: Subtle radial influence
       float dist = length(sampleUv - 0.5);
-      styleMod = uMeshCenterInward ? -dist * 0.25 : dist * 0.25;
+      float radialBias = uMeshCenterInward ? (1.0 - dist * 2.0) : (dist * 2.0);
+      n1 += radialBias * 0.1;
     }
     
-    // Blend layers with emphasis on smoothness
-    // Primary layer dominates, others add subtle movement
-    // Octave weights sum to 1.0 for normalized amplitude
-    float w1 = 0.45, w2 = 0.30, w3 = 0.20, w4 = 0.05;
-    float baseNoise = n1 * w1 + n2 * w2 + n3 * w3 + n4 * w4;
+    // =========================================================================
+    // STRIPE-STYLE POWER FALLOFF: pow(noise, 4.0)
+    // =========================================================================
+    // This is the key technique from Stripe's gradient.js:
+    // Using pow() to "sharpen" noise into concentrated islands of color
+    // while keeping transitions creamy (not linear cutoffs)
     
-    // snoise returns [-1, 1], so theoretical max amplitude is w1+w2+w3+w4 = 1.0
-    // In practice, peaks are rarely reached simultaneously.
-    // Scale by inverse of sum to ensure we CAN reach ±1.0 before normalization.
-    float ampSum = w1 + w2 + w3 + w4;
-    baseNoise = baseNoise / ampSum; // Now in [-1, 1] theoretical range
+    float sharpness = 3.5; // Higher = more concentrated blobs, more black visible
     
-    // Normalize from [-1, 1] to [0, 1]
-    baseNoise = baseNoise * 0.5 + 0.5;
+    // Weight-adjusted intensities - higher weight = more visible blob
+    float w1 = uWeight1 / 100.0;
+    float w2 = uWeight2 / 100.0;
+    float w3 = uWeight3 / 100.0;
+    float w4 = uWeight4 / 100.0;
     
-    baseNoise += styleMod;
+    // Power-curve falloff: creates concentrated color islands
+    // The pow() function makes low noise values even lower (more black)
+    // and only lets high noise values through (color islands)
+    float intensity1 = pow(n1, sharpness) * w1 * 2.5;
+    float intensity2 = pow(n2, sharpness) * w2 * 2.5;
+    float intensity3 = pow(n3, sharpness) * w3 * 2.5;
+    float intensity4 = pow(n4, sharpness) * w4 * 2.5;
     
-    // Clamp to valid range before processing
-    baseNoise = clamp(baseNoise, 0.0, 1.0);
+    // Blur affects how spread out the light is (lower sharpness = softer)
+    float blurMod = 1.0 - uBlur * 0.4;
+    intensity1 = pow(intensity1, blurMod);
+    intensity2 = pow(intensity2, blurMod);
+    intensity3 = pow(intensity3, blurMod);
+    intensity4 = pow(intensity4, blurMod);
+    
+    // Clamp intensities
+    intensity1 = clamp(intensity1, 0.0, 1.0);
+    intensity2 = clamp(intensity2, 0.0, 1.0);
+    intensity3 = clamp(intensity3, 0.0, 1.0);
+    intensity4 = clamp(intensity4, 0.0, 1.0);
     
     // =========================================================================
-    // AGGRESSIVE HISTOGRAM STRETCH: Ensure full 0-1 coverage
+    // ADDITIVE BLENDING: Colors as light sources on black
     // =========================================================================
-    // Problem: Multi-octave simplex noise clusters around 0.5 (central limit theorem).
-    // Even with normalization, actual values rarely go below 0.25 or above 0.75.
-    // This starves Color0 (low end) and Color3/4 (high end) of screen area.
-    //
-    // Solution: Two-stage stretching:
-    // 1. CONTRAST BOOST: Expand the actual range before stretching
-    // 2. POWER STRETCH: Push mid-values toward extremes
-    //
-    // This ensures Color0 at 30-50% weight actually gets ~30-50% of pixels.
+    // Start with pure black (Color0), add each color as a light source
+    // This naturally preserves black in areas where no light is present
     
-    // Stage 1: Contrast boost - expand from typical [0.25, 0.75] to [0, 1]
-    // Center around 0.5, scale up, then clamp
-    float contrastBoost = 1.8; // How much to expand the range
-    baseNoise = (baseNoise - 0.5) * contrastBoost + 0.5;
-    baseNoise = clamp(baseNoise, 0.0, 1.0);
+    vec3 meshColor = uColor0; // Start with black base
     
-    // Stage 2: Power-curve histogram stretch
-    // gamma < 1.0 pushes values away from 0.5 toward 0 and 1
-    float centered = baseNoise - 0.5;
-    float stretchGamma = 0.55; // More aggressive (was 0.7) - lower = more spread
-    float stretched = sign(centered) * pow(abs(centered) * 2.0, stretchGamma) * 0.5;
-    baseNoise = clamp(stretched + 0.5, 0.0, 1.0);
-
-    noise = baseNoise;
+    // Screen blend mode for natural light mixing
+    // Screen: 1 - (1-a)(1-b) - colors add up without oversaturation
+    vec3 light1 = uColor1 * intensity1;
+    vec3 light2 = uColor2 * intensity2;
+    vec3 light3 = uColor3 * intensity3;
+    vec3 light4 = uHasColor4 ? uColor4 * intensity4 : vec3(0.0);
+    
+    // Additive blend with soft clamping
+    meshColor = meshColor + light1;
+    meshColor = meshColor + light2;
+    meshColor = meshColor + light3;
+    meshColor = meshColor + light4;
+    
+    // Soft HDR tonemapping to prevent harsh clipping
+    meshColor = meshColor / (1.0 + meshColor * 0.5);
+    
+    // Apply Color0 weight: higher weight = more black areas preserved
+    // This works by reducing overall light intensity
+    float blackWeight = uWeight0 / 100.0;
+    float blackPreserve = 0.5 + blackWeight; // 30% weight = 0.8 multiplier
+    meshColor = meshColor * (1.0 / blackPreserve);
+    meshColor = clamp(meshColor, 0.0, 1.0);
+    
+    // Convert back to noise space for compatibility with rest of shader
+    // Actually, we'll handle this specially in the blending section
+    noise = 0.5; // Placeholder - we'll use meshColor directly
+    
+    // Store mesh color for later use (we need a different path for mesh)
+    // Since we can't pass vec3 through noise, we'll reconstruct in blend section
     
   } else if (uGradientType == 1) {
     // SPHERE MODE: Classic 3D sphere with smooth color blending
@@ -472,37 +491,99 @@ void main() {
   float threshold2 = w0 + w1 + w2;
   float threshold3 = w0 + w1 + w2 + w3;
   
-  // PROGRESSIVE MIX - Different strategies for different gradient types
-  // Plane uses direct sequential mix (no layer masking needed for linear noise)
-  // Other modes use layer masking to prevent color0 from bleeding into later transitions
-  
   vec3 finalColor;
   
-  if (uGradientType == 2) {
+  if (uGradientType == 0) {
+    // =========================================================================
+    // MESH MODE: Radial Light Blending (already computed above)
+    // =========================================================================
+    // We need to recompute the mesh color here since we can't pass vec3 through noise
+    
+    float t = uTime * 0.15;
+    vec2 sampleUv = vUv;
+    
+    if (uMeshStretch) {
+      sampleUv.y = (sampleUv.y - 0.5) / uMeshStretchAmount + 0.5;
+      sampleUv.x += sin(sampleUv.y * 4.0 + t) * 0.08;
+    }
+    
+    float noiseScale = max(0.5, uNoiseScale) * 0.8;
+    
+    vec3 pos1 = vec3(sampleUv * noiseScale * 0.6, t * 0.25);
+    vec3 pos2 = vec3(sampleUv * noiseScale * 0.5, t * 0.2 + 100.0);
+    vec3 pos3 = vec3(sampleUv * noiseScale * 0.7, t * 0.15 + 200.0);
+    vec3 pos4 = vec3(sampleUv * noiseScale * 0.55, t * 0.18 + 300.0);
+    
+    float n1 = snoise(pos1) * 0.5 + 0.5;
+    float n2 = snoise(pos2) * 0.5 + 0.5;
+    float n3 = snoise(pos3) * 0.5 + 0.5;
+    float n4 = snoise(pos4) * 0.5 + 0.5;
+    
+    if (uMeshStyle == 1) {
+      vec2 flowDir = vec2(cos(uMeshFlowAngle), sin(uMeshFlowAngle));
+      float flowBias = dot(sampleUv - 0.5, flowDir);
+      n1 += flowBias * 0.15;
+      n2 -= flowBias * 0.1;
+    } else if (uMeshStyle == 2) {
+      float dist = length(sampleUv - 0.5);
+      float radialBias = uMeshCenterInward ? (1.0 - dist * 2.0) : (dist * 2.0);
+      n1 += radialBias * 0.1;
+    }
+    
+    // Stripe-style power falloff with blur influence
+    float sharpness = mix(2.5, 4.5, 1.0 - uBlur); // Blur reduces sharpness
+    
+    float w1 = uWeight1 / 100.0;
+    float w2 = uWeight2 / 100.0;
+    float w3 = uWeight3 / 100.0;
+    float w4 = uWeight4 / 100.0;
+    
+    float intensity1 = pow(clamp(n1, 0.0, 1.0), sharpness) * w1 * 2.8;
+    float intensity2 = pow(clamp(n2, 0.0, 1.0), sharpness) * w2 * 2.8;
+    float intensity3 = pow(clamp(n3, 0.0, 1.0), sharpness) * w3 * 2.8;
+    float intensity4 = pow(clamp(n4, 0.0, 1.0), sharpness) * w4 * 2.8;
+    
+    intensity1 = clamp(intensity1, 0.0, 1.0);
+    intensity2 = clamp(intensity2, 0.0, 1.0);
+    intensity3 = clamp(intensity3, 0.0, 1.0);
+    intensity4 = clamp(intensity4, 0.0, 1.0);
+    
+    // Additive light blending on black base
+    finalColor = uColor0; // Black base
+    
+    vec3 light1 = uColor1 * intensity1;
+    vec3 light2 = uColor2 * intensity2;
+    vec3 light3 = uColor3 * intensity3;
+    vec3 light4 = uHasColor4 ? uColor4 * intensity4 : vec3(0.0);
+    
+    // Screen blend for natural light mixing
+    finalColor = finalColor + light1 * (1.0 - finalColor);
+    finalColor = finalColor + light2 * (1.0 - finalColor);
+    finalColor = finalColor + light3 * (1.0 - finalColor);
+    finalColor = finalColor + light4 * (1.0 - finalColor);
+    
+    // Black weight affects how much of the base shows through
+    float blackWeight = uWeight0 / 100.0;
+    // Higher black weight = reduce overall light intensity
+    float lightReduction = 1.0 - (blackWeight - 0.3) * 0.8; // 30% = 1.0, 50% = 0.84, etc.
+    lightReduction = clamp(lightReduction, 0.4, 1.0);
+    finalColor = finalColor * lightReduction;
+    
+    // Apply edge fade for premium floating look
+    finalColor = mix(uColor0, finalColor, edgeFade);
+    
+  } else if (uGradientType == 2) {
     // =========================================================================
     // PLANE MODE: Weighted Segments with Proper Color Distribution
     // =========================================================================
-    // Each color occupies its weight as a percentage of the noise range [0,1]
-    // Color0: [0, threshold0], Color1: [threshold0, threshold1], etc.
-    // Transitions are CENTERED on thresholds so each color gets its fair area.
-    
-    // Spread controls transition softness (0=sharp edges, 1=soft blend)
-    // Strength should NOT affect Plane mixing.
-    // In Plane we want predictable, print-safe transitions that depend only on Spread + Blur.
     float spreadMult = mix(0.008, 0.12, uPlaneSpread);
     float transitionWidth = spreadMult + blurFactor * 0.14;
     
-    // Calculate blend factors - transitions CENTERED on thresholds
-    // This ensures Color0 gets exactly threshold0 (e.g., 30%) of the area,
-    // not more and not less.
-    // Keep Color0 SOLID up to threshold0 (true 30%+ region), then transition outward.
-    // Subsequent transitions remain centered so downstream colors keep their intended space.
     float blend01 = smoothstep(threshold0, threshold0 + transitionWidth * 2.0, noise);
     float blend12 = smoothstep(threshold1 - transitionWidth, threshold1 + transitionWidth, noise);
     float blend23 = smoothstep(threshold2 - transitionWidth, threshold2 + transitionWidth, noise);
     float blend34 = smoothstep(threshold3 - transitionWidth, threshold3 + transitionWidth, noise);
     
-    // Sequential mix - each color replaces the previous in its segment
     finalColor = uColor0;
     finalColor = mix(finalColor, uColor1, blend01);
     finalColor = mix(finalColor, uColor2, blend12);
@@ -513,39 +594,19 @@ void main() {
     
   } else {
     // =========================================================================
-    // OTHER MODES (Mesh, Water, Conic, Spiral, Waves): Premium Smooth Blending
+    // OTHER MODES (Water, Conic, Spiral, Waves): Smooth Threshold Blending
     // =========================================================================
-    // Wide, silky transitions for that premium gradient feel.
-    // Key: Much wider transition zones than Plane mode.
-    
-    // For Mesh mode, use TIGHTER transitions for distinct color islands
-    // This prevents the "lava lamp" effect where colors bleed everywhere
-    // Each color should occupy its designated weight as visible area
-    float baseTrans = (uGradientType == 0) ? 0.08 : 0.08;
-    
-    // Transition width: blur influence is reduced to prevent over-bleeding
-    float transitionWidth = baseTrans + blurFactor * 0.15;
-    
-    // Strength REDUCES transition width for sharper edges
-    float strengthMod = 1.0 + strength * 0.2;
+    float baseTrans = 0.10;
+    float transitionWidth = baseTrans + blurFactor * 0.20;
+    float strengthMod = 1.0 + strength * 0.15;
     transitionWidth = transitionWidth / strengthMod;
+    transitionWidth = max(transitionWidth, 0.06);
     
-    // Minimum width to prevent aliasing, but keep it tight
-    transitionWidth = max(transitionWidth, 0.04);
+    float blend01 = smoothstep(threshold0, threshold0 + transitionWidth * 1.5, noise);
+    float blend12 = smoothstep(threshold1 - transitionWidth * 0.5, threshold1 + transitionWidth, noise);
+    float blend23 = smoothstep(threshold2 - transitionWidth * 0.5, threshold2 + transitionWidth, noise);
+    float blend34 = smoothstep(threshold3 - transitionWidth * 0.5, threshold3 + transitionWidth, noise);
     
-    // For Mesh mode specifically, cap transition width to prevent "lava lamp"
-    if (uGradientType == 0) {
-      transitionWidth = min(transitionWidth, 0.10); // Max 10% of range per transition
-    }
-    
-    // NO OVERLAP: Each color should occupy its designated area distinctly
-    // Color0 is SOLID up to threshold0, then transitions quickly to Color1
-    float blend01 = smoothstep(threshold0, threshold0 + transitionWidth, noise);
-    float blend12 = smoothstep(threshold1, threshold1 + transitionWidth, noise);
-    float blend23 = smoothstep(threshold2, threshold2 + transitionWidth, noise);
-    float blend34 = smoothstep(threshold3, threshold3 + transitionWidth, noise);
-    
-    // Sequential mix - each color replaces the previous in its segment
     finalColor = uColor0;
     finalColor = mix(finalColor, uColor1, blend01);
     finalColor = mix(finalColor, uColor2, blend12);
@@ -553,11 +614,6 @@ void main() {
     if (uHasColor4) {
       finalColor = mix(finalColor, uColor4, blend34);
     }
-  }
-  
-  // Apply edge fade for Mesh mode (fade to black at edges)
-  if (uGradientType == 0) {
-    finalColor = mix(uColor0, finalColor, edgeFade);
   }
   
   // Convert from Linear RGB back to sRGB for correct display
