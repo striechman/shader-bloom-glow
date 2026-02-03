@@ -1,80 +1,101 @@
 
-# תיקון מעברי צבע חלקים ב-Mesh Mode
+# תיקון Mesh Mode - בעיית צבע אחד אחיד
 
 ## הבעיה
-בתמונה רואים שהמעבר בין **צהוב (Yellow)** ל**ורוד (Pink)** לא חלק - יש "קו" או "פס" בולט במקום מעבר קרמי רך. גם ה-edge fade לא מספיק רך.
+בפריסט הראשוני (Yellow/Pink/Black) עם blur גבוה, כל המסך נראה כמו צבע אחד חום-אדום במקום כתמי צבע מובחנים.
 
 ## אבחון טכני
-מהקונפיג שהעברת:
+
+הקונפיג:
 ```
-transitionWidth: 0.1481
-meshBlur: 58
-thresholds: T0:30, T1:55, T2:80, T3:100
+colors: Yellow (#FDB515), Pink (#EC008C), Black (#000000 - Color3)
+weights: 30% base-black, 25% yellow, 25% pink, 20% black
+meshBlur: 95%
 ```
 
-הסיבות לבעיה:
-1. **Transition Width קטן מדי**: ב-`0.1481` יש רק ~15% של טווח הרעש למעבר בין שני צבעים, מה שיוצר "קו" נראה לעין
-2. **Sequential Mix Effect**: כשעושים `mix(color1, color2, blend12)` ואז מיד אחר כך `mix(result, color3, blend23)`, המעברים נחתכים אחד בשני
-3. **Edge Fade לא מספיק הדרגתי**: ה-smoothstep(0.7, 1.3) קופץ מהר מדי בקצוות
+### שורש הבעיה:
+1. **Color3 הוא שחור (#000000)** - זה צבע שמשתתף בחישוב האנרגיה אבל לא תורם שום אור לתמונה
+2. **Energy Conservation כולל צבעים כהים**: הקוד מחשב:
+   ```glsl
+   float energy = intensity1 + intensity2 + intensity3 + intensity4;
+   float energyScale = availableLight / energy;
+   ```
+   Color3 (שחור) תופס 20% מה-intensity אבל כשעושים `uColor3 * intensity3` התוצאה היא שחור (0,0,0) - לא תורם אור אבל "גונב" מהתקציב
 
-## פתרון מוצע
+3. **Blur גבוה = Sharpness נמוך**: כש-blur=95%, ה-sharpness הוא רק 1.89, מה שגורם לכל ערכי הרעש להתפזר לאזור הבינוני (0.3-0.7) במקום קצוות (0.0 ו-1.0)
 
-### שינויים בשיידר (Custom4ColorGradient.tsx):
+4. **Screen Blend מערבב הכל**: Yellow + Pink ב-screen blend יוצרים גוון חום-אדום אחיד כי אין הפרדה מרחבית ברורה
 
-**1. הגדלת Transition Width בסיסי:**
+### תוצאה:
+במקום לראות כתמי צהוב, כתמי ורוד, ואזורים שחורים - רואים צבע אחד אחיד.
+
+## הפתרון: Luminance Guarding
+
+### 1. פונקציית Luminance
+להוסיף פונקציה שמחשבת בהירות של צבע:
 ```glsl
-// לפני:
-float baseTrans = (uGradientType == 0) ? 0.12 : 0.08;
-
-// אחרי: 
-float baseTrans = (uGradientType == 0) ? 0.18 : 0.08;
+float luma(vec3 color) {
+  return dot(color, vec3(0.299, 0.587, 0.114));
+}
 ```
 
-**2. Overlap Blending במקום Sequential Mix:**
-במקום מעברים חדים שנחתכים ב-threshold, ניצור "חפיפה" בין כל זוג צבעים סמוכים:
+### 2. לסנן צבעים כהים מחישוב האנרגיה
+צבעים עם luminance נמוך (< 0.05) לא צריכים להשתתף ב-energy budget:
 ```glsl
-// מעברים עם חפיפה - כל צבע "נכנס" קצת לפני שהקודם "יוצא"
-float overlapFactor = 0.5; // כמה חפיפה בין מעברים
-float tw = transitionWidth * (1.0 + overlapFactor);
+// Check luminance of each color
+float luma1 = luma(uColor1);
+float luma2 = luma(uColor2);
+float luma3 = luma(uColor3);
+float luma4 = luma(uColor4);
 
-float blend01 = smoothstep(threshold0 - tw * 0.3, threshold0 + tw, noise);
-float blend12 = smoothstep(threshold1 - tw, threshold1 + tw, noise);
-float blend23 = smoothstep(threshold2 - tw, threshold2 + tw, noise);
+// Only count colors that actually contribute light
+float effectiveIntensity1 = (luma1 > 0.05) ? intensity1 : 0.0;
+float effectiveIntensity2 = (luma2 > 0.05) ? intensity2 : 0.0;
+float effectiveIntensity3 = (luma3 > 0.05) ? intensity3 : 0.0;
+float effectiveIntensity4 = (luma4 > 0.05) ? intensity4 : 0.0;
+
+float energy = effectiveIntensity1 + effectiveIntensity2 + effectiveIntensity3 + effectiveIntensity4;
 ```
 
-**3. Edge Fade רחב יותר:**
+### 3. להגביר Sharpness ב-blur גבוה
+הבעיה היא ש-blur 95% הורס את ההפרדה בין הצבעים. צריך floor מינימלי:
 ```glsl
-// לפני:
-float edgeFade = 1.0 - smoothstep(0.7, 1.3, edgeDist);
-
-// אחרי: Fade מתחיל מ-50% מהמרחק ומתפשט עד 140%
-float edgeFade = 1.0 - smoothstep(0.5, 1.4, edgeDist);
+// Before: sharpness goes from 1.8 (blur=100%) to 3.6 (blur=0%)
+// After: sharpness goes from 2.5 (blur=100%) to 4.0 (blur=0%)
+float sharpness = mix(2.5, 4.0, 1.0 - uBlur);
 ```
 
-**4. Blur משפיע יותר על Transition:**
+### 4. Boost לצבעים שנותרו
+כדי שהצבעים הפעילים יהיו ברורים:
 ```glsl
-// לפני:
-float transitionWidth = baseTrans + blurFactor * 0.25;
+// Count how many colors actually contribute
+float activeCount = step(0.05, luma1) + step(0.05, luma2) + step(0.05, luma3) + step(0.05, luma4);
+float colorBoost = mix(1.0, 1.5, 1.0 - activeCount/4.0); // Fewer colors = more boost per color
 
-// אחרי: Blur יותר דומיננטי למראה קרמי
-float transitionWidth = baseTrans + blurFactor * 0.4;
+intensity1 *= energyScale * colorBoost;
+intensity2 *= energyScale * colorBoost;
+intensity3 *= energyScale * colorBoost;
+intensity4 *= energyScale * colorBoost;
 ```
 
-### עדכון Debug Overlay:
-- להוסיף את `overlapFactor` לתצוגה
-- להציג את `edgeFadeRange` (0.5-1.4 במקום 0.7-1.3)
+## קובץ לעריכה
 
-## קבצים לעריכה
-1. `src/components/Custom4ColorGradient.tsx` - שינויי שיידר
-2. `src/components/GradientDebugOverlay.tsx` - עדכון תצוגת debug
+`src/components/Custom4ColorGradient.tsx` - שינויים בשיידר (שורות 533-565):
+
+1. הוספת פונקציית `luma()`
+2. עדכון חישוב ה-energy להתעלם מצבעים כהים
+3. הגדלת טווח ה-sharpness
+4. הוספת color boost לצבעים פעילים
 
 ## תוצאה צפויה
-- מעברים "קרמיים" חלקים בין כל הצבעים (צהוב↔ורוד↔שחור)
-- אין קווים נראים לעין
-- Edge fade עדין שנראה טבעי
-- שמירה על דיוק המשקלים (30% שחור = ~30% שטח)
+
+עם הפריסט הראשוני (Yellow/Pink/Black):
+- **Yellow** ו-**Pink** יופיעו ככתמים מובחנים ונפרדים
+- **Color3 (Black)** לא "יגנוב" מתקציב האור
+- **Blur גבוה** עדיין יתן מעברים רכים אבל לא יהפוך הכל לצבע אחד
+- **אזורי שחור** מובחנים (30% בסיס) בין כתמי הצבע
 
 ## בדיקות
-1. Mesh עם הקונפיג שלך (Yellow/Pink/Black) - לוודא שהמעבר חלק
-2. Static mode (Animate OFF) - לוודא שאין banding
-3. Edge fade - לוודא שהפייד לשחור רך ולא פתאומי
+1. פריסט ראשוני - לוודא שרואים Yellow ו-Pink נפרדים
+2. פריסט 77% שחור - לוודא שהשחור דומיננטי והצבעים מעומעמים
+3. Blur 0% vs 100% - לוודא ששניהם נראים טוב
