@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { forwardRef, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { GradientConfig } from '@/types/gradient';
@@ -530,18 +530,34 @@ void main() {
       n1 += radialBias * 0.1;
     }
     
-    // Stripe-style power falloff with blur influence
-    float sharpness = mix(2.5, 4.5, 1.0 - uBlur); // Blur reduces sharpness
+    // Premium mesh: keep blobs soft, not “lava lamp”, while preserving black.
+    // Blur should *reduce* sharpness more aggressively.
+    float sharpness = mix(1.8, 3.6, 1.0 - uBlur);
     
     float w1 = uWeight1 / 100.0;
     float w2 = uWeight2 / 100.0;
     float w3 = uWeight3 / 100.0;
     float w4 = uWeight4 / 100.0;
     
-    float intensity1 = pow(clamp(n1, 0.0, 1.0), sharpness) * w1 * 2.8;
-    float intensity2 = pow(clamp(n2, 0.0, 1.0), sharpness) * w2 * 2.8;
-    float intensity3 = pow(clamp(n3, 0.0, 1.0), sharpness) * w3 * 2.8;
-    float intensity4 = pow(clamp(n4, 0.0, 1.0), sharpness) * w4 * 2.8;
+    float intensity1 = pow(clamp(n1, 0.0, 1.0), sharpness) * w1;
+    float intensity2 = pow(clamp(n2, 0.0, 1.0), sharpness) * w2;
+    float intensity3 = pow(clamp(n3, 0.0, 1.0), sharpness) * w3;
+    float intensity4 = pow(clamp(n4, 0.0, 1.0), sharpness) * w4;
+
+    // Energy conservation: blackWeight controls available light budget.
+    float blackWeight = clamp(uWeight0 / 100.0, 0.0, 1.0);
+    float availableLight = clamp(1.0 - blackWeight, 0.0, 1.0);
+    float energy = intensity1 + intensity2 + intensity3 + intensity4;
+    float energyScale = (energy > 0.0001) ? (availableLight / energy) : 0.0;
+    // Prevent extreme scaling artifacts
+    energyScale = clamp(energyScale, 0.0, 2.5);
+    // Slight boost so colors still show at low availableLight (but remain muted)
+    energyScale *= mix(1.15, 0.95, blackWeight);
+
+    intensity1 *= energyScale;
+    intensity2 *= energyScale;
+    intensity3 *= energyScale;
+    intensity4 *= energyScale;
     
     intensity1 = clamp(intensity1, 0.0, 1.0);
     intensity2 = clamp(intensity2, 0.0, 1.0);
@@ -549,7 +565,7 @@ void main() {
     intensity4 = clamp(intensity4, 0.0, 1.0);
     
     // Additive light blending on black base
-    finalColor = uColor0; // Black base
+    finalColor = uColor0; // Base (usually black)
     
     vec3 light1 = uColor1 * intensity1;
     vec3 light2 = uColor2 * intensity2;
@@ -561,13 +577,11 @@ void main() {
     finalColor = finalColor + light2 * (1.0 - finalColor);
     finalColor = finalColor + light3 * (1.0 - finalColor);
     finalColor = finalColor + light4 * (1.0 - finalColor);
-    
-    // Black weight affects how much of the base shows through
-    float blackWeight = uWeight0 / 100.0;
-    // Higher black weight = reduce overall light intensity
-    float lightReduction = 1.0 - (blackWeight - 0.3) * 0.8; // 30% = 1.0, 50% = 0.84, etc.
-    lightReduction = clamp(lightReduction, 0.4, 1.0);
-    finalColor = finalColor * lightReduction;
+
+    // “Black haze”: ensure base actively mutes colors (premium smoky feel)
+    // When black is high, push colors closer to base without hard edges.
+    float haze = smoothstep(0.30, 0.90, blackWeight); // 30%->0, 90%->1
+    finalColor = mix(finalColor, uColor0, haze * 0.55);
     
     // Apply edge fade for premium floating look
     finalColor = mix(uColor0, finalColor, edgeFade);
@@ -616,8 +630,12 @@ void main() {
     }
   }
   
-  // Convert from Linear RGB back to sRGB for correct display
-  finalColor = linearToSrgb(finalColor);
+  // Color space:
+  // Mesh mode intentionally blends in sRGB to preserve brand colors.
+  // Other modes are treated as linear and converted back for output.
+  if (uGradientType != 0) {
+    finalColor = linearToSrgb(finalColor);
+  }
 
   // Subtle ordered dithering to reduce banding on static gradients
   // (Amplitude ~ < 1 LSB in 8-bit sRGB)
@@ -646,7 +664,8 @@ const typeToInt: Record<string, number> = {
   'waves': 6,
 };
 
-export function Custom4ColorGradient({ config }: Custom4ColorGradientProps) {
+export const Custom4ColorGradient = forwardRef<THREE.Mesh, Custom4ColorGradientProps>(
+  function Custom4ColorGradient({ config }, forwardedRef) {
   const materialRef = useRef<THREE.ShaderMaterial>(null);
   
   // Determine the gradient type (mesh uses wireframe flag)
@@ -768,7 +787,7 @@ export function Custom4ColorGradient({ config }: Custom4ColorGradientProps) {
   });
   
   return (
-    <mesh>
+    <mesh ref={forwardedRef}>
       <planeGeometry args={[10, 10]} />
       <shaderMaterial
         ref={materialRef}
@@ -778,4 +797,4 @@ export function Custom4ColorGradient({ config }: Custom4ColorGradientProps) {
       />
     </mesh>
   );
-}
+});
