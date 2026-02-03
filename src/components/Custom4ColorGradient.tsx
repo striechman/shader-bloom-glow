@@ -233,23 +233,44 @@ void main() {
     
     // Blend layers with emphasis on smoothness
     // Primary layer dominates, others add subtle movement
-    float baseNoise = n1 * 0.45 + n2 * 0.30 + n3 * 0.20 + n4 * 0.05;
+    // Octave weights sum to 1.0 for normalized amplitude
+    float w1 = 0.45, w2 = 0.30, w3 = 0.20, w4 = 0.05;
+    float baseNoise = n1 * w1 + n2 * w2 + n3 * w3 + n4 * w4;
+    
+    // snoise returns [-1, 1], so theoretical max amplitude is w1+w2+w3+w4 = 1.0
+    // In practice, peaks are rarely reached simultaneously.
+    // Scale by inverse of sum to ensure we CAN reach ±1.0 before normalization.
+    float ampSum = w1 + w2 + w3 + w4;
+    baseNoise = baseNoise / ampSum; // Now in [-1, 1] theoretical range
     
     // Normalize from [-1, 1] to [0, 1]
     baseNoise = baseNoise * 0.5 + 0.5;
     
     baseNoise += styleMod;
     
-    // Clamp and remap to ensure the field uses the full 0..1 range.
-    // This is CRITICAL so Color0 (base/black) maintains its weight area
-    // even when Weight0 is high (e.g., 50%+).
+    // Clamp to valid range before histogram stretch
     baseNoise = clamp(baseNoise, 0.0, 1.0);
+    
+    // =========================================================================
+    // HISTOGRAM STRETCH: Spread values toward 0 and 1
+    // =========================================================================
+    // Problem: Procedural noise tends to cluster around 0.5, leaving Color0 
+    // (at the low end) with almost no pixels even when weight is 30-50%.
+    //
+    // Solution: Apply power-curve stretch centered at 0.5:
+    //   centered = noise - 0.5                    (shift to [-0.5, 0.5])
+    //   stretched = sign(centered) * pow(|centered| * 2, gamma) * 0.5
+    //   result = stretched + 0.5                  (shift back to [0, 1])
+    //
+    // With gamma < 1.0 (e.g., 0.7), values near 0.5 get pushed toward extremes,
+    // "opening the tails" so Color0 and Color3/4 get their fair share of area.
+    //
+    float centered = baseNoise - 0.5;
+    float stretchGamma = 0.7; // Lower = more aggressive stretch
+    float stretched = sign(centered) * pow(abs(centered) * 2.0, stretchGamma) * 0.5;
+    baseNoise = clamp(stretched + 0.5, 0.0, 1.0);
 
-    // Soft histogram stretch (S-curve) to avoid collapsing into mid/high values
-    // and to keep the base segment visible.
-    baseNoise = smoothstep(0.08, 0.92, baseNoise);
-
-    noise = clamp(baseNoise, 0.0, 1.0);
+    noise = baseNoise;
     
   } else if (uGradientType == 1) {
     // SPHERE MODE: Classic 3D sphere with smooth color blending
