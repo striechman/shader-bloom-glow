@@ -240,14 +240,15 @@ void main() {
     
     baseNoise += styleMod;
     
-    // Clamp and apply VERY gentle S-curve for premium look
-    // Not too much contrast - we want creamy, soft transitions
+    // Clamp and remap to ensure the field uses the full 0..1 range.
+    // This is CRITICAL so Color0 (base/black) maintains its weight area
+    // even when Weight0 is high (e.g., 50%+).
     baseNoise = clamp(baseNoise, 0.0, 1.0);
-    
-    // Gentle S-curve: less aggressive than smoothstep for softer blending
-    float t_curve = baseNoise;
-    baseNoise = t_curve * t_curve * (3.0 - 2.0 * t_curve) * 0.8 + t_curve * 0.2;
-    
+
+    // Soft histogram stretch (S-curve) to avoid collapsing into mid/high values
+    // and to keep the base segment visible.
+    baseNoise = smoothstep(0.08, 0.92, baseNoise);
+
     noise = clamp(baseNoise, 0.0, 1.0);
     
   } else if (uGradientType == 1) {
@@ -501,9 +502,10 @@ void main() {
     // Minimum width to prevent harsh edges
     transitionWidth = max(transitionWidth, 0.06);
     
-    // Calculate blend factors with wide, overlapping transitions
-    // Each transition zone spans 2x transitionWidth, centered on threshold
-    float blend01 = smoothstep(threshold0 - transitionWidth * 0.3, threshold0 + transitionWidth * 1.5, noise);
+    // IMPORTANT: Keep Color0 SOLID up to threshold0.
+    // If blend01 starts before threshold0, Color1 bleeds into the base area
+    // and makes it look like there's no black even at 50%+.
+    float blend01 = smoothstep(threshold0, threshold0 + transitionWidth * 2.0, noise);
     float blend12 = smoothstep(threshold1 - transitionWidth, threshold1 + transitionWidth, noise);
     float blend23 = smoothstep(threshold2 - transitionWidth, threshold2 + transitionWidth, noise);
     float blend34 = smoothstep(threshold3 - transitionWidth, threshold3 + transitionWidth, noise);
