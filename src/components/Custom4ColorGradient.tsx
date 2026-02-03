@@ -176,8 +176,10 @@ void main() {
   
   vec2 centeredUv = vUv - 0.5;
   
-  // No edge fade - fill the entire canvas for consistent exports
-  float edgeFade = 1.0;
+  // Edge fade (vignette) for Mesh mode - smooth fade to black at edges
+  // This creates a premium "floating in darkness" look
+  float edgeDist = length(centeredUv) * 2.0; // 0 at center, ~1.4 at corners
+  float edgeFade = 1.0 - smoothstep(0.7, 1.3, edgeDist); // Fade starts at 70% from center
   
   float noise;
   
@@ -198,9 +200,9 @@ void main() {
       sampleUv.x += sin(sampleUv.y * 4.0 + t) * 0.08;
     }
     
-    // Very low frequency for LARGE, cloud-like blobs
-    // Lower scale = bigger, softer shapes
-    float noiseScale = max(0.2, uNoiseScale) * 0.4;
+    // Noise scale: Higher = smaller blobs, more detail
+    // Default noiseScale=3.0 with multiplier gives good variety
+    float noiseScale = max(0.5, uNoiseScale) * 0.8;
     
     // Layer 1: Primary large-scale structure
     vec3 pos1 = vec3(sampleUv * noiseScale, t * 0.3);
@@ -516,9 +518,9 @@ void main() {
     // Wide, silky transitions for that premium gradient feel.
     // Key: Much wider transition zones than Plane mode.
     
-    // For Mesh mode, use MUCH wider transitions for soft blob look
+    // For Mesh mode, use moderate transitions (not too wide = visible shape)
     // Other modes can use slightly tighter transitions
-    float baseTrans = (uGradientType == 0) ? 0.18 : 0.08;
+    float baseTrans = (uGradientType == 0) ? 0.12 : 0.08;
     
     // Transition width: blur adds more softness
     float transitionWidth = baseTrans + blurFactor * 0.25;
@@ -546,6 +548,11 @@ void main() {
     if (uHasColor4) {
       finalColor = mix(finalColor, uColor4, blend34);
     }
+  }
+  
+  // Apply edge fade for Mesh mode (fade to black at edges)
+  if (uGradientType == 0) {
+    finalColor = mix(uColor0, finalColor, edgeFade);
   }
   
   // Convert from Linear RGB back to sRGB for correct display
