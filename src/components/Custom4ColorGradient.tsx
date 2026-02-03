@@ -132,6 +132,11 @@ uniform float uWavesAmplitude;
 varying vec2 vUv;
 varying vec3 vPosition;
 
+// Luminance calculation (standard Rec.709 coefficients)
+float luma(vec3 color) {
+  return dot(color, vec3(0.299, 0.587, 0.114));
+}
+
 // sRGB to Linear RGB conversion (gamma decoding)
 vec3 srgbToLinear(vec3 srgb) {
   vec3 low = srgb / 12.92;
@@ -227,13 +232,21 @@ void main() {
     }
     
     // =========================================================================
-    // STRIPE-STYLE POWER FALLOFF: pow(noise, 4.0)
+    // LUMINANCE GUARDING: Filter black colors from energy budget
     // =========================================================================
-    // This is the key technique from Stripe's gradient.js:
-    // Using pow() to "sharpen" noise into concentrated islands of color
-    // while keeping transitions creamy (not linear cutoffs)
+    // Black colors (#000000) should not "steal" from the light energy budget
+    // since they contribute zero light. Only count colors that actually emit light.
     
-    float sharpness = 3.5; // Higher = more concentrated blobs, more black visible
+    float luma1 = luma(uColor1);
+    float luma2 = luma(uColor2);
+    float luma3 = luma(uColor3);
+    float luma4 = uHasColor4 ? luma(uColor4) : 0.0;
+    
+    // =========================================================================
+    // ADAPTIVE SHARPNESS: Maintain color separation even at high blur
+    // =========================================================================
+    // Higher sharpness floor (2.5) prevents colors from merging into mud at blur=95%
+    float sharpness = mix(2.5, 4.0, 1.0 - uBlur);
     
     // Weight-adjusted intensities - higher weight = more visible blob
     float w1 = uWeight1 / 100.0;
@@ -242,63 +255,74 @@ void main() {
     float w4 = uWeight4 / 100.0;
     
     // Power-curve falloff: creates concentrated color islands
-    // The pow() function makes low noise values even lower (more black)
-    // and only lets high noise values through (color islands)
     float intensity1 = pow(n1, sharpness) * w1 * 2.5;
     float intensity2 = pow(n2, sharpness) * w2 * 2.5;
     float intensity3 = pow(n3, sharpness) * w3 * 2.5;
     float intensity4 = pow(n4, sharpness) * w4 * 2.5;
     
-    // Blur affects how spread out the light is (lower sharpness = softer)
-    float blurMod = 1.0 - uBlur * 0.4;
+    // Blur affects how spread out the light is
+    float blurMod = 1.0 - uBlur * 0.3; // Reduced blur impact
     intensity1 = pow(intensity1, blurMod);
     intensity2 = pow(intensity2, blurMod);
     intensity3 = pow(intensity3, blurMod);
     intensity4 = pow(intensity4, blurMod);
     
-    // Clamp intensities
-    intensity1 = clamp(intensity1, 0.0, 1.0);
-    intensity2 = clamp(intensity2, 0.0, 1.0);
-    intensity3 = clamp(intensity3, 0.0, 1.0);
-    intensity4 = clamp(intensity4, 0.0, 1.0);
+    // =========================================================================
+    // ENERGY CONSERVATION: Only count colors that contribute light
+    // =========================================================================
+    // Colors with luminance < 0.05 are effectively black - exclude from energy
+    float effectiveIntensity1 = (luma1 > 0.05) ? intensity1 : 0.0;
+    float effectiveIntensity2 = (luma2 > 0.05) ? intensity2 : 0.0;
+    float effectiveIntensity3 = (luma3 > 0.05) ? intensity3 : 0.0;
+    float effectiveIntensity4 = (luma4 > 0.05) ? intensity4 : 0.0;
+    
+    float energy = effectiveIntensity1 + effectiveIntensity2 + effectiveIntensity3 + effectiveIntensity4;
+    
+    // Count active (light-emitting) colors for boost calculation
+    float activeCount = step(0.05, luma1) + step(0.05, luma2) + step(0.05, luma3) + step(0.05, luma4);
+    
+    // Boost remaining colors when some are black (fewer colors = more intensity each)
+    float colorBoost = mix(1.0, 1.6, 1.0 - activeCount / 4.0);
+    
+    // Available light is reduced by black weight (Color0)
+    float blackWeight = uWeight0 / 100.0;
+    float availableLight = clamp(1.0 - blackWeight, 0.0, 1.0);
+    
+    // Scale intensities to respect energy budget
+    float energyScale = (energy > 0.001) ? (availableLight / energy) : 0.0;
+    energyScale = min(energyScale, 2.0); // Cap to prevent over-brightening
+    
+    // Apply energy scale and color boost
+    intensity1 = clamp(intensity1 * energyScale * colorBoost, 0.0, 1.0);
+    intensity2 = clamp(intensity2 * energyScale * colorBoost, 0.0, 1.0);
+    intensity3 = clamp(intensity3 * energyScale * colorBoost, 0.0, 1.0);
+    intensity4 = clamp(intensity4 * energyScale * colorBoost, 0.0, 1.0);
     
     // =========================================================================
     // ADDITIVE BLENDING: Colors as light sources on black
     // =========================================================================
-    // Start with pure black (Color0), add each color as a light source
-    // This naturally preserves black in areas where no light is present
-    
     vec3 meshColor = uColor0; // Start with black base
     
-    // Screen blend mode for natural light mixing
-    // Screen: 1 - (1-a)(1-b) - colors add up without oversaturation
-    vec3 light1 = uColor1 * intensity1;
-    vec3 light2 = uColor2 * intensity2;
-    vec3 light3 = uColor3 * intensity3;
-    vec3 light4 = uHasColor4 ? uColor4 * intensity4 : vec3(0.0);
+    // Only add light from colors that actually emit light
+    vec3 light1 = (luma1 > 0.05) ? uColor1 * intensity1 : vec3(0.0);
+    vec3 light2 = (luma2 > 0.05) ? uColor2 * intensity2 : vec3(0.0);
+    vec3 light3 = (luma3 > 0.05) ? uColor3 * intensity3 : vec3(0.0);
+    vec3 light4 = (luma4 > 0.05 && uHasColor4) ? uColor4 * intensity4 : vec3(0.0);
     
-    // Additive blend with soft clamping
-    meshColor = meshColor + light1;
-    meshColor = meshColor + light2;
-    meshColor = meshColor + light3;
-    meshColor = meshColor + light4;
+    // Additive blend
+    meshColor = meshColor + light1 + light2 + light3 + light4;
     
     // Soft HDR tonemapping to prevent harsh clipping
-    meshColor = meshColor / (1.0 + meshColor * 0.5);
+    meshColor = meshColor / (1.0 + meshColor * 0.4);
     
-    // Apply Color0 weight: higher weight = more black areas preserved
-    // This works by reducing overall light intensity
-    float blackWeight = uWeight0 / 100.0;
-    float blackPreserve = 0.5 + blackWeight; // 30% weight = 0.8 multiplier
-    meshColor = meshColor * (1.0 / blackPreserve);
+    // Black haze: when black weight is high, add smoky overlay
+    float haze = smoothstep(0.30, 0.90, blackWeight);
+    meshColor = mix(meshColor, uColor0, haze * 0.5);
+    
     meshColor = clamp(meshColor, 0.0, 1.0);
     
-    // Convert back to noise space for compatibility with rest of shader
-    // Actually, we'll handle this specially in the blending section
-    noise = 0.5; // Placeholder - we'll use meshColor directly
-    
-    // Store mesh color for later use (we need a different path for mesh)
-    // Since we can't pass vec3 through noise, we'll reconstruct in blend section
+    // Placeholder for compatibility with rest of shader
+    noise = 0.5;
     
   } else if (uGradientType == 1) {
     // SPHERE MODE: Classic 3D sphere with smooth color blending
