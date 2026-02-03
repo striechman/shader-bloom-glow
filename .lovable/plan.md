@@ -1,77 +1,80 @@
 
-מטרה
-- במצב Mesh/Aurora: להחזיר “Color0 (שחור)” כך שיישב באמת על המינימום/משקל שנקבע (30% מינימום, ולעיתים 50% דיפולט אצלך), וגם שכל שאר צבעי המותג יישארו נראים ומעברי הצבע יהיו “פרימיום” וחלקים כבר בדיפולט (בלי צורך “להגדיל blobs” ידנית).
-- לשדרג את ה-Debug Overlay כך שיראו בו את כל הנתונים הרלוונטיים (כולל נגזרות שמסבירות למה שחור נעלם), ולהוסיף כפתור “העתק” (Copy) לשיתוף מצב מדויק.
+# תיקון מעברי צבע חלקים ב-Mesh Mode
 
-מה הבעיה כרגע (לפי הקוד + התיאור/צילום)
-1) המשקלים עצמם מחושבים נכון בצד ה-UI (Thresholds מוצגים כראוי), אבל ב-Mesh השדה הסקלרי noise לא “מתפרס” על כל הטווח 0..1 בצורה מספקת.
-   - אם ה-noise כמעט אף פעם לא יורד מתחת ל-0.30, אז Color0 “לא מקבל שטח” בפועל ולכן לא רואים שחור, גם אם המשקל שלו 30% או 50%.
-2) עשינו remap עם smoothstep(0.08, 0.92) שמייצר S-curve, אבל זה לא “מאזן היסטוגרמה” כמו שצריך עבור פרוצדורל-נויז; בפועל זה עדיין יכול להשאיר את רוב הערכים באזור האמצע/גבוה → Color0 נעלם.
-3) בנוסף, במראה “פרימיום” נרצה גם:
-   - דיתרינג (כבר קיים) כדי למנוע banding בסטטי.
-   - מעבר רחב/קרמי (כבר קיים), אבל הוא לא יעזור אם השדה לא מפוזר נכון.
+## הבעיה
+בתמונה רואים שהמעבר בין **צהוב (Yellow)** ל**ורוד (Pink)** לא חלק - יש "קו" או "פס" בולט במקום מעבר קרמי רך. גם ה-edge fade לא מספיק רך.
 
-פתרון מוצע (עקרון)
-A) ב-Mesh/Aurora: להחליף את ה-remap של ה-noise מ-smoothstep(0.08,0.92) למתיחת היסטוגרמה אמיתית (Histogram Stretch) סביב 0.5, כפי שמוגדר גם במסמך docs/GRADIENT_ENGINE.md.
-   - זה “פותח” את הזנבות (קרוב ל-0 ול-1) ומונע מצב שבו הכל נדחס סביב 0.5.
-   - זה קריטי כדי ש-Color0 יקבל שטח אמיתי בהתאם למשקל שלו.
+## אבחון טכני
+מהקונפיג שהעברת:
+```
+transitionWidth: 0.1481
+meshBlur: 58
+thresholds: T0:30, T1:55, T2:80, T3:100
+```
 
-B) לנרמל נכון את טווח ה-noise לפני המתיחה
-- כיום אנחנו עושים weighted sum של 4 שכבות snoise ואז *0.5 + 0.5, אבל בפועל האמפליטודה האפקטיבית יכולה להיות קטנה מהמצופה (תלוי בסקיילים/דנסיטי/תזוזות) → טווח צר.
-- נוסיף שלב נרמול שמרכיב “amplitudeMax” לפי סכום המשקולות של השכבות (למשל 0.45+0.30+0.20+0.05) ומחלק כדי להגיע לטווח צפוי, ואז clamp.
+הסיבות לבעיה:
+1. **Transition Width קטן מדי**: ב-`0.1481` יש רק ~15% של טווח הרעש למעבר בין שני צבעים, מה שיוצר "קו" נראה לעין
+2. **Sequential Mix Effect**: כשעושים `mix(color1, color2, blend12)` ואז מיד אחר כך `mix(result, color3, blend23)`, המעברים נחתכים אחד בשני
+3. **Edge Fade לא מספיק הדרגתי**: ה-smoothstep(0.7, 1.3) קופץ מהר מדי בקצוות
 
-C) לשמור על כלל המשקלים בלי “זליגה” של Color1 לתוך Color0
-- כבר נעשה אצלנו שינוי חשוב: blend01 מתחיל רק ב-threshold0 (Color0 סולידי עד T0). נשמור את זה.
-- לאחר שנאזן את noise, Color0 יחזור להופיע בדיפולט בהתאם למשקל.
+## פתרון מוצע
 
-D) שיפור ה-Debug Overlay
-- להוסיף בשכבת הדיבוג עוד נתונים “נגזרים” שמסבירים מה השיידר עושה בפועל:
-  1) Active gradientType numeric (uGradientType) + האם wireframe פעיל.
-  2) Mesh internal effectiveNoiseScale (למשל uNoiseScale * 0.4 כפי שקורה בשיידר) כדי להבין למה הכתמים ענקיים/קטנים.
-  3) TransitionWidth משוער (לפי הנוסחה בשיידר: baseTrans + blurFactor*0.25 ואז / strengthMod ואז clamp מינימום).
-  4) Histogram stretch mode (למשל “histStretchPow=0.7”) כדי לוודא שאנחנו על האלגוריתם הנכון.
-  5) הצגה גם של Weight4/HasColor4 כדי שלא יהיה בלבול.
-- להוסיף כפתור Copy שמעתיק ללוח:
-  - JSON מסודר של ה-config (כולל צבעים, משקלים, פרמטרי Mesh/Plane), וגם “Derived” (הנגזרות לעיל).
-  - כך אתה יכול לשלוח לי/לצוות מצב מדויק בלי צילומי מסך.
+### שינויים בשיידר (Custom4ColorGradient.tsx):
 
-קבצים שניגע בהם
-1) src/components/Custom4ColorGradient.tsx
-- שינוי לוגיקת ה-noise בבלוק uGradientType == 0 (Mesh/Aurora):
-  - נרמול אמפליטודה.
-  - החלפת smoothstep(0.08,0.92) ב-Histogram Stretch לפי הדוק:
-    - centered = noise - 0.5
-    - stretched = sign(centered) * pow(abs(centered)*2.0, 0.7) * 0.5
-    - noise = clamp(stretched + 0.5, 0.0, 1.0)
-  - לשמור על המראה הפרימיום (multi-layer) אבל להבטיח התפלגות שמכבדת weights.
+**1. הגדלת Transition Width בסיסי:**
+```glsl
+// לפני:
+float baseTrans = (uGradientType == 0) ? 0.12 : 0.08;
 
-2) src/components/GradientDebugOverlay.tsx
-- הרחבת תצוגת נתונים (כולל derived values).
-- הוספת Copy button (navigator.clipboard.writeText).
-- להציג הודעת הצלחה קצרה (אפשר מינימלית, או להשתמש ב-sonner/toast אם כבר נהוג בפרויקט; נבחר לפי הקיים בקוד).
+// אחרי: 
+float baseTrans = (uGradientType == 0) ? 0.18 : 0.08;
+```
 
-קריטריוני הצלחה (בדיקות שאתה תוכל לעשות מיד אחרי השינוי)
-1) מצב Mesh, Animate OFF, Frozen Time 10, ועם המשקלים שלך:
-   - Color0 30%: חייב לראות שחור ברור כבר בדיפולט (לא רק כשמשנים blur/noise scale).
-   - Color0 50%: עדיין חייבים להישאר נראים 3 צבעי המותג (רק פחות שטח, אבל לא להיעלם).
-2) בדיקת “התאמת שטח למשקל” (ויזואלית):
-   - ב-30% שחור: בערך שליש מהקנבס מרגיש בסיס כהה לפני כניסת הצבעים.
-3) בדיקת “פרימיום/חלק”:
-   - לא לראות קווים/פסים (banding) במצב סטטי.
-   - מעברים “קרמיים” גם כש-Blur=70.
-4) Debug Overlay:
-   - כל הנתונים מוצגים.
-   - Copy מעתיק JSON שאפשר להדביק בצ’אט ולשחזר מצב.
+**2. Overlap Blending במקום Sequential Mix:**
+במקום מעברים חדים שנחתכים ב-threshold, ניצור "חפיפה" בין כל זוג צבעים סמוכים:
+```glsl
+// מעברים עם חפיפה - כל צבע "נכנס" קצת לפני שהקודם "יוצא"
+float overlapFactor = 0.5; // כמה חפיפה בין מעברים
+float tw = transitionWidth * (1.0 + overlapFactor);
 
-סיכונים/Trade-offs
-- מתיחת היסטוגרמה חזקה מדי יכולה לגרום ליותר “קונטרסט” בין אזורי צבע (פחות עדין). נבחר אקספוננט עדין (כמו 0.7 בדוק), ואם צריך נעדן ל-0.8–0.9.
-- אם עדיין תהיה סטייה בין “אחוז” לבין “שטח נראה” (בגלל אופי הרעש), נוכל לבצע שלב נוסף: histogram stretching מותאם (S-curve) עם פרמטר נשלט, אבל קודם ניישר קו עם האלגוריתם שבמסמך.
+float blend01 = smoothstep(threshold0 - tw * 0.3, threshold0 + tw, noise);
+float blend12 = smoothstep(threshold1 - tw, threshold1 + tw, noise);
+float blend23 = smoothstep(threshold2 - tw, threshold2 + tw, noise);
+```
 
-הערה קטנה על “דיפולט 50% שחור”
-- לפי src/types/gradient.ts הדיפולט של Color0 הוא 30%. אם אצלך בפועל זה יוצא 50% כברירת מחדל, זה כנראה מגיע מ-preset/מצב שמעלה את Color0. אחרי שהשדה יתאזן, גם 50% אמור להראות שחור ברור ועדיין לשמור צבעים נוספים.
+**3. Edge Fade רחב יותר:**
+```glsl
+// לפני:
+float edgeFade = 1.0 - smoothstep(0.7, 1.3, edgeDist);
 
-תלויות / סדר ביצוע
-1) עדכון Custom4ColorGradient.tsx (Mesh noise remap + normalization + histogram stretch).
-2) עדכון GradientDebugOverlay.tsx (נתונים נוספים + Copy).
-3) בדיקה ידנית ב-Preview עם 2–3 סטים של משקלים (30%, 50%, 80% שחור) במצב Mesh וגם Aurora.
+// אחרי: Fade מתחיל מ-50% מהמרחק ומתפשט עד 140%
+float edgeFade = 1.0 - smoothstep(0.5, 1.4, edgeDist);
+```
 
+**4. Blur משפיע יותר על Transition:**
+```glsl
+// לפני:
+float transitionWidth = baseTrans + blurFactor * 0.25;
+
+// אחרי: Blur יותר דומיננטי למראה קרמי
+float transitionWidth = baseTrans + blurFactor * 0.4;
+```
+
+### עדכון Debug Overlay:
+- להוסיף את `overlapFactor` לתצוגה
+- להציג את `edgeFadeRange` (0.5-1.4 במקום 0.7-1.3)
+
+## קבצים לעריכה
+1. `src/components/Custom4ColorGradient.tsx` - שינויי שיידר
+2. `src/components/GradientDebugOverlay.tsx` - עדכון תצוגת debug
+
+## תוצאה צפויה
+- מעברים "קרמיים" חלקים בין כל הצבעים (צהוב↔ורוד↔שחור)
+- אין קווים נראים לעין
+- Edge fade עדין שנראה טבעי
+- שמירה על דיוק המשקלים (30% שחור = ~30% שטח)
+
+## בדיקות
+1. Mesh עם הקונפיג שלך (Yellow/Pink/Black) - לוודא שהמעבר חלק
+2. Static mode (Animate OFF) - לוודא שאין banding
+3. Edge fade - לוודא שהפייד לשחור רך ולא פתאומי
