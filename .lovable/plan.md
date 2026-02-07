@@ -1,107 +1,110 @@
 
 
-# Fix Color Accuracy in Mesh Mode - Color Space Correction
+# Fix Color Accuracy and Weight-to-Area Mapping Across All Effects
 
-## The Problem
-Colors don't match their hex values: Salmon (#F2665F) appears as deep red, Purple (#6A00F4) appears as blue. The gradient looks shifted away from the intended brand colors.
+## Two Problems Identified
 
-## Root Cause: THREE.Color Automatic Conversion
+### Problem 1: Color Accuracy (Same issue fixed in Glow/Mesh, but still exists in Water, Conic, Waves)
+Water, Conic, and Waves modes blend colors using linear RGB values (auto-converted by THREE.js), which shifts hues. Mesh and Glow modes already fix this by converting to sRGB before blending — but the other modes don't.
 
-Since Three.js r152+, `THREE.ColorManagement.enabled` defaults to `true`. This means:
+### Problem 2: Increasing Black Weight Dims Colors Instead of Shrinking Their Area
+When the base color (Color 0 / black) weight goes up from 30% to 70%, colors should stay **equally bright** but occupy **less area**. Currently, they get dimmer AND smaller.
 
+**In Mesh mode** (Radial Glow):
 ```text
-User picks #6A00F4 (purple in sRGB)
-        |
-        v
-THREE.Color.set('#6A00F4')
-        |
-        v
-Automatic sRGB -> Linear conversion
-Stored as: (0.158, 0.0, 0.914)    <-- NOT (0.416, 0.0, 0.957)
-        |                               Red channel crushed!
-        v
-Shader receives LINEAR values
-        |
-        v
-Mesh mode SKIPS linearToSrgb (line 559)
-        |
-        v
-Linear values output directly to screen
-        |
-        v
-Purple looks BLUE (red channel too dark)
-Salmon looks RED (green/blue channels too dark)
+Current:  g1 = exp(-d²/r²) * w1 * glowBoost
+                              ^^
+                     weight multiplies INTENSITY
+                     
+When w1 drops from 25% to 10%:
+  - Radius shrinks (correct: less area)  
+  - Intensity drops to 40% (wrong: colors dim)
 ```
 
-The shader comment says "Mesh mode blends in sRGB" -- but the input colors are actually LINEAR (due to Three.js auto-conversion). So the shader has been blending linear values while thinking they're sRGB.
+**In Glow mode** (Additive Light):
+```text
+Current:  orb1 *= w1 * glowIntensity
+                  ^^
+          Same problem: weight dims the light source
+```
 
-Non-mesh modes work correctly because they apply `linearToSrgb()` at the end (line 559), which converts the linear result back to sRGB for display.
+**In threshold modes** (Water, Conic, Waves):
+```text
+Current:  transitionWidth = 0.10 (fixed)
+          Color zone width when w0=70%: only ~0.107
+
+          Transition zone nearly covers the entire color band!
+          Color never reaches full saturation.
+```
+
+---
 
 ## The Fix
 
-Convert uniform colors from Linear back to sRGB at the start of the mesh block, then blend in true sRGB space. This is a small, surgical fix.
-
 ### File: `src/components/Custom4ColorGradient.tsx`
 
-**Change 1: Add sRGB conversion at start of mesh block (around line 398)**
-
-After the existing mesh mode comment block, add color conversion:
-
-```glsl
-// Convert from Linear (THREE.Color auto-converts) back to sRGB for perceptual blending
-vec3 sColor0 = linearToSrgb(uColor0);
-vec3 sColor1 = linearToSrgb(uColor1);
-vec3 sColor2 = linearToSrgb(uColor2);
-vec3 sColor3 = linearToSrgb(uColor3);
-vec3 sColor4 = linearToSrgb(uColor4);
-```
-
-**Change 2: Use sColor* instead of uColor* in the mesh blend (line 504)**
-
-Replace:
-```glsl
-finalColor = uColor0 * a0 + uColor1 * a1 + uColor2 * a2 + uColor3 * a3;
-if (uHasColor4) {
-  finalColor += uColor4 * a4;
-}
-finalColor = mix(uColor0, finalColor, edgeFade);
-```
-
-With:
-```glsl
-finalColor = sColor0 * a0 + sColor1 * a1 + sColor2 * a2 + sColor3 * a3;
-if (uHasColor4) {
-  finalColor += sColor4 * a4;
-}
-finalColor = mix(sColor0, finalColor, edgeFade);
-```
-
-**Change 3: Keep line 559 as-is** -- mesh mode already outputs sRGB after this fix, so skipping the final `linearToSrgb` is correct.
-
-## Why This Works
+#### Change 1: Mesh Mode — Weight Controls Area, Not Brightness
+Remove weight from the glow intensity multiplier. Weight already controls the radius (area). Intensity at the center of each blob stays constant regardless of weight.
 
 ```text
-After fix:
-                                     
-THREE.Color.set('#6A00F4')           
-  -> Linear: (0.158, 0.0, 0.914)    
-  -> Shader receives LINEAR          
-  -> linearToSrgb() at start of mesh 
-  -> sRGB: (0.416, 0.0, 0.957)      <- Original hex values restored!
-  -> Blend in sRGB space             
-  -> Output sRGB directly            
-  -> Screen shows correct purple     
+Before: g1 = exp(-d²/r²) * w1 * glowBoost    (double counting w1)
+After:  g1 = exp(-d²/r²) * glowBoost          (w1 only in radius r1)
 ```
 
-## What This Does NOT Change
-- Other modes (Plane, Water, Conic, Spiral, Waves) are completely unaffected -- they already handle the conversion at line 559
-- The Radial Glow blending model stays exactly the same
-- Gaussian positions, softness, distortion -- all unchanged
-- Only the COLOR VALUES fed into the final blend are corrected
+The `darkBase = w0 * boost` in the normalization naturally fills more area when w0 increases, pushing color blobs into smaller zones while keeping them vivid.
+
+#### Change 2: Glow Mode — Same Fix
+Weight controls orb size (Gaussian spread radius), not intensity. The light stays bright at its center, just covers less area.
+
+```text
+Before: orb1 *= w1 * glowIntensity
+After:  orb1 *= glowIntensity   (w1 already controls orb radius)
+```
+
+#### Change 3: Threshold Modes (Water, Conic, Waves) — Adaptive Transition Width
+Cap the transition width so it never exceeds a fraction of the narrowest color zone. This ensures that even when color zones are compressed (high w0), each color reaches full saturation at its center.
+
+```text
+Before: transitionWidth = baseTrans + blurFactor * 0.20  (fixed)
+After:  
+  minZone = min(w1, w2, w3)         // narrowest color zone
+  maxTrans = minZone * 0.4          // never exceed 40% of narrowest zone
+  transitionWidth = min(calculated, maxTrans)
+```
+
+#### Change 4: sRGB Conversion for Water, Conic, Waves
+Same fix already applied to Mesh and Glow — convert `uColor*` to sRGB before blending so colors match their hex values. Skip the final `linearToSrgb()` for these modes since they'll already be in sRGB.
+
+```text
+// At start of each mode block:
+vec3 sColor0 = linearToSrgb(uColor0);
+vec3 sColor1 = linearToSrgb(uColor1);
+// ... blend with sColor* instead of uColor*
+
+// Skip linearToSrgb at line 642 for these modes too
+```
+
+---
+
+## What Changes
+
+| Mode | Color Fix | Weight Fix |
+|------|-----------|------------|
+| Mesh | Already done | Remove w1 from intensity |
+| Glow | Already done | Remove w1 from intensity |
+| Plane | Already correct (linear blend is fine for monotonic) | Already correct (thresholds work well) |
+| Water | Add sRGB conversion | Cap transition width |
+| Conic | Add sRGB conversion | Cap transition width |
+| Waves | Add sRGB conversion | Cap transition width |
+
+## What Does NOT Change
+- Plane mode stays as-is (monotonic gradient, linear blend works correctly)
+- No UI changes needed
+- No new controls or parameters
+- Preset configs remain the same
 
 ## Expected Result
-- Salmon (#F2665F) will look like warm coral/salmon, not deep red
-- Purple (#6A00F4) will look like violet/purple, not blue
-- Yellow (#FDB515) will look like golden yellow, not orange
-- Black (#000000) stays black (linear and sRGB are identical for 0.0)
+- Colors stay vivid at any weight percentage
+- Increasing black weight = more dark area, colors shrink but stay bright
+- All effects show accurate hex colors (salmon looks salmon, purple looks purple)
 
