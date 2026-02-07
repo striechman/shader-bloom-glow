@@ -189,139 +189,7 @@ void main() {
   float noise;
   
   if (uGradientType == 0) {
-    // =========================================================================
-    // MESH MODE: Radial Light Sources on Dark Background
-    // =========================================================================
-    // Inspired by Linear.app/Stripe: Each color is an independent "light source"
-    // that fades smoothly into the black background using exponential falloff.
-    // This preserves the black base naturally in areas where no light is present.
-    
-    float t = uTime * 0.15;
-    vec2 sampleUv = vUv;
-    
-    // For Aurora mode: apply coordinate stretching
-    if (uMeshStretch) {
-      sampleUv.y = (sampleUv.y - 0.5) / uMeshStretchAmount + 0.5;
-      sampleUv.x += sin(sampleUv.y * 4.0 + t) * 0.08;
-    }
-    
-    float noiseScale = max(0.5, uNoiseScale) * 0.8;
-    
-    // Generate independent noise fields for each color's position/intensity
-    // Each color blob moves independently for organic feel
-    vec3 pos1 = vec3(sampleUv * noiseScale * 0.6, t * 0.25);
-    vec3 pos2 = vec3(sampleUv * noiseScale * 0.5, t * 0.2 + 100.0);
-    vec3 pos3 = vec3(sampleUv * noiseScale * 0.7, t * 0.15 + 200.0);
-    vec3 pos4 = vec3(sampleUv * noiseScale * 0.55, t * 0.18 + 300.0);
-    
-    float n1 = snoise(pos1) * 0.5 + 0.5;
-    float n2 = snoise(pos2) * 0.5 + 0.5;
-    float n3 = snoise(pos3) * 0.5 + 0.5;
-    float n4 = snoise(pos4) * 0.5 + 0.5;
-    
-    // Apply mesh style variations to blob positions
-    if (uMeshStyle == 1) {
-      vec2 flowDir = vec2(cos(uMeshFlowAngle), sin(uMeshFlowAngle));
-      float flowBias = dot(sampleUv - 0.5, flowDir);
-      n1 += flowBias * 0.15;
-      n2 -= flowBias * 0.1;
-    } else if (uMeshStyle == 2) {
-      float dist = length(sampleUv - 0.5);
-      float radialBias = uMeshCenterInward ? (1.0 - dist * 2.0) : (dist * 2.0);
-      n1 += radialBias * 0.1;
-    }
-    
-    // =========================================================================
-    // LUMINANCE GUARDING: Filter black colors from energy budget
-    // =========================================================================
-    // Black colors (#000000) should not "steal" from the light energy budget
-    // since they contribute zero light. Only count colors that actually emit light.
-    
-    float luma1 = luma(uColor1);
-    float luma2 = luma(uColor2);
-    float luma3 = luma(uColor3);
-    float luma4 = uHasColor4 ? luma(uColor4) : 0.0;
-    
-    // =========================================================================
-    // ADAPTIVE SHARPNESS: Maintain color separation even at high blur
-    // =========================================================================
-    // Higher sharpness floor (2.5) prevents colors from merging into mud at blur=95%
-    float sharpness = mix(2.5, 4.0, 1.0 - uBlur);
-    
-    // Weight-adjusted intensities - higher weight = more visible blob
-    float w1 = uWeight1 / 100.0;
-    float w2 = uWeight2 / 100.0;
-    float w3 = uWeight3 / 100.0;
-    float w4 = uWeight4 / 100.0;
-    
-    // Power-curve falloff: creates concentrated color islands
-    float intensity1 = pow(n1, sharpness) * w1 * 2.5;
-    float intensity2 = pow(n2, sharpness) * w2 * 2.5;
-    float intensity3 = pow(n3, sharpness) * w3 * 2.5;
-    float intensity4 = pow(n4, sharpness) * w4 * 2.5;
-    
-    // Blur affects how spread out the light is
-    float blurMod = 1.0 - uBlur * 0.3; // Reduced blur impact
-    intensity1 = pow(intensity1, blurMod);
-    intensity2 = pow(intensity2, blurMod);
-    intensity3 = pow(intensity3, blurMod);
-    intensity4 = pow(intensity4, blurMod);
-    
-    // =========================================================================
-    // ENERGY CONSERVATION: Only count colors that contribute light
-    // =========================================================================
-    // Colors with luminance < 0.05 are effectively black - exclude from energy
-    float effectiveIntensity1 = (luma1 > 0.05) ? intensity1 : 0.0;
-    float effectiveIntensity2 = (luma2 > 0.05) ? intensity2 : 0.0;
-    float effectiveIntensity3 = (luma3 > 0.05) ? intensity3 : 0.0;
-    float effectiveIntensity4 = (luma4 > 0.05) ? intensity4 : 0.0;
-    
-    float energy = effectiveIntensity1 + effectiveIntensity2 + effectiveIntensity3 + effectiveIntensity4;
-    
-    // Count active (light-emitting) colors for boost calculation
-    float activeCount = step(0.05, luma1) + step(0.05, luma2) + step(0.05, luma3) + step(0.05, luma4);
-    
-    // Boost remaining colors when some are black (fewer colors = more intensity each)
-    float colorBoost = mix(1.0, 1.6, 1.0 - activeCount / 4.0);
-    
-    // Available light is reduced by black weight (Color0)
-    float blackWeight = uWeight0 / 100.0;
-    float availableLight = clamp(1.0 - blackWeight, 0.0, 1.0);
-    
-    // Scale intensities to respect energy budget
-    float energyScale = (energy > 0.001) ? (availableLight / energy) : 0.0;
-    energyScale = min(energyScale, 2.0); // Cap to prevent over-brightening
-    
-    // Apply energy scale and color boost
-    intensity1 = clamp(intensity1 * energyScale * colorBoost, 0.0, 1.0);
-    intensity2 = clamp(intensity2 * energyScale * colorBoost, 0.0, 1.0);
-    intensity3 = clamp(intensity3 * energyScale * colorBoost, 0.0, 1.0);
-    intensity4 = clamp(intensity4 * energyScale * colorBoost, 0.0, 1.0);
-    
-    // =========================================================================
-    // ADDITIVE BLENDING: Colors as light sources on black
-    // =========================================================================
-    vec3 meshColor = uColor0; // Start with black base
-    
-    // Only add light from colors that actually emit light
-    vec3 light1 = (luma1 > 0.05) ? uColor1 * intensity1 : vec3(0.0);
-    vec3 light2 = (luma2 > 0.05) ? uColor2 * intensity2 : vec3(0.0);
-    vec3 light3 = (luma3 > 0.05) ? uColor3 * intensity3 : vec3(0.0);
-    vec3 light4 = (luma4 > 0.05 && uHasColor4) ? uColor4 * intensity4 : vec3(0.0);
-    
-    // Additive blend
-    meshColor = meshColor + light1 + light2 + light3 + light4;
-    
-    // Soft HDR tonemapping to prevent harsh clipping
-    meshColor = meshColor / (1.0 + meshColor * 0.4);
-    
-    // Black haze: when black weight is high, add smoky overlay
-    float haze = smoothstep(0.30, 0.90, blackWeight);
-    meshColor = mix(meshColor, uColor0, haze * 0.5);
-    
-    meshColor = clamp(meshColor, 0.0, 1.0);
-    
-    // Placeholder for compatibility with rest of shader
+    // Mesh mode computes final color directly in the second pass below
     noise = 0.5;
     
   } else if (uGradientType == 1) {
@@ -519,13 +387,16 @@ void main() {
   
   if (uGradientType == 0) {
     // =========================================================================
-    // MESH MODE: Radial Light Blending (already computed above)
+    // MESH MODE: Normalized Affinity Blending
     // =========================================================================
-    // We need to recompute the mesh color here since we can't pass vec3 through noise
+    // Professional mesh gradient approach (inspired by MeshingKit / ben-fornefeld):
+    // Each color gets a noise-driven affinity, all normalized to sum to 1.0.
+    // Black participates as an equal player — no energy hacks needed.
     
     float t = uTime * 0.15;
     vec2 sampleUv = vUv;
     
+    // Aurora stretch: vertical curtain effect
     if (uMeshStretch) {
       sampleUv.y = (sampleUv.y - 0.5) / uMeshStretchAmount + 0.5;
       sampleUv.x += sin(sampleUv.y * 4.0 + t) * 0.08;
@@ -533,6 +404,7 @@ void main() {
     
     float noiseScale = max(0.5, uNoiseScale) * 0.8;
     
+    // Independent noise fields per color (different scales + offsets = organic separation)
     vec3 pos1 = vec3(sampleUv * noiseScale * 0.6, t * 0.25);
     vec3 pos2 = vec3(sampleUv * noiseScale * 0.5, t * 0.2 + 100.0);
     vec3 pos3 = vec3(sampleUv * noiseScale * 0.7, t * 0.15 + 200.0);
@@ -543,6 +415,7 @@ void main() {
     float n3 = snoise(pos3) * 0.5 + 0.5;
     float n4 = snoise(pos4) * 0.5 + 0.5;
     
+    // Apply mesh style variations
     if (uMeshStyle == 1) {
       vec2 flowDir = vec2(cos(uMeshFlowAngle), sin(uMeshFlowAngle));
       float flowBias = dot(sampleUv - 0.5, flowDir);
@@ -554,60 +427,40 @@ void main() {
       n1 += radialBias * 0.1;
     }
     
-    // Premium mesh: keep blobs soft, not “lava lamp”, while preserving black.
-    // Blur should *reduce* sharpness more aggressively.
-    float sharpness = mix(1.8, 3.6, 1.0 - uBlur);
+    // Sharpness from blur: smooth (1.0) to sharp (4.0)
+    float sharpness = mix(1.0, 4.0, 1.0 - uBlur);
+    // Calibration compensates for pow() reducing average values
+    float calibration = sharpness + 1.0;
     
-    float w1 = uWeight1 / 100.0;
-    float w2 = uWeight2 / 100.0;
-    float w3 = uWeight3 / 100.0;
-    float w4 = uWeight4 / 100.0;
+    // Weighted affinities: noise^sharpness creates concentrated color islands
+    float aff1 = pow(clamp(n1, 0.0, 1.0), sharpness) * w1 * calibration;
+    float aff2 = pow(clamp(n2, 0.0, 1.0), sharpness) * w2 * calibration;
+    float aff3 = pow(clamp(n3, 0.0, 1.0), sharpness) * w3 * calibration;
+    float aff4 = pow(clamp(n4, 0.0, 1.0), sharpness) * w4 * calibration;
     
-    float intensity1 = pow(clamp(n1, 0.0, 1.0), sharpness) * w1;
-    float intensity2 = pow(clamp(n2, 0.0, 1.0), sharpness) * w2;
-    float intensity3 = pow(clamp(n3, 0.0, 1.0), sharpness) * w3;
-    float intensity4 = pow(clamp(n4, 0.0, 1.0), sharpness) * w4;
-
-    // Energy conservation: blackWeight controls available light budget.
-    float blackWeight = clamp(uWeight0 / 100.0, 0.0, 1.0);
-    float availableLight = clamp(1.0 - blackWeight, 0.0, 1.0);
-    float energy = intensity1 + intensity2 + intensity3 + intensity4;
-    float energyScale = (energy > 0.0001) ? (availableLight / energy) : 0.0;
-    // Prevent extreme scaling artifacts
-    energyScale = clamp(energyScale, 0.0, 2.5);
-    // Slight boost so colors still show at low availableLight (but remain muted)
-    energyScale *= mix(1.15, 0.95, blackWeight);
-
-    intensity1 *= energyScale;
-    intensity2 *= energyScale;
-    intensity3 *= energyScale;
-    intensity4 *= energyScale;
+    // Black (Color0) gets constant baseline — fills gaps between color blobs
+    float aff0 = w0;
     
-    intensity1 = clamp(intensity1, 0.0, 1.0);
-    intensity2 = clamp(intensity2, 0.0, 1.0);
-    intensity3 = clamp(intensity3, 0.0, 1.0);
-    intensity4 = clamp(intensity4, 0.0, 1.0);
+    // If Color4 is disabled, zero its affinity
+    if (!uHasColor4) {
+      aff4 = 0.0;
+    }
     
-    // Additive light blending on black base
-    finalColor = uColor0; // Base (usually black)
+    // Normalize: all affinities sum to 1.0 (order-independent, no over-brightening)
+    float totalAff = aff0 + aff1 + aff2 + aff3 + aff4;
+    aff0 /= totalAff;
+    aff1 /= totalAff;
+    aff2 /= totalAff;
+    aff3 /= totalAff;
+    aff4 /= totalAff;
     
-    vec3 light1 = uColor1 * intensity1;
-    vec3 light2 = uColor2 * intensity2;
-    vec3 light3 = uColor3 * intensity3;
-    vec3 light4 = uHasColor4 ? uColor4 * intensity4 : vec3(0.0);
+    // Direct weighted blend (order-independent, naturally balanced)
+    finalColor = uColor0 * aff0 + uColor1 * aff1 + uColor2 * aff2 + uColor3 * aff3;
+    if (uHasColor4) {
+      finalColor += uColor4 * aff4;
+    }
     
-    // Screen blend for natural light mixing
-    finalColor = finalColor + light1 * (1.0 - finalColor);
-    finalColor = finalColor + light2 * (1.0 - finalColor);
-    finalColor = finalColor + light3 * (1.0 - finalColor);
-    finalColor = finalColor + light4 * (1.0 - finalColor);
-
-    // “Black haze”: ensure base actively mutes colors (premium smoky feel)
-    // When black is high, push colors closer to base without hard edges.
-    float haze = smoothstep(0.30, 0.90, blackWeight); // 30%->0, 90%->1
-    finalColor = mix(finalColor, uColor0, haze * 0.55);
-    
-    // Apply edge fade for premium floating look
+    // Subtle edge fade for premium floating look
     finalColor = mix(uColor0, finalColor, edgeFade);
     
   } else if (uGradientType == 2) {
