@@ -125,6 +125,10 @@ uniform vec2 uConicOffset; // Center offset
 // Glow uniforms (Luminous Glow effect)
 uniform float uGlowOrbSize;
 uniform float uGlowShadowDensity;
+uniform int uGlowStyle; // 0=scattered, 1=clustered, 2=diagonal, 3=ring
+uniform float uGlowSpread; // 0-1
+uniform vec2 uGlowOffset; // Center offset
+uniform float uGlowDistortion; // 0-1
 // Waves uniforms
 uniform float uWavesCount;
 uniform float uWavesAmplitude;
@@ -523,47 +527,86 @@ void main() {
     float t = uTime * 0.12;
     vec2 st = vUv;
     
+    // Apply global offset to shift entire glow arrangement
+    st -= uGlowOffset;
+    
     // Orb size from user control (mapped to Gaussian spread)
     float orbSize = mix(0.15, 0.55, uGlowOrbSize);
     
-    // Gaussian glow function: exp(-d²/size²) - creates smooth bell-curve falloff
-    // Orb 1: Color1
-    vec2 p1 = vec2(
-      0.3 + sin(t * 0.7) * 0.12,
-      0.7 + cos(t * 0.5) * 0.1
-    );
-    float d1 = length(st - p1);
+    // Spread factor: controls how far from center the orbs are positioned
+    float spread = mix(0.08, 0.35, uGlowSpread);
+    
+    // Calculate orb positions based on style
+    vec2 p1, p2, p3, p4;
+    
+    if (uGlowStyle == 0) {
+      // SCATTERED: Orbs spread organically around canvas
+      p1 = vec2(
+        0.3 + sin(t * 0.7) * 0.12 * spread / 0.2,
+        0.7 + cos(t * 0.5) * 0.1 * spread / 0.2
+      );
+      p2 = vec2(
+        0.75 + cos(t * 0.6) * 0.1 * spread / 0.2,
+        0.3 + sin(t * 0.8) * 0.12 * spread / 0.2
+      );
+      p3 = vec2(
+        0.5 + sin(t * 0.4) * 0.15 * spread / 0.2,
+        0.25 + cos(t * 0.9) * 0.1 * spread / 0.2
+      );
+      p4 = vec2(
+        0.2 + cos(t * 0.5) * 0.1 * spread / 0.2,
+        0.45 + sin(t * 0.7) * 0.12 * spread / 0.2
+      );
+    } else if (uGlowStyle == 1) {
+      // CLUSTERED: Orbs grouped near center, tight formation
+      float clusterSpread = spread * 0.6;
+      p1 = vec2(0.5 + sin(t * 0.7) * clusterSpread, 0.5 + cos(t * 0.5) * clusterSpread);
+      p2 = vec2(0.5 + cos(t * 0.6) * clusterSpread, 0.5 + sin(t * 0.8) * clusterSpread);
+      p3 = vec2(0.5 + sin(t * 0.4 + 2.0) * clusterSpread, 0.5 + cos(t * 0.9 + 1.0) * clusterSpread);
+      p4 = vec2(0.5 + cos(t * 0.5 + 3.0) * clusterSpread, 0.5 + sin(t * 0.7 + 2.0) * clusterSpread);
+    } else if (uGlowStyle == 2) {
+      // DIAGONAL: Orbs aligned along a diagonal line
+      vec2 diagDir = normalize(vec2(1.0, -1.0));
+      vec2 perpDir = vec2(diagDir.y, -diagDir.x);
+      float wobble = sin(t * 0.3) * 0.04;
+      p1 = vec2(0.5) + diagDir * spread * -1.2 + perpDir * wobble;
+      p2 = vec2(0.5) + diagDir * spread * -0.4 + perpDir * sin(t * 0.5) * 0.05;
+      p3 = vec2(0.5) + diagDir * spread * 0.4 + perpDir * cos(t * 0.4) * 0.05;
+      p4 = vec2(0.5) + diagDir * spread * 1.2 + perpDir * -wobble;
+    } else {
+      // RING: Orbs arranged in a circle around center
+      float ringRadius = spread * 0.9;
+      float angleOffset = t * 0.2;
+      p1 = vec2(0.5) + vec2(cos(angleOffset), sin(angleOffset)) * ringRadius;
+      p2 = vec2(0.5) + vec2(cos(angleOffset + 1.5708), sin(angleOffset + 1.5708)) * ringRadius;
+      p3 = vec2(0.5) + vec2(cos(angleOffset + 3.1416), sin(angleOffset + 3.1416)) * ringRadius;
+      p4 = vec2(0.5) + vec2(cos(angleOffset + 4.7124), sin(angleOffset + 4.7124)) * ringRadius;
+    }
+    
+    // Organic distortion on orb shapes (noise-based wobble on distances)
+    float distortAmount = uGlowDistortion * 0.2;
+    float dist1Noise = snoise(vec3(st * 3.0, t * 0.3)) * distortAmount;
+    float dist2Noise = snoise(vec3(st * 3.0 + 50.0, t * 0.25)) * distortAmount;
+    float dist3Noise = snoise(vec3(st * 3.0 + 100.0, t * 0.2)) * distortAmount;
+    float dist4Noise = snoise(vec3(st * 3.0 + 150.0, t * 0.35)) * distortAmount;
+    
+    // Gaussian glow with distortion
+    float d1 = length(st - p1) + dist1Noise;
     float orb1 = exp(-d1 * d1 / (orbSize * orbSize * (0.4 + w1 * 0.6)));
     
-    // Orb 2: Color2
-    vec2 p2 = vec2(
-      0.75 + cos(t * 0.6) * 0.1,
-      0.3 + sin(t * 0.8) * 0.12
-    );
-    float d2 = length(st - p2);
+    float d2 = length(st - p2) + dist2Noise;
     float orb2 = exp(-d2 * d2 / (orbSize * orbSize * (0.4 + w2 * 0.6)));
     
-    // Orb 3: Color3
-    vec2 p3 = vec2(
-      0.5 + sin(t * 0.4) * 0.15,
-      0.25 + cos(t * 0.9) * 0.1
-    );
-    float d3 = length(st - p3);
+    float d3 = length(st - p3) + dist3Noise;
     float orb3 = exp(-d3 * d3 / (orbSize * orbSize * (0.4 + w3 * 0.6)));
     
-    // Orb 4: Color4 (optional)
     float orb4 = 0.0;
     if (uHasColor4) {
-      vec2 p4 = vec2(
-        0.2 + cos(t * 0.5) * 0.1,
-        0.45 + sin(t * 0.7) * 0.12
-      );
-      float d4 = length(st - p4);
+      float d4 = length(st - p4) + dist4Noise;
       orb4 = exp(-d4 * d4 / (orbSize * orbSize * (0.4 + w4 * 0.6)));
     }
     
     // Weight modulates orb intensity: full weight = full glow, low weight = dimmer orb.
-    // This is the ORIGINAL behavior that gave the beautiful light-on-dark look.
     float glowIntensity = 3.0 + uStrength;
     orb1 *= w1 * glowIntensity;
     orb2 *= w2 * glowIntensity;
@@ -726,6 +769,10 @@ export const Custom4ColorGradient = forwardRef<THREE.Mesh, Custom4ColorGradientP
     // Glow uniforms
     uGlowOrbSize: { value: (config.glowOrbSize ?? 60) / 100 },
     uGlowShadowDensity: { value: (config.glowShadowDensity ?? 50) / 100 },
+    uGlowStyle: { value: config.glowStyle === 'clustered' ? 1 : config.glowStyle === 'diagonal' ? 2 : config.glowStyle === 'ring' ? 3 : 0 },
+    uGlowSpread: { value: (config.glowSpread ?? 50) / 100 },
+    uGlowOffset: { value: new THREE.Vector2((config.glowOffsetX ?? 0) / 100, -(config.glowOffsetY ?? 0) / 100) },
+    uGlowDistortion: { value: (config.glowDistortion ?? 40) / 100 },
     // Waves uniforms
     uWavesCount: { value: config.wavesCount ?? 5 },
     uWavesAmplitude: { value: (config.wavesAmplitude ?? 50) / 100 },
@@ -787,6 +834,10 @@ export const Custom4ColorGradient = forwardRef<THREE.Mesh, Custom4ColorGradientP
     // Update glow uniforms
     mat.uniforms.uGlowOrbSize.value = (config.glowOrbSize ?? 60) / 100;
     mat.uniforms.uGlowShadowDensity.value = (config.glowShadowDensity ?? 50) / 100;
+    mat.uniforms.uGlowStyle.value = config.glowStyle === 'clustered' ? 1 : config.glowStyle === 'diagonal' ? 2 : config.glowStyle === 'ring' ? 3 : 0;
+    mat.uniforms.uGlowSpread.value = (config.glowSpread ?? 50) / 100;
+    mat.uniforms.uGlowOffset.value.set((config.glowOffsetX ?? 0) / 100, -(config.glowOffsetY ?? 0) / 100);
+    mat.uniforms.uGlowDistortion.value = (config.glowDistortion ?? 40) / 100;
     
     // Update waves uniforms
     mat.uniforms.uWavesCount.value = config.wavesCount ?? 5;

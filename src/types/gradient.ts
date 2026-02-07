@@ -68,6 +68,11 @@ export interface GradientConfig {
   // Glow settings (Luminous Glow effect)
   glowOrbSize: number; // 20-100 size of light orbs
   glowShadowDensity: number; // 0-100 density of shadow clouds
+  glowStyle: 'scattered' | 'clustered' | 'diagonal' | 'ring'; // Orb arrangement style
+  glowSpread: number; // 0-100 how far apart orbs are spread
+  glowOffsetX: number; // -50 to 50 horizontal offset of glow center
+  glowOffsetY: number; // -50 to 50 vertical offset of glow center
+  glowDistortion: number; // 0-100 organic distortion on orb shapes
   
   // Waves settings
   wavesCount: number; // 2-10 number of waves
@@ -122,6 +127,11 @@ export const defaultGradientConfig: GradientConfig = {
   // Glow defaults
   glowOrbSize: 60,
   glowShadowDensity: 50,
+  glowStyle: 'scattered',
+  glowSpread: 50,
+  glowOffsetX: 0,
+  glowOffsetY: 0,
+  glowDistortion: 40,
   // Waves defaults
   wavesCount: 5,
   wavesAmplitude: 50,

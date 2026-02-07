@@ -177,6 +177,11 @@ const effectPresets: Record<string, Partial<GradientConfig>> = {
     uFrequency: 2,
     glowOrbSize: 60,
     glowShadowDensity: 50,
+    glowStyle: 'scattered',
+    glowSpread: 50,
+    glowOffsetX: 0,
+    glowOffsetY: 0,
+    glowDistortion: 40,
     meshStretch: false,
     speed: 0.25,
     grain: false,
@@ -1075,6 +1080,37 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
             <div>
               <h3 className="font-display text-lg font-medium mb-4 text-foreground">Glow</h3>
               <div className="space-y-4">
+                {/* Style Presets */}
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Style</Label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {([
+                      { value: 'scattered' as const, label: 'Scatter', icon: Target },
+                      { value: 'clustered' as const, label: 'Cluster', icon: Circle },
+                      { value: 'diagonal' as const, label: 'Diagonal', icon: ArrowDownRight },
+                      { value: 'ring' as const, label: 'Ring', icon: RotateCw },
+                    ]).map((style) => {
+                      const Icon = style.icon;
+                      const isActive = (config.glowStyle ?? 'scattered') === style.value;
+                      return (
+                        <button
+                          key={style.value}
+                          onClick={() => onConfigChange({ glowStyle: style.value })}
+                          className={`py-2 px-1 rounded-lg text-xs font-medium transition-all flex flex-col items-center gap-1 ${
+                            isActive
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                          }`}
+                          title={style.label}
+                        >
+                          <Icon className="w-4 h-4" />
+                          <span className="text-[10px]">{style.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 {/* Orb Size */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
@@ -1089,7 +1125,40 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                     step={1}
                     className="w-full"
                   />
-                  <p className="text-xs text-muted-foreground/70">Size of the light orbs</p>
+                </div>
+
+                {/* Spread */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-muted-foreground">Spread</Label>
+                    <span className="text-xs text-muted-foreground">{config.glowSpread ?? 50}%</span>
+                  </div>
+                  <Slider
+                    value={[config.glowSpread ?? 50]}
+                    onValueChange={([value]) => onConfigChange({ glowSpread: value })}
+                    min={0}
+                    max={100}
+                    step={1}
+                    className="w-full"
+                  />
+                  <p className="text-xs text-muted-foreground/70">How far apart the light orbs are</p>
+                </div>
+
+                {/* Distortion */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-muted-foreground">Distortion</Label>
+                    <span className="text-xs text-muted-foreground">{config.glowDistortion ?? 40}%</span>
+                  </div>
+                  <Slider
+                    value={[config.glowDistortion ?? 40]}
+                    onValueChange={([value]) => onConfigChange({ glowDistortion: value })}
+                    min={0}
+                    max={100}
+                    step={1}
+                    className="w-full"
+                  />
+                  <p className="text-xs text-muted-foreground/70">Organic wobble on orb shapes</p>
                 </div>
                 
                 {/* Contrast / Depth */}
@@ -1106,7 +1175,42 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                     step={1}
                     className="w-full"
                   />
-                  <p className="text-xs text-muted-foreground/70">Push darks deeper, brights brighter</p>
+                </div>
+
+                {/* Position Offset */}
+                <div className="space-y-3">
+                  <Label className="text-muted-foreground flex items-center gap-2">
+                    <Move className="w-4 h-4" />
+                    Position
+                  </Label>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Horizontal</span>
+                      <span className="text-xs text-muted-foreground">{config.glowOffsetX ?? 0}%</span>
+                    </div>
+                    <Slider
+                      value={[config.glowOffsetX ?? 0]}
+                      onValueChange={([value]) => onConfigChange({ glowOffsetX: value })}
+                      min={-50}
+                      max={50}
+                      step={1}
+                      className="w-full"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Vertical</span>
+                      <span className="text-xs text-muted-foreground">{config.glowOffsetY ?? 0}%</span>
+                    </div>
+                    <Slider
+                      value={[config.glowOffsetY ?? 0]}
+                      onValueChange={([value]) => onConfigChange({ glowOffsetY: value })}
+                      min={-50}
+                      max={50}
+                      step={1}
+                      className="w-full"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
