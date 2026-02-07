@@ -261,9 +261,11 @@ export function GradientDebugOverlay({ config, visible = true }: GradientDebugOv
           {isMeshMode ? (
             <>
               <span className="text-white/60">Blend Mode:</span>
-              <span className="text-purple-400">Radial Light</span>
+              <span className="text-purple-400">Normalized Affinity</span>
               <span className="text-white/60">Sharpness:</span>
-              <span className="text-cyan-300">{(2.5 + (1 - (config.meshBlur ?? 50) / 100) * 2.0).toFixed(1)}</span>
+              <span className="text-cyan-300">{(1.0 + (1 - (config.meshBlur ?? 50) / 100) * 3.0).toFixed(1)}</span>
+              <span className="text-white/60">Calibration:</span>
+              <span className="text-cyan-300">{(1.0 + (1 - (config.meshBlur ?? 50) / 100) * 3.0 + 1.0).toFixed(1)}</span>
               <span className="text-white/60">Edge Fade:</span>
               <span className="text-purple-400">0.85 → 1.25</span>
             </>
@@ -277,7 +279,7 @@ export function GradientDebugOverlay({ config, visible = true }: GradientDebugOv
           )}
           <span className="text-white/60">Histogram Stretch:</span>
           <span className={histogramStretchEnabled ? 'text-green-400' : 'text-white/40'}>
-            {histogramStretchEnabled ? `boost ${contrastBoost}x → pow(${stretchGamma})` : 'OFF (Plane)'}
+            {histogramStretchEnabled ? 'N/A (Normalized)' : 'OFF (Plane)'}
           </span>
         </div>
       </div>
