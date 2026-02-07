@@ -285,32 +285,26 @@ async function render4ColorGradientHighQuality(
         const p1x = 0.3 + Math.sin(t * 0.7) * 0.12;
         const p1y = 0.7 + Math.cos(t * 0.5) * 0.1;
         const d1 = Math.sqrt((u - p1x) ** 2 + (v - p1y) ** 2);
-        const orb1 = Math.exp(-d1 * d1 / (orbSize * orbSize * (0.4 + w1 * 0.6))) * w1 * 2.5;
+        const glowIntensity = 3.0 + strength;
+        const orb1 = Math.exp(-d1 * d1 / (orbSize * orbSize * (0.4 + w1 * 0.6))) * w1 * glowIntensity;
         
         const p2x = 0.75 + Math.cos(t * 0.6) * 0.1;
         const p2y = 0.3 + Math.sin(t * 0.8) * 0.12;
         const d2 = Math.sqrt((u - p2x) ** 2 + (v - p2y) ** 2);
-        const orb2 = Math.exp(-d2 * d2 / (orbSize * orbSize * (0.4 + w2 * 0.6))) * w2 * 2.5;
+        const orb2 = Math.exp(-d2 * d2 / (orbSize * orbSize * (0.4 + w2 * 0.6))) * w2 * glowIntensity;
         
         const p3x = 0.5 + Math.sin(t * 0.4) * 0.15;
         const p3y = 0.25 + Math.cos(t * 0.9) * 0.1;
         const d3 = Math.sqrt((u - p3x) ** 2 + (v - p3y) ** 2);
-        const orb3 = Math.exp(-d3 * d3 / (orbSize * orbSize * (0.4 + w3 * 0.6))) * w3 * 2.5;
+        const orb3 = Math.exp(-d3 * d3 / (orbSize * orbSize * (0.4 + w3 * 0.6))) * w3 * glowIntensity;
         
         let orb4 = 0;
         if (hasColor4) {
           const p4x = 0.2 + Math.cos(t * 0.5) * 0.1;
           const p4y = 0.45 + Math.sin(t * 0.7) * 0.12;
           const d4v = Math.sqrt((u - p4x) ** 2 + (v - p4y) ** 2);
-          orb4 = Math.exp(-d4v * d4v / (orbSize * orbSize * (0.4 + w4 * 0.6))) * w4 * 2.5;
+          orb4 = Math.exp(-d4v * d4v / (orbSize * orbSize * (0.4 + w4 * 0.6))) * w4 * glowIntensity;
         }
-        
-        // Shadow mask
-        const shadowN = noise3D(u * 0.8 + t * 0.2, v * 0.8 + t * 0.2, t * 0.1);
-        const shadowN2 = noise3D(u * 1.5 + 30, v * 1.5 + 30, t * 0.15) * 0.4;
-        const combinedShadow = shadowN + shadowN2;
-        const shadowThreshold = 0.1 + glowShadowDensity * 0.5;
-        const shadowMask = smoothstep(-0.2 - shadowThreshold, 0.8 - shadowThreshold, combinedShadow + 0.3);
         
         // Additive blend
         let gr = color0.r + color1.r * orb1 + color2.r * orb2 + color3.r * orb3;
@@ -322,16 +316,23 @@ async function render4ColorGradientHighQuality(
           gb += color4.b * orb4;
         }
         
-        // Apply shadow mask and clamp
-        const finalR = Math.min(1, gr) * shadowMask;
-        const finalG = Math.min(1, gg) * shadowMask;
-        const finalB = Math.min(1, gb) * shadowMask;
+        // Contrast boost via pow() — same as shader
+        const contrastExp = 1.0 + glowShadowDensity * 1.5;
+        const finalR = Math.pow(Math.max(0, Math.min(1, gr)), contrastExp);
+        const finalG = Math.pow(Math.max(0, Math.min(1, gg)), contrastExp);
+        const finalB = Math.pow(Math.max(0, Math.min(1, gb)), contrastExp);
+        
+        // Subtle noise variation
+        const noiseVar = noise3D(u * 1.2, v * 1.2, t * 0.15) * 0.08 * glowShadowDensity;
+        const nr = Math.max(0, Math.min(1, finalR * (1.0 + noiseVar)));
+        const ng = Math.max(0, Math.min(1, finalG * (1.0 + noiseVar)));
+        const nb = Math.max(0, Math.min(1, finalB * (1.0 + noiseVar)));
         
         // Skip the threshold blending below - go directly to output
         const idx = (y * width + x) * 4;
-        data[idx] = Math.round(Math.max(0, Math.min(1, finalR)) * 255);
-        data[idx + 1] = Math.round(Math.max(0, Math.min(1, finalG)) * 255);
-        data[idx + 2] = Math.round(Math.max(0, Math.min(1, finalB)) * 255);
+        data[idx] = Math.round(nr * 255);
+        data[idx + 1] = Math.round(ng * 255);
+        data[idx + 2] = Math.round(nb * 255);
         data[idx + 3] = 255;
         continue; // Skip the rest of the loop for glow mode
         

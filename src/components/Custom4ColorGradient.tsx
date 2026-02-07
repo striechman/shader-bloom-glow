@@ -557,16 +557,17 @@ void main() {
     }
     
     // Scale orbs by their weights for intensity
-    orb1 *= w1 * 2.5;
-    orb2 *= w2 * 2.5;
-    orb3 *= w3 * 2.5;
-    orb4 *= w4 * 2.5;
+    float glowIntensity = 3.0 + uStrength;
+    orb1 *= w1 * glowIntensity;
+    orb2 *= w2 * glowIntensity;
+    orb3 *= w3 * glowIntensity;
+    orb4 *= w4 * glowIntensity;
     
     // Start from background color (typically black)
     finalColor = sColor0;
     
     // ADDITIVE blending: light sources add on top of darkness
-    // This is the key difference from regular mixing - overlapping lights get brighter
+    // Like real lights: overlapping = brighter, not muddier
     finalColor += sColor1 * orb1;
     finalColor += sColor2 * orb2;
     finalColor += sColor3 * orb3;
@@ -574,21 +575,17 @@ void main() {
       finalColor += sColor4 * orb4;
     }
     
-    // Shadow mask: noise-based "dark clouds" that occlude the light
-    // Creates organic negative space and depth (the 30-50% black feel)
-    float shadowDensity = uGlowShadowDensity;
-    float shadowNoise = snoise(vec3(st * 0.8 + t * 0.2, t * 0.1));
-    float shadowNoise2 = snoise(vec3(st * 1.5 + 30.0, t * 0.15)) * 0.4;
-    float combinedShadow = shadowNoise + shadowNoise2;
+    // Contrast boost via pow() — pushes darks deeper, keeps brights vivid
+    // This is the "Darkmiles secret": instead of a shadow MASK that blacks out
+    // areas, we use power curve to increase contrast naturally.
+    // shadowDensity controls the exponent: higher = more black, more dramatic
+    float contrastExp = 1.0 + uGlowShadowDensity * 1.5; // range: 1.0 to 2.5
+    finalColor = pow(clamp(finalColor, 0.0, 1.0), vec3(contrastExp));
     
-    // smoothstep creates a sharp-ish mask: dark areas become 0, lit areas become 1
-    float shadowThreshold = mix(0.1, 0.6, shadowDensity);
-    float shadowMask = smoothstep(-0.2 - shadowThreshold, 0.8 - shadowThreshold, combinedShadow + 0.3);
+    // Subtle noise-based variation to break uniformity (NOT a mask)
+    float noiseVar = snoise(vec3(st * 1.2, t * 0.15)) * 0.08 * uGlowShadowDensity;
+    finalColor *= (1.0 + noiseVar);
     
-    // Apply shadow mask - multiplies final color, pushing dark areas to black
-    finalColor *= shadowMask;
-    
-    // Clamp to prevent over-brightening from additive blending
     finalColor = clamp(finalColor, 0.0, 1.0);
     
     // Edge vignette
