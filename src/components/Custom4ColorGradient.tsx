@@ -562,19 +562,18 @@ void main() {
       orb4 = exp(-d4 * d4 / (orbSize * orbSize * (0.4 + w4 * 0.6)));
     }
     
-    // Soft weight floor on intensity: colors stay vivid (≥50% brightness)
-    // even at low weight, but enough modulation to prevent additive blow-out.
-    float glowIntensity = 2.0 + uStrength * 0.5;
-    orb1 *= glowIntensity * mix(0.5, 1.0, clamp(w1 * 3.0, 0.0, 1.0));
-    orb2 *= glowIntensity * mix(0.5, 1.0, clamp(w2 * 3.0, 0.0, 1.0));
-    orb3 *= glowIntensity * mix(0.5, 1.0, clamp(w3 * 3.0, 0.0, 1.0));
-    orb4 *= glowIntensity * mix(0.5, 1.0, clamp(w4 * 3.0, 0.0, 1.0));
+    // Weight modulates orb intensity: full weight = full glow, low weight = dimmer orb.
+    // This is the ORIGINAL behavior that gave the beautiful light-on-dark look.
+    float glowIntensity = 3.0 + uStrength;
+    orb1 *= w1 * glowIntensity;
+    orb2 *= w2 * glowIntensity;
+    orb3 *= w3 * glowIntensity;
+    orb4 *= w4 * glowIntensity;
     
     // Start from background color (typically black)
     finalColor = sColor0;
     
     // ADDITIVE blending: light sources add on top of darkness
-    // Like real lights: overlapping = brighter, not muddier
     finalColor += sColor1 * orb1;
     finalColor += sColor2 * orb2;
     finalColor += sColor3 * orb3;
@@ -582,14 +581,9 @@ void main() {
       finalColor += sColor4 * orb4;
     }
     
-    // Reinhard tone mapping: prevents white blow-out while preserving color ratios.
-    // Maps HDR values (0..∞) to LDR (0..1) smoothly — no hard clipping.
-    // Colors that overlap get brighter but never clip to pure white.
-    finalColor = finalColor / (1.0 + finalColor);
-    
     // Contrast boost via pow() — pushes darks deeper, keeps brights vivid
     float contrastExp = 1.0 + uGlowShadowDensity * 1.5;
-    finalColor = pow(finalColor, vec3(contrastExp));
+    finalColor = pow(clamp(finalColor, 0.0, 1.0), vec3(contrastExp));
     
     // Subtle noise-based variation to break uniformity
     float noiseVar = snoise(vec3(st * 1.2, t * 0.15)) * 0.08 * uGlowShadowDensity;
