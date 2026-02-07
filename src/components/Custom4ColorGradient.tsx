@@ -402,31 +402,25 @@ void main() {
       sampleUv.x += sin(sampleUv.y * 4.0 + t) * 0.08;
     }
     
-    float noiseScale = max(0.5, uNoiseScale);
+    float noiseScale = max(0.5, uNoiseScale) * 0.8;
     
     // ---------------------------------------------------------------
-    // Each color gets a noise field sampled at VERY different positions.
-    // Large spatial offsets (5+) guarantee the noise fields are uncorrelated,
-    // so colors occupy distinct regions instead of all outputting ~0.5.
-    // Two octaves per color add local richness.
+    // SOFTMAX COMPETITIVE BLENDING
+    // Each color gets a single-octave noise field at well-separated positions.
+    // Softmax with temperature creates true winner-take-all regions:
+    // exp(n/T) amplifies tiny noise differences into massive ratios.
+    // Single octave preserves full variance (no averaging toward 0.5).
     // ---------------------------------------------------------------
-    vec3 pos1  = vec3(sampleUv * noiseScale * 1.2,              t + 0.0);
-    vec3 pos1b = vec3(sampleUv * noiseScale * 2.4 + 17.0,       t * 0.7);
+    vec3 pos1 = vec3(sampleUv * noiseScale,                          t);
+    vec3 pos2 = vec3((sampleUv + vec2(5.2, 1.3)) * noiseScale,       t * 0.85 + 100.0);
+    vec3 pos3 = vec3((sampleUv + vec2(-3.7, 7.1)) * noiseScale,      t * 0.75 + 200.0);
+    vec3 pos4 = vec3((sampleUv + vec2(8.4, -4.6)) * noiseScale,      t * 0.9  + 300.0);
     
-    vec3 pos2  = vec3((sampleUv + vec2(5.2, 1.3)) * noiseScale * 1.0,  t + 100.0);
-    vec3 pos2b = vec3((sampleUv + vec2(5.2, 1.3)) * noiseScale * 2.0 + 31.0, t * 0.6);
-    
-    vec3 pos3  = vec3((sampleUv + vec2(-3.7, 7.1)) * noiseScale * 0.9, t + 200.0);
-    vec3 pos3b = vec3((sampleUv + vec2(-3.7, 7.1)) * noiseScale * 1.8 + 53.0, t * 0.5);
-    
-    vec3 pos4  = vec3((sampleUv + vec2(1.4, -6.3)) * noiseScale * 1.1, t + 300.0);
-    vec3 pos4b = vec3((sampleUv + vec2(1.4, -6.3)) * noiseScale * 2.2 + 71.0, t * 0.65);
-    
-    // Two-octave noise per color (primary 70% + detail 30%)
-    float n1 = (snoise(pos1) * 0.5 + 0.5) * 0.7 + (snoise(pos1b) * 0.5 + 0.5) * 0.3;
-    float n2 = (snoise(pos2) * 0.5 + 0.5) * 0.7 + (snoise(pos2b) * 0.5 + 0.5) * 0.3;
-    float n3 = (snoise(pos3) * 0.5 + 0.5) * 0.7 + (snoise(pos3b) * 0.5 + 0.5) * 0.3;
-    float n4 = (snoise(pos4) * 0.5 + 0.5) * 0.7 + (snoise(pos4b) * 0.5 + 0.5) * 0.3;
+    // Raw simplex noise mapped to [0, 1]
+    float n1 = snoise(pos1) * 0.5 + 0.5;
+    float n2 = snoise(pos2) * 0.5 + 0.5;
+    float n3 = snoise(pos3) * 0.5 + 0.5;
+    float n4 = snoise(pos4) * 0.5 + 0.5;
     
     // Apply mesh style variations
     if (uMeshStyle == 1) {
@@ -442,37 +436,40 @@ void main() {
       n2 -= radialBias * 0.1;
     }
     
-    // Sharpness from blur: higher floor (2.0) ensures visible separation even at max blur
-    float sharpness = mix(2.0, 6.0, 1.0 - uBlur);
-    // Calibration compensates for pow() reducing average values
-    float calibration = sharpness + 1.0;
+    // ---------------------------------------------------------------
+    // SOFTMAX TEMPERATURE: controls transition sharpness
+    // Low temp (0.06) = hard boundaries, each pixel is one pure color
+    // High temp (0.35) = smooth, creamy transitions between regions
+    // Blur slider maps to temperature linearly
+    // ---------------------------------------------------------------
+    float temp = mix(0.06, 0.35, uBlur);
     
-    // Weighted affinities: noise^sharpness creates concentrated color islands
-    float aff1 = pow(clamp(n1, 0.0, 1.0), sharpness) * w1 * calibration;
-    float aff2 = pow(clamp(n2, 0.0, 1.0), sharpness) * w2 * calibration;
-    float aff3 = pow(clamp(n3, 0.0, 1.0), sharpness) * w3 * calibration;
-    float aff4 = pow(clamp(n4, 0.0, 1.0), sharpness) * w4 * calibration;
+    // Black (Color0) gets a constant noise score of 0.5
+    // This ensures it fills gaps proportionally to its weight
+    float score0 = 0.5;
     
-    // Black (Color0) gets constant baseline — fills gaps between color blobs
-    float aff0 = w0;
+    // Numerically stable softmax: subtract max to prevent exp() overflow
+    float maxScore = max(max(max(n1, n2), max(n3, n4)), score0);
     
-    // If Color4 is disabled, zero its affinity
-    if (!uHasColor4) {
-      aff4 = 0.0;
-    }
+    // Softmax exponentials weighted by color weights
+    float e0 = exp((score0 - maxScore) / temp) * w0;
+    float e1 = exp((n1 - maxScore) / temp) * w1;
+    float e2 = exp((n2 - maxScore) / temp) * w2;
+    float e3 = exp((n3 - maxScore) / temp) * w3;
+    float e4 = uHasColor4 ? exp((n4 - maxScore) / temp) * w4 : 0.0;
     
-    // Normalize: all affinities sum to 1.0 (order-independent, no over-brightening)
-    float totalAff = aff0 + aff1 + aff2 + aff3 + aff4;
-    aff0 /= totalAff;
-    aff1 /= totalAff;
-    aff2 /= totalAff;
-    aff3 /= totalAff;
-    aff4 /= totalAff;
+    // Normalize: all weights sum to 1.0
+    float totalE = e0 + e1 + e2 + e3 + e4;
+    float a0 = e0 / totalE;
+    float a1 = e1 / totalE;
+    float a2 = e2 / totalE;
+    float a3 = e3 / totalE;
+    float a4 = e4 / totalE;
     
-    // Direct weighted blend (order-independent, naturally balanced)
-    finalColor = uColor0 * aff0 + uColor1 * aff1 + uColor2 * aff2 + uColor3 * aff3;
+    // Direct weighted blend (order-independent, no muddy averaging)
+    finalColor = uColor0 * a0 + uColor1 * a1 + uColor2 * a2 + uColor3 * a3;
     if (uHasColor4) {
-      finalColor += uColor4 * aff4;
+      finalColor += uColor4 * a4;
     }
     
     // Subtle edge fade for premium floating look
