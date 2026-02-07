@@ -1,159 +1,107 @@
 
 
-# Mesh Gradient Rewrite - Normalized Weight Blending
+# Fix Color Accuracy in Mesh Mode - Color Space Correction
 
-## The Core Problem
-The mesh shader has two fundamental issues that explain both "too black" and "not black at all":
+## The Problem
+Colors don't match their hex values: Salmon (#F2665F) appears as deep red, Purple (#6A00F4) appears as blue. The gradient looks shifted away from the intended brand colors.
 
-### Bug 1: Dead Code
-The mesh logic is computed **twice** in the shader:
-- **Lines 191-325**: First computation (where all luminance guarding and energy fixes were added) -- but this block only sets `noise = 0.5` and its results are THROWN AWAY
-- **Lines 520-611**: Second computation that actually renders to screen -- this block has NONE of the fixes
+## Root Cause: THREE.Color Automatic Conversion
 
-Every fix we've been making was going into dead code.
-
-### Bug 2: Wrong Blending Model
-The current approach uses **Screen Blending** (additive light):
-```text
-finalColor = base + light1 * (1 - base)
-finalColor = finalColor + light2 * (1 - finalColor)  // light2 gets LESS space
-finalColor = finalColor + light3 * (1 - finalColor)  // light3 gets even LESS
-```
-This is order-dependent (Color1 always dominates), creates muddy blends, and requires complex "energy conservation" + "haze" hacks that oscillate between "too dark" and "too bright."
-
-## What Professional Mesh Gradients Do (from GitHub research)
-
-Both `ben-fornefeld/mesh-gradient` and Apple's `MeshingKit` use a fundamentally different approach: **Normalized Weight Blending**.
+Since Three.js r152+, `THREE.ColorManagement.enabled` defaults to `true`. This means:
 
 ```text
-Current (Additive):          Professional (Normalized):
-                             
-  Color1 ──┐                   Color1 ──┐
-  Color2 ──┼──> ADD on black    Color2 ──┤
-  Color3 ──┘    (order matters) Color3 ──┼──> WEIGHTED AVG (order-free)
-                                Black ───┘    (always sums to 1.0)
+User picks #6A00F4 (purple in sRGB)
+        |
+        v
+THREE.Color.set('#6A00F4')
+        |
+        v
+Automatic sRGB -> Linear conversion
+Stored as: (0.158, 0.0, 0.914)    <-- NOT (0.416, 0.0, 0.957)
+        |                               Red channel crushed!
+        v
+Shader receives LINEAR values
+        |
+        v
+Mesh mode SKIPS linearToSrgb (line 559)
+        |
+        v
+Linear values output directly to screen
+        |
+        v
+Purple looks BLUE (red channel too dark)
+Salmon looks RED (green/blue channels too dark)
 ```
 
-Key differences:
-- Each color has a **noise-driven affinity** at each pixel
-- All affinities are **normalized to sum to 1.0** -- no over-brightening possible
-- Black participates as an equal player, not as a background being "painted over"
-- No energy conservation or haze hacks needed
-- Weight accuracy is automatic
+The shader comment says "Mesh mode blends in sRGB" -- but the input colors are actually LINEAR (due to Three.js auto-conversion). So the shader has been blending linear values while thinking they're sRGB.
 
-## The Solution: Normalized Affinity Blending
+Non-mesh modes work correctly because they apply `linearToSrgb()` at the end (line 559), which converts the linear result back to sRGB for display.
 
-### Algorithm
-```text
-For each pixel:
-  1. Generate independent noise field for each color (n1, n2, n3, n4)
-  2. Compute affinity: aff_i = pow(noise_i, sharpness) * weight_i * calibration
-  3. Black affinity: aff_black = weight_black (constant baseline)
-  4. Normalize: all affinities / sum(all affinities)  
-  5. Final color = sum(color_i * normalized_aff_i)
-```
+## The Fix
 
-### Sharpness Calibration
-```text
-sharpness = mix(1.0, 4.0, 1.0 - blur)
-
-blur=0%   --> sharpness=4.0 --> distinct color blobs with clear boundaries
-blur=50%  --> sharpness=2.5 --> soft but visible separation  
-blur=100% --> sharpness=1.0 --> very smooth, creamy transitions
-
-calibration = sharpness + 1.0  (compensates for pow() reducing average values)
-```
-
-### Why This Fixes Both Problems:
-- **"Too black" preset (Aurora)**: Black gets exactly its 30% weight, not amplified by haze
-- **"Not black at all" preset**: Black's constant affinity always ensures presence proportional to its weight
-- **"Lava lamp" effect**: Normalized blending creates distinct regions instead of muddy additive overlap
-- **Color3 = Black**: Naturally adds to dark areas (same as base), doesn't "steal" from other colors
-
-## Changes to Make
+Convert uniform colors from Linear back to sRGB at the start of the mesh block, then blend in true sRGB space. This is a small, surgical fix.
 
 ### File: `src/components/Custom4ColorGradient.tsx`
 
-**1. Remove dead first mesh block (lines 191-325)**
+**Change 1: Add sRGB conversion at start of mesh block (around line 398)**
 
-Replace the entire first `if (uGradientType == 0)` block with just a placeholder:
+After the existing mesh mode comment block, add color conversion:
+
 ```glsl
-if (uGradientType == 0) {
-    noise = 0.5; // Mesh mode computes color directly below
-}
+// Convert from Linear (THREE.Color auto-converts) back to sRGB for perceptual blending
+vec3 sColor0 = linearToSrgb(uColor0);
+vec3 sColor1 = linearToSrgb(uColor1);
+vec3 sColor2 = linearToSrgb(uColor2);
+vec3 sColor3 = linearToSrgb(uColor3);
+vec3 sColor4 = linearToSrgb(uColor4);
 ```
 
-**2. Rewrite second mesh block (lines 520-611) with normalized blending**
+**Change 2: Use sColor* instead of uColor* in the mesh blend (line 504)**
 
-Replace the current screen-blend approach with:
+Replace:
 ```glsl
-if (uGradientType == 0) {
-    // Recompute noise fields (same as before)
-    float t = uTime * 0.15;
-    vec2 sampleUv = vUv;
-    // ... Aurora stretch logic stays same ...
-    
-    // Independent noise per color
-    float n1 = snoise(pos1) * 0.5 + 0.5;
-    float n2 = snoise(pos2) * 0.5 + 0.5;
-    float n3 = snoise(pos3) * 0.5 + 0.5;
-    float n4 = snoise(pos4) * 0.5 + 0.5;
-    
-    // Sharpness from blur (smooth 1.0 to sharp 4.0)
-    float sharpness = mix(1.0, 4.0, 1.0 - uBlur);
-    float calibration = sharpness + 1.0;
-    
-    // Weighted affinities (noise^sharpness creates concentrated islands)
-    float aff1 = pow(clamp(n1,0.0,1.0), sharpness) * w1 * calibration;
-    float aff2 = pow(clamp(n2,0.0,1.0), sharpness) * w2 * calibration;
-    float aff3 = pow(clamp(n3,0.0,1.0), sharpness) * w3 * calibration;
-    float aff4 = pow(clamp(n4,0.0,1.0), sharpness) * w4 * calibration;
-    
-    // Black gets constant baseline (fills gaps between blobs)
-    float aff0 = uWeight0 / 100.0;
-    
-    // Normalize -- all weights sum to 1.0
-    float totalAff = aff0 + aff1 + aff2 + aff3 + aff4;
-    aff0 /= totalAff;
-    aff1 /= totalAff;
-    aff2 /= totalAff;
-    aff3 /= totalAff;
-    aff4 /= totalAff;
-    
-    // Direct weighted blend (order-independent, naturally balanced)
-    finalColor = uColor0 * aff0 + uColor1 * aff1 + uColor2 * aff2 + uColor3 * aff3;
-    if (uHasColor4) finalColor += uColor4 * aff4;
-    
-    // Subtle edge fade for floating look
-    finalColor = mix(uColor0, finalColor, edgeFade);
+finalColor = uColor0 * a0 + uColor1 * a1 + uColor2 * a2 + uColor3 * a3;
+if (uHasColor4) {
+  finalColor += uColor4 * a4;
 }
+finalColor = mix(uColor0, finalColor, edgeFade);
 ```
 
-**3. No more energy conservation, haze, or screen blend**
+With:
+```glsl
+finalColor = sColor0 * a0 + sColor1 * a1 + sColor2 * a2 + sColor3 * a3;
+if (uHasColor4) {
+  finalColor += sColor4 * a4;
+}
+finalColor = mix(sColor0, finalColor, edgeFade);
+```
 
-All these are removed -- the normalization handles everything automatically.
+**Change 3: Keep line 559 as-is** -- mesh mode already outputs sRGB after this fix, so skipping the final `linearToSrgb` is correct.
 
-### File: `src/components/GradientDebugOverlay.tsx`
+## Why This Works
 
-Update derived values display:
-- Replace "Blend Mode: Radial Light" with "Blend Mode: Normalized"
-- Update sharpness calculation to match new range (1.0-4.0)
-- Remove references to haze and energy conservation
+```text
+After fix:
+                                     
+THREE.Color.set('#6A00F4')           
+  -> Linear: (0.158, 0.0, 0.914)    
+  -> Shader receives LINEAR          
+  -> linearToSrgb() at start of mesh 
+  -> sRGB: (0.416, 0.0, 0.957)      <- Original hex values restored!
+  -> Blend in sRGB space             
+  -> Output sRGB directly            
+  -> Screen shows correct purple     
+```
 
-## Expected Results
+## What This Does NOT Change
+- Other modes (Plane, Water, Conic, Spiral, Waves) are completely unaffected -- they already handle the conversion at line 559
+- The Radial Glow blending model stays exactly the same
+- Gaussian positions, softness, distortion -- all unchanged
+- Only the COLOR VALUES fed into the final blend are corrected
 
-| Scenario | Before | After |
-|----------|--------|-------|
-| Initial preset (Yellow/Pink/Black, blur=95%) | Single muddy color | Distinct yellow + pink blobs on black |
-| 30% black weight | Too black (haze) | Exactly ~30% black area |
-| 77% black weight | Colors too dim | Colors visible but small (~23% total) |
-| Mesh preset (blur=70%) | Lava lamp effect | Clean, separated color regions |
-| Color3 = Black | Steals light budget | Naturally adds to dark areas |
-
-## Verification Steps
-1. Load initial preset (Aurora) - confirm yellow and pink are visible as distinct blobs
-2. Switch to Mesh preset (70% blur) - confirm colors are separated, not lava lamp
-3. Drag black weight to 77% - confirm gradual darkening, colors shrink but stay vivid
-4. Drag black weight back to 30% - confirm colors return to full size
-5. All other modes (Plane, Water, Conic, etc.) should be completely unaffected
+## Expected Result
+- Salmon (#F2665F) will look like warm coral/salmon, not deep red
+- Purple (#6A00F4) will look like violet/purple, not blue
+- Yellow (#FDB515) will look like golden yellow, not orange
+- Black (#000000) stays black (linear and sRGB are identical for 0.0)
 
