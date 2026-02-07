@@ -402,33 +402,48 @@ void main() {
       sampleUv.x += sin(sampleUv.y * 4.0 + t) * 0.08;
     }
     
-    float noiseScale = max(0.5, uNoiseScale) * 0.8;
+    float noiseScale = max(0.5, uNoiseScale);
     
-    // Independent noise fields per color (different scales + offsets = organic separation)
-    vec3 pos1 = vec3(sampleUv * noiseScale * 0.6, t * 0.25);
-    vec3 pos2 = vec3(sampleUv * noiseScale * 0.5, t * 0.2 + 100.0);
-    vec3 pos3 = vec3(sampleUv * noiseScale * 0.7, t * 0.15 + 200.0);
-    vec3 pos4 = vec3(sampleUv * noiseScale * 0.55, t * 0.18 + 300.0);
+    // ---------------------------------------------------------------
+    // Each color gets a noise field sampled at VERY different positions.
+    // Large spatial offsets (5+) guarantee the noise fields are uncorrelated,
+    // so colors occupy distinct regions instead of all outputting ~0.5.
+    // Two octaves per color add local richness.
+    // ---------------------------------------------------------------
+    vec3 pos1  = vec3(sampleUv * noiseScale * 1.2,              t + 0.0);
+    vec3 pos1b = vec3(sampleUv * noiseScale * 2.4 + 17.0,       t * 0.7);
     
-    float n1 = snoise(pos1) * 0.5 + 0.5;
-    float n2 = snoise(pos2) * 0.5 + 0.5;
-    float n3 = snoise(pos3) * 0.5 + 0.5;
-    float n4 = snoise(pos4) * 0.5 + 0.5;
+    vec3 pos2  = vec3((sampleUv + vec2(5.2, 1.3)) * noiseScale * 1.0,  t + 100.0);
+    vec3 pos2b = vec3((sampleUv + vec2(5.2, 1.3)) * noiseScale * 2.0 + 31.0, t * 0.6);
+    
+    vec3 pos3  = vec3((sampleUv + vec2(-3.7, 7.1)) * noiseScale * 0.9, t + 200.0);
+    vec3 pos3b = vec3((sampleUv + vec2(-3.7, 7.1)) * noiseScale * 1.8 + 53.0, t * 0.5);
+    
+    vec3 pos4  = vec3((sampleUv + vec2(1.4, -6.3)) * noiseScale * 1.1, t + 300.0);
+    vec3 pos4b = vec3((sampleUv + vec2(1.4, -6.3)) * noiseScale * 2.2 + 71.0, t * 0.65);
+    
+    // Two-octave noise per color (primary 70% + detail 30%)
+    float n1 = (snoise(pos1) * 0.5 + 0.5) * 0.7 + (snoise(pos1b) * 0.5 + 0.5) * 0.3;
+    float n2 = (snoise(pos2) * 0.5 + 0.5) * 0.7 + (snoise(pos2b) * 0.5 + 0.5) * 0.3;
+    float n3 = (snoise(pos3) * 0.5 + 0.5) * 0.7 + (snoise(pos3b) * 0.5 + 0.5) * 0.3;
+    float n4 = (snoise(pos4) * 0.5 + 0.5) * 0.7 + (snoise(pos4b) * 0.5 + 0.5) * 0.3;
     
     // Apply mesh style variations
     if (uMeshStyle == 1) {
       vec2 flowDir = vec2(cos(uMeshFlowAngle), sin(uMeshFlowAngle));
       float flowBias = dot(sampleUv - 0.5, flowDir);
-      n1 += flowBias * 0.15;
-      n2 -= flowBias * 0.1;
+      n1 += flowBias * 0.2;
+      n2 -= flowBias * 0.15;
+      n3 += flowBias * 0.1;
     } else if (uMeshStyle == 2) {
       float dist = length(sampleUv - 0.5);
       float radialBias = uMeshCenterInward ? (1.0 - dist * 2.0) : (dist * 2.0);
-      n1 += radialBias * 0.1;
+      n1 += radialBias * 0.15;
+      n2 -= radialBias * 0.1;
     }
     
-    // Sharpness from blur: smooth (1.0) to sharp (4.0)
-    float sharpness = mix(1.0, 4.0, 1.0 - uBlur);
+    // Sharpness from blur: higher floor (2.0) ensures visible separation even at max blur
+    float sharpness = mix(2.0, 6.0, 1.0 - uBlur);
     // Calibration compensates for pow() reducing average values
     float calibration = sharpness + 1.0;
     
