@@ -564,7 +564,7 @@ void main() {
     
     // Soft weight floor on intensity: colors stay vivid (≥50% brightness)
     // even at low weight, but enough modulation to prevent additive blow-out.
-    float glowIntensity = 3.0 + uStrength;
+    float glowIntensity = 2.0 + uStrength * 0.5;
     orb1 *= glowIntensity * mix(0.5, 1.0, clamp(w1 * 3.0, 0.0, 1.0));
     orb2 *= glowIntensity * mix(0.5, 1.0, clamp(w2 * 3.0, 0.0, 1.0));
     orb3 *= glowIntensity * mix(0.5, 1.0, clamp(w3 * 3.0, 0.0, 1.0));
@@ -582,14 +582,16 @@ void main() {
       finalColor += sColor4 * orb4;
     }
     
-    // Contrast boost via pow() — pushes darks deeper, keeps brights vivid
-    // This is the "Darkmiles secret": instead of a shadow MASK that blacks out
-    // areas, we use power curve to increase contrast naturally.
-    // shadowDensity controls the exponent: higher = more black, more dramatic
-    float contrastExp = 1.0 + uGlowShadowDensity * 1.5; // range: 1.0 to 2.5
-    finalColor = pow(clamp(finalColor, 0.0, 1.0), vec3(contrastExp));
+    // Reinhard tone mapping: prevents white blow-out while preserving color ratios.
+    // Maps HDR values (0..∞) to LDR (0..1) smoothly — no hard clipping.
+    // Colors that overlap get brighter but never clip to pure white.
+    finalColor = finalColor / (1.0 + finalColor);
     
-    // Subtle noise-based variation to break uniformity (NOT a mask)
+    // Contrast boost via pow() — pushes darks deeper, keeps brights vivid
+    float contrastExp = 1.0 + uGlowShadowDensity * 1.5;
+    finalColor = pow(finalColor, vec3(contrastExp));
+    
+    // Subtle noise-based variation to break uniformity
     float noiseVar = snoise(vec3(st * 1.2, t * 0.15)) * 0.08 * uGlowShadowDensity;
     finalColor *= (1.0 + noiseVar);
     
