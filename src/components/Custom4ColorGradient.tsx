@@ -396,6 +396,14 @@ void main() {
     //   - Black is the natural background (absence of light)
     //   - Normalized blend ensures no over-brightening
     
+    // Convert from Linear (THREE.Color auto-converts sRGB->Linear) back to sRGB
+    // so that blending happens in perceptual sRGB space and colors match their hex values.
+    vec3 sColor0 = linearToSrgb(uColor0);
+    vec3 sColor1 = linearToSrgb(uColor1);
+    vec3 sColor2 = linearToSrgb(uColor2);
+    vec3 sColor3 = linearToSrgb(uColor3);
+    vec3 sColor4 = linearToSrgb(uColor4);
+    
     float t = uTime * 0.15;
     vec2 sampleUv = vUv;
     
@@ -500,14 +508,14 @@ void main() {
     float a3 = g3 / total;
     float a4 = g4 / total;
     
-    // Weighted color blend (order-independent)
-    finalColor = uColor0 * a0 + uColor1 * a1 + uColor2 * a2 + uColor3 * a3;
+    // Weighted color blend in sRGB space (order-independent)
+    finalColor = sColor0 * a0 + sColor1 * a1 + sColor2 * a2 + sColor3 * a3;
     if (uHasColor4) {
-      finalColor += uColor4 * a4;
+      finalColor += sColor4 * a4;
     }
     
     // Subtle edge fade
-    finalColor = mix(uColor0, finalColor, edgeFade);
+    finalColor = mix(sColor0, finalColor, edgeFade);
     
   } else if (uGradientType == 2) {
     // =========================================================================
