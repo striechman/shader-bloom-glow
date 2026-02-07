@@ -1092,10 +1092,10 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                   <p className="text-xs text-muted-foreground/70">Size of the light orbs</p>
                 </div>
                 
-                {/* Shadow Density */}
+                {/* Contrast / Depth */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground">Shadow Density</Label>
+                    <Label className="text-muted-foreground">Contrast</Label>
                     <span className="text-xs text-muted-foreground">{config.glowShadowDensity ?? 50}%</span>
                   </div>
                   <Slider
@@ -1106,7 +1106,7 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                     step={1}
                     className="w-full"
                   />
-                  <p className="text-xs text-muted-foreground/70">Dark cloud coverage over lights</p>
+                  <p className="text-xs text-muted-foreground/70">Push darks deeper, brights brighter</p>
                 </div>
               </div>
             </div>
