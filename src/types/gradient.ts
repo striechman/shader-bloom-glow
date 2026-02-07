@@ -1,6 +1,6 @@
 export interface GradientConfig {
   // Shape - gradient types
-  type: 'sphere' | 'plane' | 'waterPlane' | 'conic' | 'spiral' | 'waves';
+  type: 'sphere' | 'plane' | 'waterPlane' | 'conic' | 'glow' | 'waves';
   wireframe: boolean;
   
   // Colors (Default state) - color0 is always theme-based (black/white)
@@ -65,9 +65,9 @@ export interface GradientConfig {
   conicOffsetX: number; // -50 to 50 horizontal offset of center
   conicOffsetY: number; // -50 to 50 vertical offset of center
   
-  // Spiral settings
-  spiralTightness: number; // 1-10 how tight the spiral is
-  spiralDirection: boolean; // true = clockwise, false = counter-clockwise
+  // Glow settings (Luminous Glow effect)
+  glowOrbSize: number; // 20-100 size of light orbs
+  glowShadowDensity: number; // 0-100 density of shadow clouds
   
   // Waves settings
   wavesCount: number; // 2-10 number of waves
@@ -119,9 +119,9 @@ export const defaultGradientConfig: GradientConfig = {
   conicSpiral: 0,
   conicOffsetX: 0,
   conicOffsetY: 0,
-  // Spiral defaults
-  spiralTightness: 3,
-  spiralDirection: true,
+  // Glow defaults
+  glowOrbSize: 60,
+  glowShadowDensity: 50,
   // Waves defaults
   wavesCount: 5,
   wavesAmplitude: 50,

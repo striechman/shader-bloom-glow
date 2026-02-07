@@ -140,6 +140,7 @@ async function render4ColorGradientHighQuality(
   const w1 = (config.colorWeight1 ?? 23) / 100;
   const w2 = (config.colorWeight2 ?? 24) / 100;
   const w3 = (config.colorWeight3 ?? 23) / 100;
+  const w4 = (config.colorWeight4 ?? 0) / 100;
   const threshold0 = w0;
   const threshold1 = w0 + w1;
   const threshold2 = w0 + w1 + w2;
@@ -156,19 +157,19 @@ async function render4ColorGradientHighQuality(
   const conicOffsetY = (config.conicOffsetY ?? 0) / 100;
   
   
-  // New effect settings
-  const spiralTightness = config.spiralTightness ?? 3;
-  const spiralDirection = config.spiralDirection ?? true;
+  // Glow effect settings
+  const glowOrbSize = (config.glowOrbSize ?? 60) / 100;
+  const glowShadowDensity = (config.glowShadowDensity ?? 50) / 100;
   const wavesCount = config.wavesCount ?? 5;
   const wavesAmplitude = (config.wavesAmplitude ?? 50) / 100;
   
-  // Gradient type: 0=mesh, 1=sphere, 2=plane, 3=water, 4=conic, 5=spiral, 6=waves
+  // Gradient type: 0=mesh, 1=sphere, 2=plane, 3=water, 4=conic, 5=glow, 6=waves
   const gradientType = config.wireframe ? 0 : 
     config.type === 'sphere' ? 1 : 
     config.type === 'plane' ? 2 : 
     config.type === 'waterPlane' ? 3 : 
     config.type === 'conic' ? 4 : 
-    config.type === 'spiral' ? 5 :
+    config.type === 'glow' ? 5 :
     config.type === 'waves' ? 6 : 0;
   
   // Hero banner fade settings
@@ -275,20 +276,64 @@ async function render4ColorGradientHighQuality(
         noise = Math.max(0, Math.min(1, noise));
         
       } else if (gradientType === 5) {
-        // SPIRAL MODE - smooth sine-based blending
-        const dist = Math.sqrt(centeredU * centeredU + centeredV * centeredV);
-        const angle = Math.atan2(centeredV, centeredU);
-        let spiralAngle = angle + dist * spiralTightness * 6.28;
-        if (!spiralDirection) spiralAngle = -spiralAngle;
-        spiralAngle += time * 0.4;
+        // LUMINOUS GLOW MODE - additive light simulation
+        // In export, we approximate the glow effect with positioned light orbs
+        const t = time * 0.12;
+        const orbSize = 0.15 + glowOrbSize * 0.4;
         
-        // Use sin for smooth periodic blending
-        const spiral = Math.sin(spiralAngle) * 0.5 + 0.5;
-        const organicNoise = noise3D(u * 1.5 * freq, v * 1.5 * freq, time * 0.15) * 0.15 * density;
-        const organicNoise2 = noise3D(u * 3 * freq + 50, v * 3 * freq + 50, time * 0.15) * 0.08 * density;
-        const radialBlend = smoothstep(0.0, 0.7, dist) * 0.2;
-        noise = spiral + organicNoise + organicNoise2 + radialBlend;
-        noise = Math.max(0, Math.min(1, noise));
+        // Orb positions (same as shader)
+        const p1x = 0.3 + Math.sin(t * 0.7) * 0.12;
+        const p1y = 0.7 + Math.cos(t * 0.5) * 0.1;
+        const d1 = Math.sqrt((u - p1x) ** 2 + (v - p1y) ** 2);
+        const orb1 = Math.exp(-d1 * d1 / (orbSize * orbSize * (0.4 + w1 * 0.6))) * w1 * 2.5;
+        
+        const p2x = 0.75 + Math.cos(t * 0.6) * 0.1;
+        const p2y = 0.3 + Math.sin(t * 0.8) * 0.12;
+        const d2 = Math.sqrt((u - p2x) ** 2 + (v - p2y) ** 2);
+        const orb2 = Math.exp(-d2 * d2 / (orbSize * orbSize * (0.4 + w2 * 0.6))) * w2 * 2.5;
+        
+        const p3x = 0.5 + Math.sin(t * 0.4) * 0.15;
+        const p3y = 0.25 + Math.cos(t * 0.9) * 0.1;
+        const d3 = Math.sqrt((u - p3x) ** 2 + (v - p3y) ** 2);
+        const orb3 = Math.exp(-d3 * d3 / (orbSize * orbSize * (0.4 + w3 * 0.6))) * w3 * 2.5;
+        
+        let orb4 = 0;
+        if (hasColor4) {
+          const p4x = 0.2 + Math.cos(t * 0.5) * 0.1;
+          const p4y = 0.45 + Math.sin(t * 0.7) * 0.12;
+          const d4v = Math.sqrt((u - p4x) ** 2 + (v - p4y) ** 2);
+          orb4 = Math.exp(-d4v * d4v / (orbSize * orbSize * (0.4 + w4 * 0.6))) * w4 * 2.5;
+        }
+        
+        // Shadow mask
+        const shadowN = noise3D(u * 0.8 + t * 0.2, v * 0.8 + t * 0.2, t * 0.1);
+        const shadowN2 = noise3D(u * 1.5 + 30, v * 1.5 + 30, t * 0.15) * 0.4;
+        const combinedShadow = shadowN + shadowN2;
+        const shadowThreshold = 0.1 + glowShadowDensity * 0.5;
+        const shadowMask = smoothstep(-0.2 - shadowThreshold, 0.8 - shadowThreshold, combinedShadow + 0.3);
+        
+        // Additive blend
+        let gr = color0.r + color1.r * orb1 + color2.r * orb2 + color3.r * orb3;
+        let gg = color0.g + color1.g * orb1 + color2.g * orb2 + color3.g * orb3;
+        let gb = color0.b + color1.b * orb1 + color2.b * orb2 + color3.b * orb3;
+        if (hasColor4 && color4) {
+          gr += color4.r * orb4;
+          gg += color4.g * orb4;
+          gb += color4.b * orb4;
+        }
+        
+        // Apply shadow mask and clamp
+        const finalR = Math.min(1, gr) * shadowMask;
+        const finalG = Math.min(1, gg) * shadowMask;
+        const finalB = Math.min(1, gb) * shadowMask;
+        
+        // Skip the threshold blending below - go directly to output
+        const idx = (y * width + x) * 4;
+        data[idx] = Math.round(Math.max(0, Math.min(1, finalR)) * 255);
+        data[idx + 1] = Math.round(Math.max(0, Math.min(1, finalG)) * 255);
+        data[idx + 2] = Math.round(Math.max(0, Math.min(1, finalB)) * 255);
+        data[idx + 3] = 255;
+        continue; // Skip the rest of the loop for glow mode
         
       } else if (gradientType === 6) {
         // WAVES MODE
@@ -362,7 +407,7 @@ async function render4ColorGradientHighQuality(
         }
       } else {
         // =========================================================================
-        // OTHER MODES: Layer Masking (Mesh, Water, Conic, Spiral, Waves)
+        // OTHER MODES: Layer Masking (Mesh, Water, Conic, Glow, Waves)
         // =========================================================================
         let blend01 = smoothstep(threshold0 - blurFactor, threshold0 + blurFactor, noise);
         let blend12 = smoothstep(threshold1 - blurFactor, threshold1 + blurFactor, noise);

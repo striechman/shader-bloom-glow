@@ -108,7 +108,7 @@ uniform float uStrength;
 uniform float uDensity;
 uniform float uFrequency;
 uniform float uGrain;
-uniform int uGradientType; // 0=mesh, 1=sphere, 2=plane, 3=water, 4=conic, 5=spiral, 6=waves
+uniform int uGradientType; // 0=mesh, 1=sphere, 2=plane, 3=water, 4=conic, 5=glow, 6=waves
 uniform float uPlaneAngle; // Plane gradient angle in radians
 uniform bool uPlaneRadial; // If true, radial gradient from center
 uniform float uPlaneWave; // Wave distortion amount (0-1)
@@ -122,9 +122,9 @@ uniform float uMeshStretchAmount; // How much to stretch (1.0 = normal, 3.0+ = c
 uniform float uConicStartAngle; // radians
 uniform float uConicSpiral; // 0-1
 uniform vec2 uConicOffset; // Center offset
-// Spiral uniforms
-uniform float uSpiralTightness;
-uniform bool uSpiralDirection;
+// Glow uniforms (Luminous Glow effect)
+uniform float uGlowOrbSize;
+uniform float uGlowShadowDensity;
 // Waves uniforms
 uniform float uWavesCount;
 uniform float uWavesAmplitude;
@@ -290,28 +290,10 @@ void main() {
     noise = clamp(noise, 0.0, 1.0);
     
   } else if (uGradientType == 5) {
-    // SPIRAL MODE: Hypnotic spiraling gradient with smooth color blending
-    float dist = length(centeredUv);
-    float angle = atan(centeredUv.y, centeredUv.x);
-    
-    // Create spiral effect
-    float spiralAngle = angle + dist * uSpiralTightness * 6.28;
-    if (!uSpiralDirection) spiralAngle = -spiralAngle;
-    spiralAngle += uTime * 0.4;
-    
-    // Use sin for smooth periodic blending instead of fract for sharp edges
-    float spiral = sin(spiralAngle) * 0.5 + 0.5;
-    
-    // Add multiple octaves of noise for organic, soft transitions
-    vec3 noisePos = vec3(vUv * 1.5 * freq, uTime * 0.15);
-    float organicNoise = snoise(noisePos) * 0.15 * density;
-    float organicNoise2 = snoise(noisePos * 2.0 + 50.0) * 0.08 * density;
-    
-    // Add radial influence for more depth
-    float radialBlend = smoothstep(0.0, 0.7, dist) * 0.2;
-    
-    noise = spiral + organicNoise + organicNoise2 + radialBlend;
-    noise = clamp(noise, 0.0, 1.0);
+    // LUMINOUS GLOW MODE: Additive light simulation
+    // This mode computes finalColor directly below (like mesh mode).
+    // Set noise placeholder; actual color is computed in the glow blend block.
+    noise = 0.5;
     
   } else if (uGradientType == 6) {
     // WAVES MODE: Horizontal/vertical waves like ocean with direction support
@@ -517,6 +499,101 @@ void main() {
     // Subtle edge fade
     finalColor = mix(sColor0, finalColor, edgeFade);
     
+  } else if (uGradientType == 5) {
+    // =========================================================================
+    // LUMINOUS GLOW MODE: Additive Light Simulation
+    // =========================================================================
+    // Simulates colored light sources on a dark background.
+    // Concept: Start in darkness, "turn on" colored lights that glow and overlap.
+    // Shadow clouds (noise mask) add depth and contrast.
+    
+    // Convert to sRGB for perceptual accuracy (same as mesh mode)
+    vec3 sColor0 = linearToSrgb(uColor0);
+    vec3 sColor1 = linearToSrgb(uColor1);
+    vec3 sColor2 = linearToSrgb(uColor2);
+    vec3 sColor3 = linearToSrgb(uColor3);
+    vec3 sColor4 = linearToSrgb(uColor4);
+    
+    float t = uTime * 0.12;
+    vec2 st = vUv;
+    
+    // Orb size from user control (mapped to Gaussian spread)
+    float orbSize = mix(0.15, 0.55, uGlowOrbSize);
+    
+    // Gaussian glow function: exp(-d²/size²) - creates smooth bell-curve falloff
+    // Orb 1: Color1
+    vec2 p1 = vec2(
+      0.3 + sin(t * 0.7) * 0.12,
+      0.7 + cos(t * 0.5) * 0.1
+    );
+    float d1 = length(st - p1);
+    float orb1 = exp(-d1 * d1 / (orbSize * orbSize * (0.4 + w1 * 0.6)));
+    
+    // Orb 2: Color2
+    vec2 p2 = vec2(
+      0.75 + cos(t * 0.6) * 0.1,
+      0.3 + sin(t * 0.8) * 0.12
+    );
+    float d2 = length(st - p2);
+    float orb2 = exp(-d2 * d2 / (orbSize * orbSize * (0.4 + w2 * 0.6)));
+    
+    // Orb 3: Color3
+    vec2 p3 = vec2(
+      0.5 + sin(t * 0.4) * 0.15,
+      0.25 + cos(t * 0.9) * 0.1
+    );
+    float d3 = length(st - p3);
+    float orb3 = exp(-d3 * d3 / (orbSize * orbSize * (0.4 + w3 * 0.6)));
+    
+    // Orb 4: Color4 (optional)
+    float orb4 = 0.0;
+    if (uHasColor4) {
+      vec2 p4 = vec2(
+        0.2 + cos(t * 0.5) * 0.1,
+        0.45 + sin(t * 0.7) * 0.12
+      );
+      float d4 = length(st - p4);
+      orb4 = exp(-d4 * d4 / (orbSize * orbSize * (0.4 + w4 * 0.6)));
+    }
+    
+    // Scale orbs by their weights for intensity
+    orb1 *= w1 * 2.5;
+    orb2 *= w2 * 2.5;
+    orb3 *= w3 * 2.5;
+    orb4 *= w4 * 2.5;
+    
+    // Start from background color (typically black)
+    finalColor = sColor0;
+    
+    // ADDITIVE blending: light sources add on top of darkness
+    // This is the key difference from regular mixing - overlapping lights get brighter
+    finalColor += sColor1 * orb1;
+    finalColor += sColor2 * orb2;
+    finalColor += sColor3 * orb3;
+    if (uHasColor4) {
+      finalColor += sColor4 * orb4;
+    }
+    
+    // Shadow mask: noise-based "dark clouds" that occlude the light
+    // Creates organic negative space and depth (the 30-50% black feel)
+    float shadowDensity = uGlowShadowDensity;
+    float shadowNoise = snoise(vec3(st * 0.8 + t * 0.2, t * 0.1));
+    float shadowNoise2 = snoise(vec3(st * 1.5 + 30.0, t * 0.15)) * 0.4;
+    float combinedShadow = shadowNoise + shadowNoise2;
+    
+    // smoothstep creates a sharp-ish mask: dark areas become 0, lit areas become 1
+    float shadowThreshold = mix(0.1, 0.6, shadowDensity);
+    float shadowMask = smoothstep(-0.2 - shadowThreshold, 0.8 - shadowThreshold, combinedShadow + 0.3);
+    
+    // Apply shadow mask - multiplies final color, pushing dark areas to black
+    finalColor *= shadowMask;
+    
+    // Clamp to prevent over-brightening from additive blending
+    finalColor = clamp(finalColor, 0.0, 1.0);
+    
+    // Edge vignette
+    finalColor = mix(sColor0, finalColor, edgeFade);
+    
   } else if (uGradientType == 2) {
     // =========================================================================
     // PLANE MODE: Weighted Segments with Proper Color Distribution
@@ -539,7 +616,7 @@ void main() {
     
   } else {
     // =========================================================================
-    // OTHER MODES (Water, Conic, Spiral, Waves): Smooth Threshold Blending
+    // OTHER MODES (Water, Conic, Waves): Smooth Threshold Blending
     // =========================================================================
     float baseTrans = 0.10;
     float transitionWidth = baseTrans + blurFactor * 0.20;
@@ -562,9 +639,9 @@ void main() {
   }
   
   // Color space:
-  // Mesh mode intentionally blends in sRGB to preserve brand colors.
+  // Mesh and Glow modes intentionally blend in sRGB to preserve brand colors.
   // Other modes are treated as linear and converted back for output.
-  if (uGradientType != 0) {
+  if (uGradientType != 0 && uGradientType != 5) {
     finalColor = linearToSrgb(finalColor);
   }
 
@@ -591,7 +668,7 @@ const typeToInt: Record<string, number> = {
   'plane': 2,
   'waterPlane': 3,
   'conic': 4,
-  'spiral': 5,
+  'glow': 5,
   'waves': 6,
 };
 
@@ -638,9 +715,9 @@ export const Custom4ColorGradient = forwardRef<THREE.Mesh, Custom4ColorGradientP
     uConicStartAngle: { value: (config.conicStartAngle ?? 0) * Math.PI / 180 },
     uConicSpiral: { value: (config.conicSpiral ?? 0) / 100 },
     uConicOffset: { value: new THREE.Vector2((config.conicOffsetX ?? 0) / 100, (config.conicOffsetY ?? 0) / 100) },
-    // Spiral uniforms
-    uSpiralTightness: { value: config.spiralTightness ?? 3 },
-    uSpiralDirection: { value: config.spiralDirection ?? true },
+    // Glow uniforms
+    uGlowOrbSize: { value: (config.glowOrbSize ?? 60) / 100 },
+    uGlowShadowDensity: { value: (config.glowShadowDensity ?? 50) / 100 },
     // Waves uniforms
     uWavesCount: { value: config.wavesCount ?? 5 },
     uWavesAmplitude: { value: (config.wavesAmplitude ?? 50) / 100 },
@@ -699,9 +776,9 @@ export const Custom4ColorGradient = forwardRef<THREE.Mesh, Custom4ColorGradientP
     mat.uniforms.uConicSpiral.value = (config.conicSpiral ?? 0) / 100;
     mat.uniforms.uConicOffset.value.set((config.conicOffsetX ?? 0) / 100, (config.conicOffsetY ?? 0) / 100);
     
-    // Update spiral uniforms
-    mat.uniforms.uSpiralTightness.value = config.spiralTightness ?? 3;
-    mat.uniforms.uSpiralDirection.value = config.spiralDirection ?? true;
+    // Update glow uniforms
+    mat.uniforms.uGlowOrbSize.value = (config.glowOrbSize ?? 60) / 100;
+    mat.uniforms.uGlowShadowDensity.value = (config.glowShadowDensity ?? 50) / 100;
     
     // Update waves uniforms
     mat.uniforms.uWavesCount.value = config.wavesCount ?? 5;
