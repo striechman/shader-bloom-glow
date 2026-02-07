@@ -256,12 +256,12 @@ export function GradientDebugOverlay({ config, visible = true }: GradientDebugOv
         <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-[10px]">
           {isMeshMode ? (
             <>
-              <span className="text-white/60">Blend Mode:</span>
-              <span className="text-purple-400">Softmax Competitive</span>
-              <span className="text-white/60">Temperature:</span>
-              <span className="text-cyan-300">{(0.06 + (config.meshBlur ?? 50) / 100 * 0.29).toFixed(3)}</span>
-              <span className="text-white/60">Edge Fade:</span>
-              <span className="text-purple-400">0.85 → 1.25</span>
+           <span className="text-white/60">Blend Mode:</span>
+               <span className="text-purple-400">Radial Glow</span>
+               <span className="text-white/60">Softness:</span>
+               <span className="text-cyan-300">{(0.18 + (config.meshBlur ?? 50) / 100 * 0.47).toFixed(3)}</span>
+               <span className="text-white/60">Glow Boost:</span>
+               <span className="text-cyan-300">{(4.0 + (config.uStrength ?? 2) * 1.5).toFixed(1)}</span>
             </>
           ) : (
             <>

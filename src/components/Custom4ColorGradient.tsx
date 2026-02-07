@@ -387,11 +387,14 @@ void main() {
   
   if (uGradientType == 0) {
     // =========================================================================
-    // MESH MODE: Normalized Affinity Blending
+    // MESH MODE: Radial Glow Model
     // =========================================================================
-    // Professional mesh gradient approach (inspired by MeshingKit / ben-fornefeld):
-    // Each color gets a noise-driven affinity, all normalized to sum to 1.0.
-    // Black participates as an equal player — no energy hacks needed.
+    // Each color is a positioned Gaussian light source glowing against darkness.
+    // Inspired by Darkmiles/Apple-style dark gradients:
+    //   - Colors are concentrated glowing orbs at specific positions
+    //   - Noise distortion gives organic, non-circular blob shapes
+    //   - Black is the natural background (absence of light)
+    //   - Normalized blend ensures no over-brightening
     
     float t = uTime * 0.15;
     vec2 sampleUv = vUv;
@@ -405,74 +408,105 @@ void main() {
     float noiseScale = max(0.5, uNoiseScale) * 0.8;
     
     // ---------------------------------------------------------------
-    // SOFTMAX COMPETITIVE BLENDING
-    // Each color gets a single-octave noise field at well-separated positions.
-    // Softmax with temperature creates true winner-take-all regions:
-    // exp(n/T) amplifies tiny noise differences into massive ratios.
-    // Single octave preserves full variance (no averaging toward 0.5).
+    // GAUSSIAN RADIAL GLOW
+    // Each color is a positioned light source with Gaussian falloff.
+    // Noise distortion on the distance field creates organic shapes.
+    // The base color (black) fills all gaps naturally.
     // ---------------------------------------------------------------
-    vec3 pos1 = vec3(sampleUv * noiseScale,                          t);
-    vec3 pos2 = vec3((sampleUv + vec2(5.2, 1.3)) * noiseScale,       t * 0.85 + 100.0);
-    vec3 pos3 = vec3((sampleUv + vec2(-3.7, 7.1)) * noiseScale,      t * 0.75 + 200.0);
-    vec3 pos4 = vec3((sampleUv + vec2(8.4, -4.6)) * noiseScale,      t * 0.9  + 300.0);
     
-    // Raw simplex noise mapped to [0, 1]
-    float n1 = snoise(pos1) * 0.5 + 0.5;
-    float n2 = snoise(pos2) * 0.5 + 0.5;
-    float n3 = snoise(pos3) * 0.5 + 0.5;
-    float n4 = snoise(pos4) * 0.5 + 0.5;
+    // Softness: controls Gaussian spread (blur slider)
+    float softness = mix(0.18, 0.65, uBlur);
     
-    // Apply mesh style variations
+    // Animated center positions for each color source
+    vec2 c1, c2, c3, c4;
+    
     if (uMeshStyle == 1) {
+      // Flow: colors aligned along flow angle
       vec2 flowDir = vec2(cos(uMeshFlowAngle), sin(uMeshFlowAngle));
-      float flowBias = dot(sampleUv - 0.5, flowDir);
-      n1 += flowBias * 0.2;
-      n2 -= flowBias * 0.15;
-      n3 += flowBias * 0.1;
+      vec2 perpDir = vec2(-flowDir.y, flowDir.x);
+      c1 = vec2(0.5) + flowDir * 0.28 + perpDir * 0.08 * sin(t * 0.7);
+      c2 = vec2(0.5) - flowDir * 0.28 + perpDir * 0.08 * cos(t * 0.6);
+      c3 = vec2(0.5) + perpDir * 0.22 + flowDir * 0.06 * sin(t * 0.5);
+      c4 = vec2(0.5) - perpDir * 0.22 + flowDir * 0.06 * cos(t * 0.4);
     } else if (uMeshStyle == 2) {
-      float dist = length(sampleUv - 0.5);
-      float radialBias = uMeshCenterInward ? (1.0 - dist * 2.0) : (dist * 2.0);
-      n1 += radialBias * 0.15;
-      n2 -= radialBias * 0.1;
+      if (uMeshCenterInward) {
+        // Colors cluster toward center
+        c1 = vec2(0.5 + sin(t * 0.5) * 0.14, 0.5 + cos(t * 0.7) * 0.14);
+        c2 = vec2(0.5 + cos(t * 0.6) * 0.16, 0.5 + sin(t * 0.4) * 0.16);
+        c3 = vec2(0.5 + sin(t * 0.8) * 0.12, 0.5 + cos(t * 0.5) * 0.12);
+        c4 = vec2(0.5 + cos(t * 0.3) * 0.15, 0.5 + sin(t * 0.9) * 0.15);
+      } else {
+        // Colors at corners
+        c1 = vec2(0.2 + sin(t * 0.5) * 0.06, 0.2 + cos(t * 0.7) * 0.06);
+        c2 = vec2(0.8 + cos(t * 0.6) * 0.06, 0.2 + sin(t * 0.4) * 0.06);
+        c3 = vec2(0.8 + sin(t * 0.8) * 0.06, 0.8 + cos(t * 0.5) * 0.06);
+        c4 = vec2(0.2 + cos(t * 0.3) * 0.06, 0.8 + sin(t * 0.9) * 0.06);
+      }
+    } else {
+      // Organic: well-spread positions with gentle animation
+      c1 = vec2(
+        0.25 + sin(t * 0.7) * 0.1,
+        0.72 + cos(t * 0.5) * 0.08
+      );
+      c2 = vec2(
+        0.78 + cos(t * 0.6) * 0.1,
+        0.3  + sin(t * 0.8) * 0.08
+      );
+      c3 = vec2(
+        0.45 + sin(t * 0.4) * 0.12,
+        0.18 + cos(t * 0.9) * 0.08
+      );
+      c4 = vec2(
+        0.28 + cos(t * 0.5) * 0.08,
+        0.48 + sin(t * 0.7) * 0.1
+      );
     }
     
-    // ---------------------------------------------------------------
-    // SOFTMAX TEMPERATURE: controls transition sharpness
-    // Low temp (0.06) = hard boundaries, each pixel is one pure color
-    // High temp (0.35) = smooth, creamy transitions between regions
-    // Blur slider maps to temperature linearly
-    // ---------------------------------------------------------------
-    float temp = mix(0.06, 0.35, uBlur);
+    // Noise distortion: makes blobs organic (not perfect circles)
+    float distortScale = 3.0 * noiseScale;
+    float distort1 = snoise(vec3(sampleUv * distortScale,           t * 0.3))          * 0.12;
+    float distort2 = snoise(vec3(sampleUv * distortScale + 50.0,    t * 0.25))         * 0.12;
+    float distort3 = snoise(vec3(sampleUv * distortScale + 100.0,   t * 0.2))          * 0.12;
+    float distort4 = snoise(vec3(sampleUv * distortScale + 150.0,   t * 0.35))         * 0.12;
     
-    // Black (Color0) gets a constant noise score of 0.5
-    // This ensures it fills gaps proportionally to its weight
-    float score0 = 0.5;
+    // Noise-distorted distances from each color center
+    float d1 = length(sampleUv - c1) + distort1;
+    float d2 = length(sampleUv - c2) + distort2;
+    float d3 = length(sampleUv - c3) + distort3;
+    float d4 = length(sampleUv - c4) + distort4;
     
-    // Numerically stable softmax: subtract max to prevent exp() overflow
-    float maxScore = max(max(max(n1, n2), max(n3, n4)), score0);
+    // Gaussian radii: proportional to weight and softness
+    float r1 = softness * (0.3 + w1 * 0.4);
+    float r2 = softness * (0.3 + w2 * 0.4);
+    float r3 = softness * (0.3 + w3 * 0.4);
+    float r4 = softness * (0.3 + w4 * 0.4);
     
-    // Softmax exponentials weighted by color weights
-    float e0 = exp((score0 - maxScore) / temp) * w0;
-    float e1 = exp((n1 - maxScore) / temp) * w1;
-    float e2 = exp((n2 - maxScore) / temp) * w2;
-    float e3 = exp((n3 - maxScore) / temp) * w3;
-    float e4 = uHasColor4 ? exp((n4 - maxScore) / temp) * w4 : 0.0;
+    // Gaussian falloff: exp(-d²/r²), boosted so colors are vivid at centers
+    float glowBoost = 4.0 + uStrength * 1.5;
+    float g1 = exp(-d1 * d1 / (r1 * r1)) * w1 * glowBoost;
+    float g2 = exp(-d2 * d2 / (r2 * r2)) * w2 * glowBoost;
+    float g3 = exp(-d3 * d3 / (r3 * r3)) * w3 * glowBoost;
+    float g4 = uHasColor4 ? exp(-d4 * d4 / (r4 * r4)) * w4 * glowBoost : 0.0;
     
-    // Normalize: all weights sum to 1.0
-    float totalE = e0 + e1 + e2 + e3 + e4;
-    float a0 = e0 / totalE;
-    float a1 = e1 / totalE;
-    float a2 = e2 / totalE;
-    float a3 = e3 / totalE;
-    float a4 = e4 / totalE;
+    // Black's constant baseline - fills all gaps between color blobs
+    // Boosted slightly so darkness dominates where no light reaches
+    float darkBase = w0 * 1.8;
     
-    // Direct weighted blend (order-independent, no muddy averaging)
+    // Normalize: all contributions sum to 1.0
+    float total = darkBase + g1 + g2 + g3 + g4;
+    float a0 = darkBase / total;
+    float a1 = g1 / total;
+    float a2 = g2 / total;
+    float a3 = g3 / total;
+    float a4 = g4 / total;
+    
+    // Weighted color blend (order-independent)
     finalColor = uColor0 * a0 + uColor1 * a1 + uColor2 * a2 + uColor3 * a3;
     if (uHasColor4) {
       finalColor += uColor4 * a4;
     }
     
-    // Subtle edge fade for premium floating look
+    // Subtle edge fade
     finalColor = mix(uColor0, finalColor, edgeFade);
     
   } else if (uGradientType == 2) {
