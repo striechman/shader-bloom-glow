@@ -613,21 +613,39 @@ void main() {
     orb3 *= w3 * glowIntensity;
     orb4 *= w4 * glowIntensity;
     
-    // Start from background color (typically black)
-    finalColor = sColor0;
+    // Detect light vs dark background for blending strategy
+    float bgLuma = luma(sColor0);
     
-    // ADDITIVE blending: light sources add on top of darkness
-    finalColor += sColor1 * orb1;
-    finalColor += sColor2 * orb2;
-    finalColor += sColor3 * orb3;
-    if (uHasColor4) {
-      finalColor += sColor4 * orb4;
+    if (bgLuma > 0.5) {
+      // ---- LIGHT MODE: Multiplicative/Subtractive blending ----
+      // Colors "tint" the white background like watercolor or stained glass.
+      // Each orb pulls white toward its color via multiply-mix.
+      finalColor = sColor0;
+      finalColor *= mix(vec3(1.0), sColor1, clamp(orb1, 0.0, 1.0));
+      finalColor *= mix(vec3(1.0), sColor2, clamp(orb2, 0.0, 1.0));
+      finalColor *= mix(vec3(1.0), sColor3, clamp(orb3, 0.0, 1.0));
+      if (uHasColor4) {
+        finalColor *= mix(vec3(1.0), sColor4, clamp(orb4, 0.0, 1.0));
+      }
+      
+      // Contrast: invert the exponent logic for light bg (lower exp = more contrast on whites)
+      float contrastExp = 1.0 / (1.0 + uGlowShadowDensity * 1.5);
+      finalColor = pow(clamp(finalColor, 0.0, 1.0), vec3(contrastExp));
+    } else {
+      // ---- DARK MODE: Additive blending (original) ----
+      // Light sources add on top of darkness
+      finalColor = sColor0;
+      finalColor += sColor1 * orb1;
+      finalColor += sColor2 * orb2;
+      finalColor += sColor3 * orb3;
+      if (uHasColor4) {
+        finalColor += sColor4 * orb4;
+      }
+      
+      // Contrast boost via pow() — pushes darks deeper, keeps brights vivid
+      float contrastExp = 1.0 + uGlowShadowDensity * 1.5;
+      finalColor = pow(clamp(finalColor, 0.0, 1.0), vec3(contrastExp));
     }
-    
-    // Contrast boost via pow() — pushes darks deeper, keeps brights vivid
-    float contrastExp = 1.0 + uGlowShadowDensity * 1.5;
-    finalColor = pow(clamp(finalColor, 0.0, 1.0), vec3(contrastExp));
-    
     // Subtle noise-based variation to break uniformity
     float noiseVar = snoise(vec3(st * 1.2, t * 0.15)) * 0.08 * uGlowShadowDensity;
     finalColor *= (1.0 + noiseVar);
