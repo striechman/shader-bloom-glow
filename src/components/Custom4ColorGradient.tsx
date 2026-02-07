@@ -472,11 +472,13 @@ void main() {
     float r4 = softness * (0.3 + w4 * 0.4);
     
     // Gaussian falloff: exp(-d²/r²), boosted so colors are vivid at centers
+    // Weight controls RADIUS (area) only — NOT intensity.
+    // This keeps colors equally bright regardless of weight; they just cover less area.
     float glowBoost = 4.0 + uStrength * 1.5;
-    float g1 = exp(-d1 * d1 / (r1 * r1)) * w1 * glowBoost;
-    float g2 = exp(-d2 * d2 / (r2 * r2)) * w2 * glowBoost;
-    float g3 = exp(-d3 * d3 / (r3 * r3)) * w3 * glowBoost;
-    float g4 = uHasColor4 ? exp(-d4 * d4 / (r4 * r4)) * w4 * glowBoost : 0.0;
+    float g1 = exp(-d1 * d1 / (r1 * r1)) * glowBoost;
+    float g2 = exp(-d2 * d2 / (r2 * r2)) * glowBoost;
+    float g3 = exp(-d3 * d3 / (r3 * r3)) * glowBoost;
+    float g4 = uHasColor4 ? exp(-d4 * d4 / (r4 * r4)) * glowBoost : 0.0;
     
     // Black's constant baseline - fills all gaps between color blobs
     // Boosted slightly so darkness dominates where no light reaches
@@ -556,12 +558,13 @@ void main() {
       orb4 = exp(-d4 * d4 / (orbSize * orbSize * (0.4 + w4 * 0.6)));
     }
     
-    // Scale orbs by their weights for intensity
+    // Weight controls orb SIZE (Gaussian spread), NOT intensity.
+    // Light stays bright at its center, just covers less area when weight drops.
     float glowIntensity = 3.0 + uStrength;
-    orb1 *= w1 * glowIntensity;
-    orb2 *= w2 * glowIntensity;
-    orb3 *= w3 * glowIntensity;
-    orb4 *= w4 * glowIntensity;
+    orb1 *= glowIntensity;
+    orb2 *= glowIntensity;
+    orb3 *= glowIntensity;
+    orb4 *= glowIntensity;
     
     // Start from background color (typically black)
     finalColor = sColor0;
@@ -615,30 +618,44 @@ void main() {
     // =========================================================================
     // OTHER MODES (Water, Conic, Waves): Smooth Threshold Blending
     // =========================================================================
+    // Convert to sRGB for perceptual accuracy (same fix as Mesh/Glow)
+    vec3 sColor0 = linearToSrgb(uColor0);
+    vec3 sColor1 = linearToSrgb(uColor1);
+    vec3 sColor2 = linearToSrgb(uColor2);
+    vec3 sColor3 = linearToSrgb(uColor3);
+    vec3 sColor4 = linearToSrgb(uColor4);
+    
     float baseTrans = 0.10;
     float transitionWidth = baseTrans + blurFactor * 0.20;
     float strengthMod = 1.0 + strength * 0.15;
     transitionWidth = transitionWidth / strengthMod;
     transitionWidth = max(transitionWidth, 0.06);
     
+    // Adaptive transition width: cap to fraction of narrowest color zone
+    // so colors always reach full saturation even when zones are compressed
+    float minZone = min(w1, min(w2, w3));
+    if (uHasColor4) minZone = min(minZone, w4);
+    float maxTrans = minZone * 0.4;
+    transitionWidth = min(transitionWidth, max(maxTrans, 0.02));
+    
     float blend01 = smoothstep(threshold0, threshold0 + transitionWidth * 1.5, noise);
     float blend12 = smoothstep(threshold1 - transitionWidth * 0.5, threshold1 + transitionWidth, noise);
     float blend23 = smoothstep(threshold2 - transitionWidth * 0.5, threshold2 + transitionWidth, noise);
     float blend34 = smoothstep(threshold3 - transitionWidth * 0.5, threshold3 + transitionWidth, noise);
     
-    finalColor = uColor0;
-    finalColor = mix(finalColor, uColor1, blend01);
-    finalColor = mix(finalColor, uColor2, blend12);
-    finalColor = mix(finalColor, uColor3, blend23);
+    finalColor = sColor0;
+    finalColor = mix(finalColor, sColor1, blend01);
+    finalColor = mix(finalColor, sColor2, blend12);
+    finalColor = mix(finalColor, sColor3, blend23);
     if (uHasColor4) {
-      finalColor = mix(finalColor, uColor4, blend34);
+      finalColor = mix(finalColor, sColor4, blend34);
     }
   }
   
   // Color space:
-  // Mesh and Glow modes intentionally blend in sRGB to preserve brand colors.
-  // Other modes are treated as linear and converted back for output.
-  if (uGradientType != 0 && uGradientType != 5) {
+  // Mesh, Glow, and threshold modes (Water/Conic/Waves) all blend in sRGB.
+  // Only Plane mode (type 2) still blends in linear and needs conversion.
+  if (uGradientType == 2) {
     finalColor = linearToSrgb(finalColor);
   }
 
