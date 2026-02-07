@@ -20,7 +20,7 @@ export function GradientDebugOverlay({ config, visible = true }: GradientDebugOv
   // Compute gradient type int (same logic as shader)
   const typeToInt: Record<string, number> = {
     'mesh': 0, 'sphere': 1, 'plane': 2, 'waterPlane': 3,
-    'conic': 4, 'spiral': 5, 'waves': 6,
+    'conic': 4, 'glow': 5, 'waves': 6,
   };
   const uGradientType = typeToInt[activeMode] ?? 0;
   

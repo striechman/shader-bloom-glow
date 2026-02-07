@@ -40,7 +40,7 @@ const shapeOptions: { value: GradientConfig['type']; wireframe: boolean; label: 
   { value: 'plane', wireframe: true, label: 'Mesh', presetKey: 'mesh' },
   { value: 'plane', wireframe: true, label: 'Aurora', presetKey: 'aurora' },
   { value: 'conic', wireframe: false, label: 'Conic', presetKey: 'conic' },
-  { value: 'spiral', wireframe: false, label: 'Spiral', presetKey: 'spiral' },
+  { value: 'glow', wireframe: false, label: 'Glow', presetKey: 'glow' },
   { value: 'waves', wireframe: false, label: 'Waves', presetKey: 'waves' },
 ];
 
@@ -171,14 +171,14 @@ const effectPresets: Record<string, Partial<GradientConfig>> = {
     speed: 0.4,
     grain: false,
   },
-  spiral: {
-    uStrength: 1,
-    uDensity: 0.6,
-    uFrequency: 1,
-    spiralTightness: 3,
-    spiralDirection: true,
+  glow: {
+    uStrength: 1.5,
+    uDensity: 1.0,
+    uFrequency: 2,
+    glowOrbSize: 60,
+    glowShadowDensity: 50,
     meshStretch: false,
-    speed: 0.3,
+    speed: 0.25,
     grain: false,
   },
   waves: {
@@ -431,7 +431,7 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
 
   const isWireframeMode = config.wireframe;
   const isConicMode = config.type === 'conic';
-  const isSpiralMode = config.type === 'spiral';
+  const isGlowMode = config.type === 'glow';
   const isWavesMode = config.type === 'waves';
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === 'dark';
@@ -1070,35 +1070,43 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
             </div>
           )}
 
-          {/* Spiral Controls */}
-          {isSpiralMode && (
+          {/* Glow Controls */}
+          {isGlowMode && (
             <div>
-              <h3 className="font-display text-lg font-medium mb-4 text-foreground">Spiral</h3>
+              <h3 className="font-display text-lg font-medium mb-4 text-foreground">Glow</h3>
               <div className="space-y-4">
-                {/* Tightness */}
+                {/* Orb Size */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground">Tightness</Label>
-                    <span className="text-xs text-muted-foreground">{config.spiralTightness ?? 3}</span>
+                    <Label className="text-muted-foreground">Orb Size</Label>
+                    <span className="text-xs text-muted-foreground">{config.glowOrbSize ?? 60}%</span>
                   </div>
                   <Slider
-                    value={[config.spiralTightness ?? 3]}
-                    onValueChange={([value]) => onConfigChange({ spiralTightness: value })}
-                    min={1}
-                    max={10}
-                    step={0.5}
+                    value={[config.glowOrbSize ?? 60]}
+                    onValueChange={([value]) => onConfigChange({ glowOrbSize: value })}
+                    min={20}
+                    max={100}
+                    step={1}
                     className="w-full"
                   />
-                  <p className="text-xs text-muted-foreground/70">How tight the spiral winds</p>
+                  <p className="text-xs text-muted-foreground/70">Size of the light orbs</p>
                 </div>
                 
-                {/* Direction */}
-                <div className="flex items-center justify-between py-2">
-                  <Label className="text-muted-foreground">Clockwise</Label>
-                  <Switch
-                    checked={config.spiralDirection ?? true}
-                    onCheckedChange={(checked) => onConfigChange({ spiralDirection: checked })}
+                {/* Shadow Density */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-muted-foreground">Shadow Density</Label>
+                    <span className="text-xs text-muted-foreground">{config.glowShadowDensity ?? 50}%</span>
+                  </div>
+                  <Slider
+                    value={[config.glowShadowDensity ?? 50]}
+                    onValueChange={([value]) => onConfigChange({ glowShadowDensity: value })}
+                    min={0}
+                    max={100}
+                    step={1}
+                    className="w-full"
                   />
+                  <p className="text-xs text-muted-foreground/70">Dark cloud coverage over lights</p>
                 </div>
               </div>
             </div>

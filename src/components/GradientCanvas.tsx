@@ -18,7 +18,7 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
   const isHeroBanner = isHeroBannerRatio(config.aspectRatio);
   
   // Check if we should use 4-color mode (all custom shader types including water)
-  const use4ColorMode = config.type === 'plane' || config.type === 'conic' || config.type === 'spiral' || config.type === 'waves' || config.type === 'waterPlane' || config.wireframe;
+  const use4ColorMode = config.type === 'plane' || config.type === 'conic' || config.type === 'glow' || config.type === 'waves' || config.type === 'waterPlane' || config.wireframe;
   
   // Get current colors based on button preview state
   const currentColors = useMemo(() => {

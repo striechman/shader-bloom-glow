@@ -332,14 +332,14 @@ export const PRESET_SOFT_CORAL: BuiltInPreset = {
 // ARTISTIC / EFFECT PRESETS
 // ============================================================
 
-export const PRESET_COSMIC_SPIRAL: BuiltInPreset = {
-  id: 'cosmic-spiral',
-  name: 'Cosmic Spiral',
-  nameHe: 'ספירלה קוסמית',
-  description: 'Hypnotic spiral pattern with all brand colors',
+export const PRESET_LUMINOUS_GLOW: BuiltInPreset = {
+  id: 'luminous-glow',
+  name: 'Luminous Glow',
+  nameHe: 'זוהר מסנוור',
+  description: 'Colored light orbs glowing against deep darkness with shadow clouds',
   category: 'vibrant',
   config: {
-    type: 'spiral',
+    type: 'glow',
     
     color0: '#000000',
     color1: '#EC008C',  // Magenta
@@ -347,21 +347,21 @@ export const PRESET_COSMIC_SPIRAL: BuiltInPreset = {
     color3: '#00C2FF',  // Cyan
     color4: '#FDB515',  // Yellow
     
-    colorWeight0: 25,
+    colorWeight0: 30,
     colorWeight1: 20,
-    colorWeight2: 20,
-    colorWeight3: 20,
-    colorWeight4: 15,
+    colorWeight2: 25,
+    colorWeight3: 15,
+    colorWeight4: 10,
     
-    spiralTightness: 4,
-    spiralDirection: true,
+    glowOrbSize: 60,
+    glowShadowDensity: 45,
     
     uStrength: 1.5,
-    uDensity: 1.2,
-    uFrequency: 5.0,
+    uDensity: 1.0,
+    uFrequency: 2.0,
     
     animate: true,
-    speed: 0.3,
+    speed: 0.25,
     
     grain: true,
     grainIntensity: 8,
@@ -416,7 +416,7 @@ export const BUILT_IN_PRESETS: BuiltInPreset[] = [
   // Vibrant
   PRESET_NEON_NIGHTS,
   PRESET_SUNSET_BLAZE,
-  PRESET_COSMIC_SPIRAL,
+  PRESET_LUMINOUS_GLOW,
   PRESET_PRISMATIC_WAVES,
   
   // Minimal
