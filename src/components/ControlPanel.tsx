@@ -8,7 +8,7 @@ import { useState, useEffect, useRef } from 'react';
 import { GradientConfig, isHeroBannerRatio, isButtonRatio, getThemeColor0 } from '@/types/gradient';
 import { useTheme } from '@/hooks/useTheme';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { BUILT_IN_PRESETS } from '@/config/presets';
+
 
 // Plane direction presets
 const planeDirectionPresets = [
@@ -98,6 +98,10 @@ const colorPresets = [
   { name: 'Blush', color1: '#EC008C', color2: '#F2665F', color3: '#FFFFFF', color4: null, weight0: 30, weight1: 25, weight2: 25, weight3: 20, weight4: 0 },
   { name: 'Violet', color1: '#EC008C', color2: '#6A00F4', color3: '#00C2FF', color4: null, weight0: 30, weight1: 25, weight2: 25, weight3: 20, weight4: 0 },
   { name: 'Warm', color1: '#FDB515', color2: '#F2665F', color3: '#EC008C', color4: null, weight0: 30, weight1: 25, weight2: 25, weight3: 20, weight4: 0 },
+  // New favorites from debug screenshots
+  { name: 'Golden', color1: '#6A00F4', color2: '#EC008C', color3: '#FDB515', color4: null, weight0: 50, weight1: 14, weight2: 5, weight3: 32, weight4: 0 },
+  { name: 'Ember', color1: '#FDB515', color2: '#F2665F', color3: '#EC008C', color4: '#6A00F4', weight0: 37, weight1: 22, weight2: 16, weight3: 13, weight4: 12 },
+  { name: 'Dusk', color1: '#6A00F4', color2: '#EC008C', color3: '#F2665F', color4: '#F2665F', weight0: 59, weight1: 19, weight2: 9, weight3: 9, weight4: 5 },
 ];
 
 // Complete effect presets for each gradient type - resets ALL relevant settings
@@ -686,36 +690,6 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
             </div>
           )}
 
-          {/* Built-in Presets */}
-          {!isButtonRatio(config.aspectRatio) && (
-            <div>
-              <h3 className="font-display text-lg font-medium mb-4 text-foreground">Presets</h3>
-              <div className="grid grid-cols-2 gap-2 mb-6">
-                {BUILT_IN_PRESETS.map((preset) => (
-                  <button
-                    key={preset.id}
-                    onClick={() => onConfigChange({
-                      ...preset.config,
-                      color0: getThemeColor0(theme),
-                    } as Partial<GradientConfig>)}
-                    className="relative h-14 rounded-lg overflow-hidden border border-border hover:border-primary transition-colors group"
-                    style={{
-                      background: preset.config.type === 'glow'
-                        ? `radial-gradient(circle at 40% 40%, ${preset.config.color1} 0%, ${preset.config.color2 || '#000'} 40%, ${preset.config.color0 || '#000'} 80%)`
-                        : `linear-gradient(135deg, ${preset.config.color0 || '#000'} 0%, ${preset.config.color1} 30%, ${preset.config.color2 || preset.config.color1} 60%, ${preset.config.color3 || preset.config.color2 || preset.config.color1} 100%)`,
-                    }}
-                  >
-                    <span className="absolute inset-0 flex items-center justify-center text-white text-xs font-medium drop-shadow-md">
-                      {preset.name}
-                    </span>
-                    <span className="absolute bottom-0.5 right-1 text-[9px] text-white/50 uppercase tracking-wider">
-                      {preset.config.type === 'sphere' ? 'sphere' : preset.config.type}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* Colors */}
           <div>
