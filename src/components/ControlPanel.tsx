@@ -547,11 +547,11 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
             <h3 className="font-display text-lg font-medium mb-4 text-foreground">Shape</h3>
             <div className="grid grid-cols-2 gap-2">
               {shapeOptions.map((shape) => {
-                // Aurora and Mesh share same type+wireframe but different presets
+                // Aurora and Mesh share same type+wireframe but differ by meshStretch
                 const isActive = shape.label === 'Aurora' 
-                  ? config.type === 'plane' && config.wireframe && config.meshNoiseScale !== undefined && config.meshNoiseScale < 0.6
+                  ? config.type === 'plane' && config.wireframe && config.meshStretch === true
                   : shape.label === 'Mesh'
-                    ? config.type === 'plane' && config.wireframe && (config.meshNoiseScale === undefined || config.meshNoiseScale >= 0.6)
+                    ? config.type === 'plane' && config.wireframe && !config.meshStretch
                     : config.type === shape.value && config.wireframe === shape.wireframe;
                 
                 const handleShapeClick = () => {
