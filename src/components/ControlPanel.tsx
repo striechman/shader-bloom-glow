@@ -1,8 +1,9 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Minus, Sparkles, Save, Trash2, Type } from 'lucide-react';
+import { Plus, Minus, Sparkles, Save, Trash2, Type, ChevronDown } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { Play, Pause, Camera, RotateCcw, X, Moon, Sun, ArrowRight, ArrowDown, ArrowDownRight, ArrowDownLeft, Circle, Waves, Target, Move, RotateCw } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { GradientConfig, isHeroBannerRatio, isButtonRatio, getThemeColor0 } from '@/types/gradient';
@@ -512,7 +513,7 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
         style={!isOpen ? { pointerEvents: 'none' } : undefined}
       >
         
-        <div className={`p-4 md:p-6 space-y-6 ${isMobile ? 'pb-8' : 'pt-6 space-y-8'}`}>
+        <div className={`p-4 md:p-6 space-y-5 ${isMobile ? 'pb-8' : 'pt-6'}`}>
           {/* Panel Header with close button */}
           <div className="flex items-center justify-between">
             <h2 className="font-display text-lg md:text-xl font-semibold text-foreground">Settings</h2>
@@ -542,12 +543,13 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
             />
           </div>
 
-          {/* Shape Selection */}
-          <div>
-            <h3 className="font-display text-lg font-medium mb-4 text-foreground">Shape</h3>
+          {/* ========== 1. SHAPE & STYLE ========== */}
+          <div className="space-y-4">
+            <h3 className="font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">Shape & Style</h3>
+            
+            {/* Shape Selection Grid */}
             <div className="grid grid-cols-2 gap-2">
               {shapeOptions.map((shape) => {
-                // Aurora and Mesh share same type+wireframe but differ by meshStretch
                 const isActive = shape.label === 'Aurora' 
                   ? config.type === 'plane' && config.wireframe && config.meshStretch === true
                   : shape.label === 'Mesh'
@@ -578,64 +580,13 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                 );
               })}
             </div>
-          </div>
 
-          {/* Aspect Ratio */}
-          <div>
-            <h3 className="font-display text-lg font-medium mb-4 text-foreground">Aspect Ratio</h3>
-            <div className="flex flex-wrap gap-2">
-              {aspectRatioOptions.map((option) => (
-                <button
-                  key={option.value}
-                  onClick={() => onConfigChange({ aspectRatio: option.value })}
-                  className={`py-1.5 px-3 rounded-lg text-xs font-medium transition-all ${
-                    config.aspectRatio === option.value
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))}
-              {/* Buttons toggle - next to Small Banner */}
-              {onOpenButtonsPanel && (
-                <button
-                  onClick={onOpenButtonsPanel}
-                  className="py-1.5 px-3 rounded-lg text-xs font-medium transition-all bg-accent text-accent-foreground hover:bg-accent/80"
-                >
-                  Buttons
-                </button>
-              )}
-            </div>
-            
-            {/* Hero Banner Black Fade Control - only for hero-banner */}
-            {isHeroBannerRatio(config.aspectRatio) && (
-              <div className="mt-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-muted-foreground">Black Fade</Label>
-                  <span className="text-xs text-muted-foreground">{config.bannerBlackFade}%</span>
-                </div>
-                <Slider
-                  value={[config.bannerBlackFade]}
-                  onValueChange={([value]) => onConfigChange({ bannerBlackFade: value })}
-                  min={15}
-                  max={50}
-                  step={1}
-                  className="w-full"
-                />
-                <p className="text-xs text-muted-foreground/70">
-                  Left side will be solid black, then fade into the gradient
-                </p>
-              </div>
-            )}
-            
-          </div>
+            {/* === Effect-Specific Controls (contextual) === */}
 
-          {/* Mesh Controls (only visible when Mesh/Aurora is selected) */}
-          {isWireframeMode && (
-            <div>
-              <h3 className="font-display text-lg font-medium mb-4 text-foreground">Mesh Gradient</h3>
-              <div className="space-y-4">
+            {/* Mesh Controls */}
+            {isWireframeMode && (
+              <div className="space-y-3 pt-2">
+                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Mesh Settings</h4>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label className="text-muted-foreground">Blob Size</Label>
@@ -649,10 +600,7 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                     step={0.05}
                     className="w-full"
                   />
-                  <p className="text-xs text-muted-foreground/70">Lower = larger color areas, Higher = more detail</p>
                 </div>
-                
-                {/* Blur - controls softness between colors */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label className="text-muted-foreground">Color Blur</Label>
@@ -666,17 +614,13 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                     step={1}
                     className="w-full"
                   />
-                  <p className="text-xs text-muted-foreground/70">Softness of transitions between colors</p>
                 </div>
-                
-                {/* Mesh Style Selection */}
                 <div className="space-y-2">
                   <Label className="text-muted-foreground">Style</Label>
                   <div className="flex gap-2">
                     {meshStylePresets.map((style) => {
                       const Icon = style.icon;
                       const isActive = config.meshStyle === style.value;
-                      
                       return (
                         <button
                           key={style.value}
@@ -695,8 +639,6 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                     })}
                   </div>
                 </div>
-                
-                {/* Flow Direction (only when Flow style is selected) */}
                 {config.meshStyle === 'flow' && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
@@ -713,8 +655,6 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                     />
                   </div>
                 )}
-                
-                {/* Center Mode (only when Center style is selected) */}
                 {config.meshStyle === 'center' && (
                   <div className="flex items-center justify-between py-2">
                     <Label className="text-muted-foreground">
@@ -727,13 +667,434 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                   </div>
                 )}
               </div>
+            )}
+
+            {/* Plane Direction Controls */}
+            {config.type === 'plane' && !config.wireframe && (
+              <div className="space-y-3 pt-2">
+                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Direction</h4>
+                <div className="flex gap-2">
+                  {planeDirectionPresets.map((preset) => {
+                    const Icon = preset.icon;
+                    const isActive = preset.isRadial 
+                      ? config.planeRadial 
+                      : !config.planeRadial && config.planeAngle === preset.angle;
+                    return (
+                      <button
+                        key={preset.label}
+                        onClick={() => {
+                          if (preset.isRadial) {
+                            onConfigChange({ planeRadial: true });
+                          } else {
+                            onConfigChange({ planeAngle: preset.angle, planeRadial: false });
+                          }
+                        }}
+                        className={`flex-1 py-2 px-2 rounded-lg text-xs font-medium transition-all flex flex-col items-center gap-1 ${
+                          isActive
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                        }`}
+                        title={preset.label}
+                      >
+                        <Icon className="w-4 h-4" />
+                      </button>
+                    );
+                  })}
+                </div>
+                {!config.planeRadial && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-muted-foreground">Angle</Label>
+                      <span className="text-xs text-muted-foreground">{config.planeAngle ?? 45}°</span>
+                    </div>
+                    <Slider
+                      value={[config.planeAngle ?? 45]}
+                      onValueChange={([value]) => onConfigChange({ planeAngle: value })}
+                      min={0}
+                      max={360}
+                      step={5}
+                      className="w-full"
+                    />
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-muted-foreground flex items-center gap-2">
+                      <Waves className="w-4 h-4" />
+                      Wave
+                    </Label>
+                    <span className="text-xs text-muted-foreground">{config.planeWave ?? 0}%</span>
+                  </div>
+                  <Slider
+                    value={[config.planeWave ?? 0]}
+                    onValueChange={([value]) => onConfigChange({ planeWave: value })}
+                    min={0}
+                    max={100}
+                    step={5}
+                    className="w-full"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-muted-foreground">Spread</Label>
+                    <span className="text-xs text-muted-foreground">{config.planeSpread ?? 50}%</span>
+                  </div>
+                  <Slider
+                    value={[config.planeSpread ?? 50]}
+                    onValueChange={([value]) => onConfigChange({ planeSpread: value })}
+                    min={0}
+                    max={100}
+                    step={5}
+                    className="w-full"
+                  />
+                </div>
+                {config.planeRadial && (
+                  <div className="space-y-3">
+                    <Label className="text-muted-foreground flex items-center gap-2">
+                      <Move className="w-4 h-4" />
+                      Position Offset
+                    </Label>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">Horizontal</span>
+                        <span className="text-xs text-muted-foreground">{config.planeOffsetX ?? 0}%</span>
+                      </div>
+                      <Slider
+                        value={[config.planeOffsetX ?? 0]}
+                        onValueChange={([value]) => onConfigChange({ planeOffsetX: value })}
+                        min={-50}
+                        max={50}
+                        step={5}
+                        className="w-full"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">Vertical</span>
+                        <span className="text-xs text-muted-foreground">{config.planeOffsetY ?? 0}%</span>
+                      </div>
+                      <Slider
+                        value={[config.planeOffsetY ?? 0]}
+                        onValueChange={([value]) => onConfigChange({ planeOffsetY: value })}
+                        min={-50}
+                        max={50}
+                        step={5}
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Conic Controls */}
+            {isConicMode && (
+              <div className="space-y-3 pt-2">
+                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Conic Settings</h4>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-muted-foreground flex items-center gap-2">
+                      <RotateCw className="w-4 h-4" />
+                      Start Angle
+                    </Label>
+                    <span className="text-xs text-muted-foreground">{config.conicStartAngle ?? 0}°</span>
+                  </div>
+                  <Slider
+                    value={[config.conicStartAngle ?? 0]}
+                    onValueChange={([value]) => onConfigChange({ conicStartAngle: value })}
+                    min={0}
+                    max={360}
+                    step={5}
+                    className="w-full"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-muted-foreground flex items-center gap-2">
+                      <Waves className="w-4 h-4" />
+                      Spiral
+                    </Label>
+                    <span className="text-xs text-muted-foreground">{config.conicSpiral ?? 0}%</span>
+                  </div>
+                  <Slider
+                    value={[config.conicSpiral ?? 0]}
+                    onValueChange={([value]) => onConfigChange({ conicSpiral: value })}
+                    min={0}
+                    max={100}
+                    step={5}
+                    className="w-full"
+                  />
+                </div>
+                <div className="space-y-3">
+                  <Label className="text-muted-foreground flex items-center gap-2">
+                    <Move className="w-4 h-4" />
+                    Center Offset
+                  </Label>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Horizontal</span>
+                      <span className="text-xs text-muted-foreground">{config.conicOffsetX ?? 0}%</span>
+                    </div>
+                    <Slider
+                      value={[config.conicOffsetX ?? 0]}
+                      onValueChange={([value]) => onConfigChange({ conicOffsetX: value })}
+                      min={-50}
+                      max={50}
+                      step={5}
+                      className="w-full"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Vertical</span>
+                      <span className="text-xs text-muted-foreground">{config.conicOffsetY ?? 0}%</span>
+                    </div>
+                    <Slider
+                      value={[config.conicOffsetY ?? 0]}
+                      onValueChange={([value]) => onConfigChange({ conicOffsetY: value })}
+                      min={-50}
+                      max={50}
+                      step={5}
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Glow Controls */}
+            {isGlowMode && (
+              <div className="space-y-3 pt-2">
+                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Glow Settings</h4>
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Style</Label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {([
+                      { value: 'scattered' as const, label: 'Scatter', icon: Target },
+                      { value: 'clustered' as const, label: 'Cluster', icon: Circle },
+                      { value: 'diagonal' as const, label: 'Diagonal', icon: ArrowDownRight },
+                      { value: 'ring' as const, label: 'Ring', icon: RotateCw },
+                    ]).map((style) => {
+                      const Icon = style.icon;
+                      const isActive = (config.glowStyle ?? 'scattered') === style.value;
+                      return (
+                        <button
+                          key={style.value}
+                          onClick={() => onConfigChange({ glowStyle: style.value })}
+                          className={`py-2 px-1 rounded-lg text-xs font-medium transition-all flex flex-col items-center gap-1 ${
+                            isActive
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                          }`}
+                          title={style.label}
+                        >
+                          <Icon className="w-4 h-4" />
+                          <span className="text-[10px]">{style.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-muted-foreground">Orb Size</Label>
+                    <span className="text-xs text-muted-foreground">{config.glowOrbSize ?? 60}%</span>
+                  </div>
+                  <Slider
+                    value={[config.glowOrbSize ?? 60]}
+                    onValueChange={([value]) => onConfigChange({ glowOrbSize: value })}
+                    min={20}
+                    max={100}
+                    step={1}
+                    className="w-full"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-muted-foreground">Spread</Label>
+                    <span className="text-xs text-muted-foreground">{config.glowSpread ?? 50}%</span>
+                  </div>
+                  <Slider
+                    value={[config.glowSpread ?? 50]}
+                    onValueChange={([value]) => onConfigChange({ glowSpread: value })}
+                    min={0}
+                    max={100}
+                    step={1}
+                    className="w-full"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-muted-foreground">Distortion</Label>
+                    <span className="text-xs text-muted-foreground">{config.glowDistortion ?? 40}%</span>
+                  </div>
+                  <Slider
+                    value={[config.glowDistortion ?? 40]}
+                    onValueChange={([value]) => onConfigChange({ glowDistortion: value })}
+                    min={0}
+                    max={100}
+                    step={1}
+                    className="w-full"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-muted-foreground">Contrast</Label>
+                    <span className="text-xs text-muted-foreground">{config.glowShadowDensity ?? 50}%</span>
+                  </div>
+                  <Slider
+                    value={[config.glowShadowDensity ?? 50]}
+                    onValueChange={([value]) => onConfigChange({ glowShadowDensity: value })}
+                    min={0}
+                    max={100}
+                    step={1}
+                    className="w-full"
+                  />
+                </div>
+                <div className="space-y-3">
+                  <Label className="text-muted-foreground flex items-center gap-2">
+                    <Move className="w-4 h-4" />
+                    Position
+                  </Label>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Horizontal</span>
+                      <span className="text-xs text-muted-foreground">{config.glowOffsetX ?? 0}%</span>
+                    </div>
+                    <Slider
+                      value={[config.glowOffsetX ?? 0]}
+                      onValueChange={([value]) => onConfigChange({ glowOffsetX: value })}
+                      min={-50}
+                      max={50}
+                      step={1}
+                      className="w-full"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Vertical</span>
+                      <span className="text-xs text-muted-foreground">{config.glowOffsetY ?? 0}%</span>
+                    </div>
+                    <Slider
+                      value={[config.glowOffsetY ?? 0]}
+                      onValueChange={([value]) => onConfigChange({ glowOffsetY: value })}
+                      min={-50}
+                      max={50}
+                      step={1}
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Waves Controls */}
+            {isWavesMode && (
+              <div className="space-y-3 pt-2">
+                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Wave Settings</h4>
+                <div className="flex gap-2">
+                  {planeDirectionPresets.filter(p => !p.isRadial).map((preset) => {
+                    const Icon = preset.icon;
+                    const isActive = (config.wavesAngle ?? 0) === preset.angle;
+                    return (
+                      <button
+                        key={preset.label}
+                        onClick={() => onConfigChange({ wavesAngle: preset.angle })}
+                        className={`flex-1 py-2 px-2 rounded-lg text-xs font-medium transition-all flex flex-col items-center gap-1 ${
+                          isActive
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                        }`}
+                        title={preset.label}
+                      >
+                        <Icon className="w-4 h-4" />
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-muted-foreground">Angle</Label>
+                    <span className="text-xs text-muted-foreground">{config.wavesAngle ?? 0}°</span>
+                  </div>
+                  <Slider
+                    value={[config.wavesAngle ?? 0]}
+                    onValueChange={([value]) => onConfigChange({ wavesAngle: value })}
+                    min={0}
+                    max={360}
+                    step={5}
+                    className="w-full"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-muted-foreground">Wave Count</Label>
+                    <span className="text-xs text-muted-foreground">{config.wavesCount ?? 5}</span>
+                  </div>
+                  <Slider
+                    value={[config.wavesCount ?? 5]}
+                    onValueChange={([value]) => onConfigChange({ wavesCount: value })}
+                    min={2}
+                    max={10}
+                    step={1}
+                    className="w-full"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-muted-foreground">Amplitude</Label>
+                    <span className="text-xs text-muted-foreground">{config.wavesAmplitude ?? 50}%</span>
+                  </div>
+                  <Slider
+                    value={[config.wavesAmplitude ?? 50]}
+                    onValueChange={([value]) => onConfigChange({ wavesAmplitude: value })}
+                    min={10}
+                    max={100}
+                    step={5}
+                    className="w-full"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Rotation (moved here from Position section) */}
+            <div className="space-y-2 pt-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-muted-foreground flex items-center gap-2">
+                  <RotateCw className="w-3.5 h-3.5" />
+                  Rotation
+                </Label>
+                <span className="text-xs text-muted-foreground">{config.gradientRotation ?? 0}°</span>
+              </div>
+              <Slider
+                value={[config.gradientRotation ?? 0]}
+                onValueChange={([value]) => onConfigChange({ gradientRotation: value })}
+                min={0}
+                max={360}
+                step={5}
+                className="w-full"
+              />
+              <div className="flex gap-1.5 mt-1">
+                {[0, 45, 90, 135, 180, 270].map((angle) => (
+                  <button
+                    key={angle}
+                    onClick={() => onConfigChange({ gradientRotation: angle })}
+                    className={`flex-1 py-1 px-1 rounded text-xs font-medium transition-all ${
+                      (config.gradientRotation ?? 0) === angle
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                    }`}
+                  >
+                    {angle}°
+                  </button>
+                ))}
+              </div>
             </div>
-          )}
+          </div>
 
-
-          {/* Colors */}
-          <div>
-            <h3 className="font-display text-lg font-medium mb-4 text-foreground">
+          {/* ========== 2. COLORS ========== */}
+          <div className="border-t border-border/30 pt-4 space-y-4">
+            <h3 className="font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
               {isButtonRatio(config.aspectRatio) 
                 ? (config.buttonPreviewState === 'hover' ? 'Hover Colors' : 'Default Colors')
                 : 'Colors'
@@ -810,7 +1171,6 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                     </button>
                   )}
 
-                  {/* Saved presets */}
                   {savedPresets.length > 0 && (
                     <div className="mt-2 space-y-1">
                       <p className="text-xs text-muted-foreground/60">My Presets</p>
@@ -840,7 +1200,7 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                 </div>
               </>
             )}
-            <div className="space-y-4">
+            <div className="space-y-3">
               {/* Base Color Weight with Text Safe toggle */}
               <div className="space-y-2 py-2 px-3 rounded-lg bg-secondary/30">
                 <div className="flex items-center justify-between">
@@ -848,27 +1208,22 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                     <span 
                       className="w-4 h-4 rounded border border-border inline-block"
                       style={{ backgroundColor: getThemeColor0(theme) }}
-                    ></span>
-                    {isDark ? 'Black' : 'White'} (base)
+                    />
+                    Base ({isDark ? 'Black' : 'White'})
                   </Label>
-                  <span className="text-xs text-foreground font-mono">
-                    {config.colorWeight0}%
-                  </span>
+                  <span className="text-xs text-muted-foreground">{config.colorWeight0}%</span>
                 </div>
                 <Slider
                   value={[config.colorWeight0]}
-                  onValueChange={([value]) => {
-                    handleBaseWeightChange(value);
-                    if (isTextSafe && value < 65) setIsTextSafe(false);
-                  }}
-                  min={30}
+                  onValueChange={([value]) => handleBaseWeightChange(value)}
+                  min={MIN_BASE_COLOR_WEIGHT}
                   max={100}
                   step={1}
                   className="w-full"
                 />
                 {/* Text Safe Toggle */}
                 <div className="flex items-center justify-between pt-1">
-                  <Label className="text-muted-foreground flex items-center gap-1.5 text-xs">
+                  <Label className="text-muted-foreground flex items-center gap-2 text-xs">
                     <Type className="w-3.5 h-3.5" />
                     Text Safe
                   </Label>
@@ -877,562 +1232,101 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                     onCheckedChange={handleTextSafeToggle}
                   />
                 </div>
-                <p className="text-xs text-muted-foreground/70">
-                  {isTextSafe ? 'Optimized for text readability (65% base)' : 'Toggle for presentation/banner backgrounds'}
-                </p>
+                {isTextSafe && (
+                  <p className="text-xs text-muted-foreground/70">
+                    Base increased to 65% for better text contrast
+                  </p>
+                )}
               </div>
-              
-              {(() => {
-                // Determine which color keys to use based on button state
-                const isButton = isButtonRatio(config.aspectRatio);
-                const isHoverState = isButton && config.buttonPreviewState === 'hover';
-                
-                // For regular gradients, show 3 colors + optional 4th
-                // For buttons, only show 3 hover colors (no 4th color support for buttons)
-                const colorKeys = isHoverState 
-                  ? (['hoverColor1', 'hoverColor2', 'hoverColor3'] as const)
-                  : (['color1', 'color2', 'color3'] as const);
-                
-                const weights = [config.colorWeight1, config.colorWeight2, config.colorWeight3];
-                
-                return (
-                  <>
-                    {colorKeys.map((colorKey, index) => (
-                      <div key={colorKey}>
-                        <div className="flex items-center justify-between mb-2">
-                          <Label className="text-muted-foreground">Color {index + 1}</Label>
-                          <span className="text-xs text-muted-foreground font-mono">
-                            {weights[index]}%
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap gap-2 mb-2">
-                          {brandColors.map((color) => (
-                            <button
-                              key={color.hex}
-                              onClick={() => onConfigChange({ [colorKey]: color.hex })}
-                              className={`w-8 h-8 rounded-lg transition-all border-2 ${
-                                config[colorKey] === color.hex
-                                  ? 'border-primary scale-110 ring-2 ring-primary ring-offset-2 ring-offset-background'
-                                  : 'border-border hover:scale-105 hover:border-muted-foreground'
-                              }`}
-                              style={{ backgroundColor: color.hex }}
-                              title={color.name}
-                            />
-                          ))}
-                        </div>
-                        <Slider
-                          value={[weights[index]]}
-                          onValueChange={([value]) => handleColorWeightChange(index + 1, value)}
-                          min={5}
-                          max={60}
-                          step={1}
-                          className="w-full"
-                        />
-                      </div>
+
+              {/* Color Pickers with Weights */}
+              {[
+                { key: 'color1', weightKey: 'colorWeight1', label: 'Color 1', weight: config.colorWeight1, color: isButtonRatio(config.aspectRatio) && config.buttonPreviewState === 'hover' ? config.hoverColor1 : config.color1 },
+                { key: 'color2', weightKey: 'colorWeight2', label: 'Color 2', weight: config.colorWeight2, color: isButtonRatio(config.aspectRatio) && config.buttonPreviewState === 'hover' ? config.hoverColor2 : config.color2 },
+                { key: 'color3', weightKey: 'colorWeight3', label: 'Color 3', weight: config.colorWeight3, color: isButtonRatio(config.aspectRatio) && config.buttonPreviewState === 'hover' ? config.hoverColor3 : config.color3 },
+                ...(config.color4 !== null ? [{ key: 'color4', weightKey: 'colorWeight4', label: 'Color 4', weight: config.colorWeight4, color: config.color4 }] : []),
+              ].map(({ key, weightKey, label, weight, color }, index) => (
+                <div key={key} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-muted-foreground flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={color}
+                        onChange={(e) => {
+                          if (isButtonRatio(config.aspectRatio) && config.buttonPreviewState === 'hover') {
+                            const hoverKey = key === 'color1' ? 'hoverColor1' : key === 'color2' ? 'hoverColor2' : 'hoverColor3';
+                            onConfigChange({ [hoverKey]: e.target.value });
+                          } else {
+                            onConfigChange({ [key]: e.target.value });
+                          }
+                        }}
+                        className="w-5 h-5 rounded cursor-pointer border border-border"
+                        style={{ padding: 0 }}
+                      />
+                      {label}
+                    </Label>
+                    <span className="text-xs text-muted-foreground">{weight}%</span>
+                  </div>
+                  <Slider
+                    value={[weight]}
+                    onValueChange={([value]) => handleColorWeightChange(index + 1, value)}
+                    min={5}
+                    max={100 - config.colorWeight0 - 5 * (config.color4 !== null ? 3 : 2)}
+                    step={1}
+                    className="w-full"
+                  />
+                  {/* Brand color quick-picks */}
+                  <div className="flex gap-1">
+                    {activeBrandColors.map((brandColor) => (
+                      <button
+                        key={brandColor.hex}
+                        onClick={() => {
+                          if (isButtonRatio(config.aspectRatio) && config.buttonPreviewState === 'hover') {
+                            const hoverKey = key === 'color1' ? 'hoverColor1' : key === 'color2' ? 'hoverColor2' : 'hoverColor3';
+                            onConfigChange({ [hoverKey]: brandColor.hex });
+                          } else {
+                            onConfigChange({ [key]: brandColor.hex });
+                          }
+                        }}
+                        className={`w-5 h-5 rounded-full border-2 transition-all ${
+                          color === brandColor.hex 
+                            ? 'border-primary scale-110' 
+                            : 'border-transparent hover:border-border'
+                        }`}
+                        style={{ backgroundColor: brandColor.hex }}
+                        title={brandColor.name}
+                      />
                     ))}
-                    
-                    {/* Color 4 - Optional (only for non-button modes) */}
-                    {!isButton && (
-                      <>
-                        {config.color4 !== null ? (
-                          <div>
-                            <div className="flex items-center justify-between mb-2">
-                              <Label className="text-muted-foreground flex items-center gap-2">
-                                Color 4
-                                <button
-                                  onClick={handleRemoveColor4}
-                                  className="p-1 rounded hover:bg-secondary/80 text-muted-foreground hover:text-foreground transition-colors"
-                                  title="Remove Color 4"
-                                >
-                                  <Minus className="w-3 h-3" />
-                                </button>
-                              </Label>
-                              <span className="text-xs text-muted-foreground font-mono">
-                                {config.colorWeight4}%
-                              </span>
-                            </div>
-                            <div className="flex flex-wrap gap-2 mb-2">
-                              {brandColors.map((color) => (
-                                <button
-                                  key={color.hex}
-                                  onClick={() => onConfigChange({ color4: color.hex })}
-                                  className={`w-8 h-8 rounded-lg transition-all border-2 ${
-                                    config.color4 === color.hex
-                                      ? 'border-primary scale-110 ring-2 ring-primary ring-offset-2 ring-offset-background'
-                                      : 'border-border hover:scale-105 hover:border-muted-foreground'
-                                  }`}
-                                  style={{ backgroundColor: color.hex }}
-                                  title={color.name}
-                                />
-                              ))}
-                            </div>
-                            <Slider
-                              value={[config.colorWeight4]}
-                              onValueChange={([value]) => handleColorWeightChange(4, value)}
-                              min={5}
-                              max={60}
-                              step={1}
-                              className="w-full"
-                            />
-                          </div>
-                        ) : (
-                          <button
-                            onClick={handleAddColor4}
-                            className="w-full py-2 px-3 rounded-lg text-sm font-medium transition-all bg-secondary text-secondary-foreground hover:bg-secondary/80 flex items-center justify-center gap-2"
-                          >
-                            <Plus className="w-4 h-4" />
-                            Add Color 4
-                          </button>
-                        )}
-                      </>
-                    )}
-                  </>
-                );
-              })()}
+                  </div>
+                  {/* Remove button for Color 4 */}
+                  {key === 'color4' && (
+                    <button
+                      onClick={handleRemoveColor4}
+                      className="text-xs text-muted-foreground hover:text-destructive flex items-center gap-1 transition-colors"
+                    >
+                      <Minus className="w-3 h-3" /> Remove Color 4
+                    </button>
+                  )}
+                </div>
+              ))}
+
+              {/* Add Color 4 button (only if not already added) */}
+              {config.color4 === null && !isButtonRatio(config.aspectRatio) && (
+                <button
+                  onClick={handleAddColor4}
+                  className="w-full py-2 rounded-lg text-xs font-medium bg-secondary/50 text-muted-foreground hover:bg-secondary/80 hover:text-foreground transition-colors flex items-center justify-center gap-1.5"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Add 4th Color
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Plane Direction Controls (only visible when Plane is selected) */}
-          {config.type === 'plane' && !config.wireframe && (
-            <div>
-              <h3 className="font-display text-lg font-medium mb-4 text-foreground">Plane Direction</h3>
-              <div className="space-y-4">
-                {/* Direction Preset Buttons */}
-                <div className="flex gap-2">
-                  {planeDirectionPresets.map((preset) => {
-                    const Icon = preset.icon;
-                    const isActive = preset.isRadial 
-                      ? config.planeRadial 
-                      : !config.planeRadial && config.planeAngle === preset.angle;
-                    
-                    return (
-                      <button
-                        key={preset.label}
-                        onClick={() => {
-                          if (preset.isRadial) {
-                            onConfigChange({ planeRadial: true });
-                          } else {
-                            onConfigChange({ planeAngle: preset.angle, planeRadial: false });
-                          }
-                        }}
-                        className={`flex-1 py-2 px-2 rounded-lg text-xs font-medium transition-all flex flex-col items-center gap-1 ${
-                          isActive
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                        }`}
-                        title={preset.label}
-                      >
-                        <Icon className="w-4 h-4" />
-                      </button>
-                    );
-                  })}
-                </div>
-                
-                {/* Angle Slider (only when not radial) */}
-                {!config.planeRadial && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-muted-foreground">Angle</Label>
-                      <span className="text-xs text-muted-foreground">{config.planeAngle ?? 45}°</span>
-                    </div>
-                    <Slider
-                      value={[config.planeAngle ?? 45]}
-                      onValueChange={([value]) => onConfigChange({ planeAngle: value })}
-                      min={0}
-                      max={360}
-                      step={5}
-                      className="w-full"
-                    />
-                  </div>
-                )}
-                
-                
-                {/* Wave Effect */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground flex items-center gap-2">
-                      <Waves className="w-4 h-4" />
-                      Wave
-                    </Label>
-                    <span className="text-xs text-muted-foreground">{config.planeWave ?? 0}%</span>
-                  </div>
-                  <Slider
-                    value={[config.planeWave ?? 0]}
-                    onValueChange={([value]) => onConfigChange({ planeWave: value })}
-                    min={0}
-                    max={100}
-                    step={5}
-                    className="w-full"
-                  />
-                </div>
-                
-                {/* Spread Control */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground">Spread</Label>
-                    <span className="text-xs text-muted-foreground">{config.planeSpread ?? 50}%</span>
-                  </div>
-                  <Slider
-                    value={[config.planeSpread ?? 50]}
-                    onValueChange={([value]) => onConfigChange({ planeSpread: value })}
-                    min={0}
-                    max={100}
-                    step={5}
-                    className="w-full"
-                  />
-                  <p className="text-xs text-muted-foreground/70">Low = sharp edges, High = soft blend</p>
-                </div>
-                
-                {/* Offset Controls (only when radial or multi-center) */}
-                {config.planeRadial && (
-                  <div className="space-y-3">
-                    <Label className="text-muted-foreground flex items-center gap-2">
-                      <Move className="w-4 h-4" />
-                      Position Offset
-                    </Label>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">Horizontal</span>
-                        <span className="text-xs text-muted-foreground">{config.planeOffsetX ?? 0}%</span>
-                      </div>
-                      <Slider
-                        value={[config.planeOffsetX ?? 0]}
-                        onValueChange={([value]) => onConfigChange({ planeOffsetX: value })}
-                        min={-50}
-                        max={50}
-                        step={5}
-                        className="w-full"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">Vertical</span>
-                        <span className="text-xs text-muted-foreground">{config.planeOffsetY ?? 0}%</span>
-                      </div>
-                      <Slider
-                        value={[config.planeOffsetY ?? 0]}
-                        onValueChange={([value]) => onConfigChange({ planeOffsetY: value })}
-                        min={-50}
-                        max={50}
-                        step={5}
-                        className="w-full"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Conic Gradient Controls (only visible when Conic is selected) */}
-          {isConicMode && (
-            <div>
-              <h3 className="font-display text-lg font-medium mb-4 text-foreground">Conic Gradient</h3>
-              <div className="space-y-4">
-                {/* Start Angle */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground flex items-center gap-2">
-                      <RotateCw className="w-4 h-4" />
-                      Start Angle
-                    </Label>
-                    <span className="text-xs text-muted-foreground">{config.conicStartAngle ?? 0}°</span>
-                  </div>
-                  <Slider
-                    value={[config.conicStartAngle ?? 0]}
-                    onValueChange={([value]) => onConfigChange({ conicStartAngle: value })}
-                    min={0}
-                    max={360}
-                    step={5}
-                    className="w-full"
-                  />
-                </div>
-                
-                {/* Spiral Effect */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground flex items-center gap-2">
-                      <Waves className="w-4 h-4" />
-                      Spiral
-                    </Label>
-                    <span className="text-xs text-muted-foreground">{config.conicSpiral ?? 0}%</span>
-                  </div>
-                  <Slider
-                    value={[config.conicSpiral ?? 0]}
-                    onValueChange={([value]) => onConfigChange({ conicSpiral: value })}
-                    min={0}
-                    max={100}
-                    step={5}
-                    className="w-full"
-                  />
-                  <p className="text-xs text-muted-foreground/70">Add a spiral twist to the gradient</p>
-                </div>
-                
-                {/* Position Offset */}
-                <div className="space-y-3">
-                  <Label className="text-muted-foreground flex items-center gap-2">
-                    <Move className="w-4 h-4" />
-                    Center Offset
-                  </Label>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">Horizontal</span>
-                      <span className="text-xs text-muted-foreground">{config.conicOffsetX ?? 0}%</span>
-                    </div>
-                    <Slider
-                      value={[config.conicOffsetX ?? 0]}
-                      onValueChange={([value]) => onConfigChange({ conicOffsetX: value })}
-                      min={-50}
-                      max={50}
-                      step={5}
-                      className="w-full"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">Vertical</span>
-                      <span className="text-xs text-muted-foreground">{config.conicOffsetY ?? 0}%</span>
-                    </div>
-                    <Slider
-                      value={[config.conicOffsetY ?? 0]}
-                      onValueChange={([value]) => onConfigChange({ conicOffsetY: value })}
-                      min={-50}
-                      max={50}
-                      step={5}
-                      className="w-full"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Glow Controls */}
-          {isGlowMode && (
-            <div>
-              <h3 className="font-display text-lg font-medium mb-4 text-foreground">Glow</h3>
-              <div className="space-y-4">
-                {/* Style Presets */}
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">Style</Label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {([
-                      { value: 'scattered' as const, label: 'Scatter', icon: Target },
-                      { value: 'clustered' as const, label: 'Cluster', icon: Circle },
-                      { value: 'diagonal' as const, label: 'Diagonal', icon: ArrowDownRight },
-                      { value: 'ring' as const, label: 'Ring', icon: RotateCw },
-                    ]).map((style) => {
-                      const Icon = style.icon;
-                      const isActive = (config.glowStyle ?? 'scattered') === style.value;
-                      return (
-                        <button
-                          key={style.value}
-                          onClick={() => onConfigChange({ glowStyle: style.value })}
-                          className={`py-2 px-1 rounded-lg text-xs font-medium transition-all flex flex-col items-center gap-1 ${
-                            isActive
-                              ? 'bg-primary text-primary-foreground'
-                              : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                          }`}
-                          title={style.label}
-                        >
-                          <Icon className="w-4 h-4" />
-                          <span className="text-[10px]">{style.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Orb Size */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground">Orb Size</Label>
-                    <span className="text-xs text-muted-foreground">{config.glowOrbSize ?? 60}%</span>
-                  </div>
-                  <Slider
-                    value={[config.glowOrbSize ?? 60]}
-                    onValueChange={([value]) => onConfigChange({ glowOrbSize: value })}
-                    min={20}
-                    max={100}
-                    step={1}
-                    className="w-full"
-                  />
-                </div>
-
-                {/* Spread */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground">Spread</Label>
-                    <span className="text-xs text-muted-foreground">{config.glowSpread ?? 50}%</span>
-                  </div>
-                  <Slider
-                    value={[config.glowSpread ?? 50]}
-                    onValueChange={([value]) => onConfigChange({ glowSpread: value })}
-                    min={0}
-                    max={100}
-                    step={1}
-                    className="w-full"
-                  />
-                  <p className="text-xs text-muted-foreground/70">How far apart the light orbs are</p>
-                </div>
-
-                {/* Distortion */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground">Distortion</Label>
-                    <span className="text-xs text-muted-foreground">{config.glowDistortion ?? 40}%</span>
-                  </div>
-                  <Slider
-                    value={[config.glowDistortion ?? 40]}
-                    onValueChange={([value]) => onConfigChange({ glowDistortion: value })}
-                    min={0}
-                    max={100}
-                    step={1}
-                    className="w-full"
-                  />
-                  <p className="text-xs text-muted-foreground/70">Organic wobble on orb shapes</p>
-                </div>
-                
-                {/* Contrast / Depth */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground">Contrast</Label>
-                    <span className="text-xs text-muted-foreground">{config.glowShadowDensity ?? 50}%</span>
-                  </div>
-                  <Slider
-                    value={[config.glowShadowDensity ?? 50]}
-                    onValueChange={([value]) => onConfigChange({ glowShadowDensity: value })}
-                    min={0}
-                    max={100}
-                    step={1}
-                    className="w-full"
-                  />
-                </div>
-
-                {/* Position Offset */}
-                <div className="space-y-3">
-                  <Label className="text-muted-foreground flex items-center gap-2">
-                    <Move className="w-4 h-4" />
-                    Position
-                  </Label>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">Horizontal</span>
-                      <span className="text-xs text-muted-foreground">{config.glowOffsetX ?? 0}%</span>
-                    </div>
-                    <Slider
-                      value={[config.glowOffsetX ?? 0]}
-                      onValueChange={([value]) => onConfigChange({ glowOffsetX: value })}
-                      min={-50}
-                      max={50}
-                      step={1}
-                      className="w-full"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">Vertical</span>
-                      <span className="text-xs text-muted-foreground">{config.glowOffsetY ?? 0}%</span>
-                    </div>
-                    <Slider
-                      value={[config.glowOffsetY ?? 0]}
-                      onValueChange={([value]) => onConfigChange({ glowOffsetY: value })}
-                      min={-50}
-                      max={50}
-                      step={1}
-                      className="w-full"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Waves Controls */}
-          {isWavesMode && (
-            <div>
-              <h3 className="font-display text-lg font-medium mb-4 text-foreground">Waves</h3>
-              <div className="space-y-4">
-                {/* Direction Preset Buttons */}
-                <div className="flex gap-2">
-                  {planeDirectionPresets.filter(p => !p.isRadial).map((preset) => {
-                    const Icon = preset.icon;
-                    const isActive = (config.wavesAngle ?? 0) === preset.angle;
-                    
-                    return (
-                      <button
-                        key={preset.label}
-                        onClick={() => onConfigChange({ wavesAngle: preset.angle })}
-                        className={`flex-1 py-2 px-2 rounded-lg text-xs font-medium transition-all flex flex-col items-center gap-1 ${
-                          isActive
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                        }`}
-                        title={preset.label}
-                      >
-                        <Icon className="w-4 h-4" />
-                      </button>
-                    );
-                  })}
-                </div>
-                
-                {/* Angle Slider */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground">Angle</Label>
-                    <span className="text-xs text-muted-foreground">{config.wavesAngle ?? 0}°</span>
-                  </div>
-                  <Slider
-                    value={[config.wavesAngle ?? 0]}
-                    onValueChange={([value]) => onConfigChange({ wavesAngle: value })}
-                    min={0}
-                    max={360}
-                    step={5}
-                    className="w-full"
-                  />
-                </div>
-                
-                {/* Wave Count */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground">Wave Count</Label>
-                    <span className="text-xs text-muted-foreground">{config.wavesCount ?? 5}</span>
-                  </div>
-                  <Slider
-                    value={[config.wavesCount ?? 5]}
-                    onValueChange={([value]) => onConfigChange({ wavesCount: value })}
-                    min={2}
-                    max={10}
-                    step={1}
-                    className="w-full"
-                  />
-                </div>
-                
-                {/* Amplitude */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground">Amplitude</Label>
-                    <span className="text-xs text-muted-foreground">{config.wavesAmplitude ?? 50}%</span>
-                  </div>
-                  <Slider
-                    value={[config.wavesAmplitude ?? 50]}
-                    onValueChange={([value]) => onConfigChange({ wavesAmplitude: value })}
-                    min={10}
-                    max={100}
-                    step={5}
-                    className="w-full"
-                  />
-                  <p className="text-xs text-muted-foreground/70">Wave height intensity</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Animation / Freeze Frame */}
-          <div>
-            <h3 className="font-display text-lg font-medium mb-4 text-foreground">Animation</h3>
-            <div className="space-y-4">
-              {/* Play/Pause/Capture Controls */}
+          {/* ========== 3. ANIMATION ========== */}
+          <div className="border-t border-border/30 pt-4 space-y-4">
+            <h3 className="font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">Animation</h3>
+            <div className="space-y-3">
               <div className="flex gap-2">
                 <button
                   onClick={handleFreezeFrame}
@@ -1469,8 +1363,6 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                   <RotateCcw className="w-4 h-4" />
                 </button>
               </div>
-
-              {/* Timeline Slider */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label className="text-muted-foreground">Timeline</Label>
@@ -1487,8 +1379,6 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                   className="w-full"
                 />
               </div>
-
-              {/* Speed Control */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label className="text-muted-foreground">Speed</Label>
@@ -1506,119 +1396,134 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
             </div>
           </div>
 
-          {/* Position / Rotation */}
-          <div>
-            <h3 className="font-display text-lg font-medium mb-4 text-foreground">Position</h3>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-muted-foreground flex items-center gap-2">
-                    <RotateCw className="w-3.5 h-3.5" />
-                    Rotation
-                  </Label>
-                  <span className="text-xs text-muted-foreground">{config.gradientRotation ?? 0}°</span>
-                </div>
-                <Slider
-                  value={[config.gradientRotation ?? 0]}
-                  onValueChange={([value]) => onConfigChange({ gradientRotation: value })}
-                  min={0}
-                  max={360}
-                  step={5}
-                  className="w-full"
-                />
-                {/* Quick rotation presets */}
-                <div className="flex gap-1.5 mt-2">
-                  {[0, 45, 90, 135, 180, 270].map((angle) => (
-                    <button
-                      key={angle}
-                      onClick={() => onConfigChange({ gradientRotation: angle })}
-                      className={`flex-1 py-1 px-1 rounded text-xs font-medium transition-all ${
-                        (config.gradientRotation ?? 0) === angle
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                      }`}
-                    >
-                      {angle}°
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Effects */}
-          <div>
-            <h3 className="font-display text-lg font-medium mb-4 text-foreground">Effects</h3>
-            <div className="space-y-6">
-              {/* Grain with intensity slider */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label className="text-muted-foreground">Grain</Label>
-                  <Switch
-                    checked={config.grain}
-                    onCheckedChange={(checked) => onConfigChange({ grain: checked })}
-                  />
-                </div>
-                {config.grain && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-muted-foreground text-xs">Intensity</Label>
-                      <span className="text-xs text-muted-foreground">{config.grainIntensity ?? 50}%</span>
+          {/* ========== 4. FINE TUNE (collapsible) ========== */}
+          <div className="border-t border-border/30 pt-4">
+            <Collapsible>
+              <CollapsibleTrigger className="flex items-center justify-between w-full group">
+                <h3 className="font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">Fine Tune</h3>
+                <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-4 pt-4">
+                {/* Aspect Ratio (moved here) */}
+                <div>
+                  <Label className="text-muted-foreground mb-2 block">Aspect Ratio</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {aspectRatioOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        onClick={() => onConfigChange({ aspectRatio: option.value })}
+                        className={`py-1.5 px-3 rounded-lg text-xs font-medium transition-all ${
+                          config.aspectRatio === option.value
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                    {onOpenButtonsPanel && (
+                      <button
+                        onClick={onOpenButtonsPanel}
+                        className="py-1.5 px-3 rounded-lg text-xs font-medium transition-all bg-accent text-accent-foreground hover:bg-accent/80"
+                      >
+                        Buttons
+                      </button>
+                    )}
+                  </div>
+                  {isHeroBannerRatio(config.aspectRatio) && (
+                    <div className="mt-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-muted-foreground">Black Fade</Label>
+                        <span className="text-xs text-muted-foreground">{config.bannerBlackFade}%</span>
+                      </div>
+                      <Slider
+                        value={[config.bannerBlackFade]}
+                        onValueChange={([value]) => onConfigChange({ bannerBlackFade: value })}
+                        min={15}
+                        max={50}
+                        step={1}
+                        className="w-full"
+                      />
                     </div>
-                    <Slider
-                      value={[config.grainIntensity ?? 50]}
-                      onValueChange={([value]) => onConfigChange({ grainIntensity: value })}
-                      min={5}
-                      max={100}
-                      step={5}
-                      className="w-full"
+                  )}
+                </div>
+
+                {/* Grain */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-muted-foreground">Grain</Label>
+                    <Switch
+                      checked={config.grain}
+                      onCheckedChange={(checked) => onConfigChange({ grain: checked })}
                     />
                   </div>
-                )}
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-muted-foreground">Strength</Label>
-                  <span className="text-xs text-muted-foreground">{config.uStrength.toFixed(1)}</span>
+                  {config.grain && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-muted-foreground text-xs">Intensity</Label>
+                        <span className="text-xs text-muted-foreground">{config.grainIntensity ?? 50}%</span>
+                      </div>
+                      <Slider
+                        value={[config.grainIntensity ?? 50]}
+                        onValueChange={([value]) => onConfigChange({ grainIntensity: value })}
+                        min={5}
+                        max={100}
+                        step={5}
+                        className="w-full"
+                      />
+                    </div>
+                  )}
                 </div>
-                <Slider
-                  value={[config.uStrength]}
-                  onValueChange={([value]) => onConfigChange({ uStrength: value })}
-                  min={0}
-                  max={5}
-                  step={0.1}
-                  className="w-full"
-                />
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-muted-foreground">Density</Label>
-                  <span className="text-xs text-muted-foreground">{config.uDensity.toFixed(1)}</span>
+
+                {/* Strength */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-muted-foreground">Strength</Label>
+                    <span className="text-xs text-muted-foreground">{config.uStrength.toFixed(1)}</span>
+                  </div>
+                  <Slider
+                    value={[config.uStrength]}
+                    onValueChange={([value]) => onConfigChange({ uStrength: value })}
+                    min={0}
+                    max={5}
+                    step={0.1}
+                    className="w-full"
+                  />
                 </div>
-                <Slider
-                  value={[config.uDensity]}
-                  onValueChange={([value]) => onConfigChange({ uDensity: value })}
-                  min={0}
-                  max={3}
-                  step={0.1}
-                  className="w-full"
-                />
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-muted-foreground">Frequency</Label>
-                  <span className="text-xs text-muted-foreground">{config.uFrequency.toFixed(1)}</span>
+
+                {/* Density */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-muted-foreground">Density</Label>
+                    <span className="text-xs text-muted-foreground">{config.uDensity.toFixed(1)}</span>
+                  </div>
+                  <Slider
+                    value={[config.uDensity]}
+                    onValueChange={([value]) => onConfigChange({ uDensity: value })}
+                    min={0}
+                    max={3}
+                    step={0.1}
+                    className="w-full"
+                  />
                 </div>
-                <Slider
-                  value={[config.uFrequency]}
-                  onValueChange={([value]) => onConfigChange({ uFrequency: value })}
-                  min={0}
-                  max={10}
-                  step={0.1}
-                  className="w-full"
-                />
-              </div>
-            </div>
+
+                {/* Frequency */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-muted-foreground">Frequency</Label>
+                    <span className="text-xs text-muted-foreground">{config.uFrequency.toFixed(1)}</span>
+                  </div>
+                  <Slider
+                    value={[config.uFrequency]}
+                    onValueChange={([value]) => onConfigChange({ uFrequency: value })}
+                    min={0}
+                    max={10}
+                    step={0.1}
+                    className="w-full"
+                  />
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
           </div>
 
         </div>
