@@ -99,7 +99,7 @@ const colorPresets = [
   // === Cool / Atmospheric (deep, lots of black) ===
   { name: 'Ocean', color1: '#00C2FF', color2: '#6A00F4', color3: '#EC008C', color4: null, weight0: 40, weight1: 28, weight2: 20, weight3: 12, weight4: 0, recommendedFor: ['waterPlane', 'waves', 'plane'] },
   { name: 'Royal', color1: '#6A00F4', color2: '#EC008C', color3: '#00C2FF', color4: null, weight0: 35, weight1: 30, weight2: 20, weight3: 15, weight4: 0, recommendedFor: ['waves', 'plane', 'conic'] },
-  { name: 'Dusk', color1: '#6A00F4', color2: '#EC008C', color3: '#F2665F', color4: null, weight0: 50, weight1: 22, weight2: 16, weight3: 12, weight4: 0, recommendedFor: ['waves', 'glow', 'waterPlane'] },
+  { name: 'Dusk', color1: '#6A00F4', color2: '#EC008C', color3: '#F2665F', color4: null, weight0: 50, weight1: 22, weight2: 16, weight3: 12, weight4: 0, recommendedFor: ['waves', 'glow', 'waterPlane', 'conic', 'plane'] },
 ];
 
 // Complete effect presets for each gradient type - resets ALL relevant settings
@@ -1103,7 +1103,14 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
             {!isButtonRatio(config.aspectRatio) && (
               <>
                 <div className="grid grid-cols-3 gap-3 mb-3">
-                  {colorPresets.map((preset, index) => {
+                  {[...colorPresets].sort((a, b) => {
+                    const currentEffectKey = config.type === 'plane' && config.wireframe 
+                      ? 'plane'
+                      : config.type;
+                    const aRec = a.recommendedFor.includes(currentEffectKey) ? 0 : 1;
+                    const bRec = b.recommendedFor.includes(currentEffectKey) ? 0 : 1;
+                    return aRec - bRec;
+                  }).map((preset, index) => {
                     const currentEffectKey = config.type === 'plane' && config.wireframe 
                       ? 'plane'
                       : config.type;
