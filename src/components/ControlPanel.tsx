@@ -543,12 +543,56 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
             />
           </div>
 
+          {/* ========== 0. OUTPUT FORMAT ========== */}
+          <div className="rounded-xl bg-secondary/10 p-3 space-y-3">
+            <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-muted-foreground">Output Format</h3>
+            <div className="flex flex-wrap gap-1.5">
+              {aspectRatioOptions.map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => onConfigChange({ aspectRatio: option.value })}
+                  className={`py-1.5 px-2.5 rounded-lg text-xs font-medium transition-all ${
+                    config.aspectRatio === option.value
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+              {onOpenButtonsPanel && (
+                <button
+                  onClick={onOpenButtonsPanel}
+                  className="py-1.5 px-2.5 rounded-lg text-xs font-medium transition-all bg-accent text-accent-foreground hover:bg-accent/80"
+                >
+                  Buttons
+                </button>
+              )}
+            </div>
+            {isHeroBannerRatio(config.aspectRatio) && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-muted-foreground text-xs">Black Fade</Label>
+                  <span className="text-xs text-muted-foreground">{config.bannerBlackFade}%</span>
+                </div>
+                <Slider
+                  value={[config.bannerBlackFade]}
+                  onValueChange={([value]) => onConfigChange({ bannerBlackFade: value })}
+                  min={15}
+                  max={50}
+                  step={1}
+                  className="w-full"
+                />
+              </div>
+            )}
+          </div>
+
           {/* ========== 1. SHAPE & STYLE ========== */}
-          <div className="space-y-4">
-            <h3 className="font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">Shape & Style</h3>
+          <div className="rounded-xl bg-secondary/10 p-3 space-y-3">
+            <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-muted-foreground">Shape & Style</h3>
             
             {/* Shape Selection Grid */}
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-4 gap-1.5">
               {shapeOptions.map((shape) => {
                 const isActive = shape.label === 'Aurora' 
                   ? config.type === 'plane' && config.wireframe && config.meshStretch === true
@@ -569,7 +613,7 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                   <button
                     key={shape.label}
                     onClick={handleShapeClick}
-                    className={`py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                    className={`py-1.5 px-2 rounded-lg text-xs font-medium transition-all ${
                       isActive
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
@@ -581,16 +625,16 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
               })}
             </div>
 
-            {/* === Effect-Specific Controls (contextual) === */}
+            {/* === Effect-Specific Controls (contextual, inset style) === */}
 
             {/* Mesh Controls */}
             {isWireframeMode && (
-              <div className="space-y-3 pt-2">
-                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Mesh Settings</h4>
-                <div className="space-y-2">
+              <div className="rounded-lg bg-secondary/20 p-2.5 space-y-2.5">
+                <h4 className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Mesh Settings</h4>
+                <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground">Blob Size</Label>
-                    <span className="text-xs text-muted-foreground">{(config.meshNoiseScale ?? 1).toFixed(1)}</span>
+                    <Label className="text-muted-foreground text-xs">Blob Size</Label>
+                    <span className="text-[10px] text-muted-foreground">{(config.meshNoiseScale ?? 1).toFixed(1)}</span>
                   </div>
                   <Slider
                     value={[config.meshNoiseScale ?? 1]}
@@ -601,10 +645,10 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                     className="w-full"
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground">Color Blur</Label>
-                    <span className="text-xs text-muted-foreground">{config.meshBlur ?? 50}%</span>
+                    <Label className="text-muted-foreground text-xs">Color Blur</Label>
+                    <span className="text-[10px] text-muted-foreground">{config.meshBlur ?? 50}%</span>
                   </div>
                   <Slider
                     value={[config.meshBlur ?? 50]}
@@ -615,9 +659,9 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                     className="w-full"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">Style</Label>
-                  <div className="flex gap-2">
+                <div className="space-y-1.5">
+                  <Label className="text-muted-foreground text-xs">Style</Label>
+                  <div className="flex gap-1.5">
                     {meshStylePresets.map((style) => {
                       const Icon = style.icon;
                       const isActive = config.meshStyle === style.value;
@@ -625,14 +669,14 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                         <button
                           key={style.value}
                           onClick={() => onConfigChange({ meshStyle: style.value })}
-                          className={`flex-1 py-2 px-2 rounded-lg text-xs font-medium transition-all flex flex-col items-center gap-1 ${
+                          className={`flex-1 py-1.5 px-1.5 rounded-md text-[10px] font-medium transition-all flex flex-col items-center gap-0.5 ${
                             isActive
                               ? 'bg-primary text-primary-foreground'
                               : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
                           }`}
                           title={style.label}
                         >
-                          <Icon className="w-4 h-4" />
+                          <Icon className="w-3.5 h-3.5" />
                           <span>{style.label}</span>
                         </button>
                       );
@@ -640,10 +684,10 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                   </div>
                 </div>
                 {config.meshStyle === 'flow' && (
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <Label className="text-muted-foreground">Flow Direction</Label>
-                      <span className="text-xs text-muted-foreground">{config.meshFlowAngle ?? 45}°</span>
+                      <Label className="text-muted-foreground text-xs">Flow Direction</Label>
+                      <span className="text-[10px] text-muted-foreground">{config.meshFlowAngle ?? 45}°</span>
                     </div>
                     <Slider
                       value={[config.meshFlowAngle ?? 45]}
@@ -656,9 +700,9 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                   </div>
                 )}
                 {config.meshStyle === 'center' && (
-                  <div className="flex items-center justify-between py-2">
-                    <Label className="text-muted-foreground">
-                      {config.meshCenterInward ? 'Inward (center dark)' : 'Outward (center bright)'}
+                  <div className="flex items-center justify-between py-1">
+                    <Label className="text-muted-foreground text-xs">
+                      {config.meshCenterInward ? 'Inward' : 'Outward'}
                     </Label>
                     <Switch
                       checked={!config.meshCenterInward}
@@ -671,9 +715,9 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
 
             {/* Plane Direction Controls */}
             {config.type === 'plane' && !config.wireframe && (
-              <div className="space-y-3 pt-2">
-                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Direction</h4>
-                <div className="flex gap-2">
+              <div className="rounded-lg bg-secondary/20 p-2.5 space-y-2.5">
+                <h4 className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Direction</h4>
+                <div className="flex gap-1.5">
                   {planeDirectionPresets.map((preset) => {
                     const Icon = preset.icon;
                     const isActive = preset.isRadial 
@@ -689,23 +733,23 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                             onConfigChange({ planeAngle: preset.angle, planeRadial: false });
                           }
                         }}
-                        className={`flex-1 py-2 px-2 rounded-lg text-xs font-medium transition-all flex flex-col items-center gap-1 ${
+                        className={`flex-1 py-1.5 px-1.5 rounded-md text-xs font-medium transition-all flex flex-col items-center gap-0.5 ${
                           isActive
                             ? 'bg-primary text-primary-foreground'
                             : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
                         }`}
                         title={preset.label}
                       >
-                        <Icon className="w-4 h-4" />
+                        <Icon className="w-3.5 h-3.5" />
                       </button>
                     );
                   })}
                 </div>
                 {!config.planeRadial && (
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <Label className="text-muted-foreground">Angle</Label>
-                      <span className="text-xs text-muted-foreground">{config.planeAngle ?? 45}°</span>
+                      <Label className="text-muted-foreground text-xs">Angle</Label>
+                      <span className="text-[10px] text-muted-foreground">{config.planeAngle ?? 45}°</span>
                     </div>
                     <Slider
                       value={[config.planeAngle ?? 45]}
@@ -717,13 +761,13 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                     />
                   </div>
                 )}
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground flex items-center gap-2">
-                      <Waves className="w-4 h-4" />
+                    <Label className="text-muted-foreground text-xs flex items-center gap-1.5">
+                      <Waves className="w-3.5 h-3.5" />
                       Wave
                     </Label>
-                    <span className="text-xs text-muted-foreground">{config.planeWave ?? 0}%</span>
+                    <span className="text-[10px] text-muted-foreground">{config.planeWave ?? 0}%</span>
                   </div>
                   <Slider
                     value={[config.planeWave ?? 0]}
@@ -734,10 +778,10 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                     className="w-full"
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground">Spread</Label>
-                    <span className="text-xs text-muted-foreground">{config.planeSpread ?? 50}%</span>
+                    <Label className="text-muted-foreground text-xs">Spread</Label>
+                    <span className="text-[10px] text-muted-foreground">{config.planeSpread ?? 50}%</span>
                   </div>
                   <Slider
                     value={[config.planeSpread ?? 50]}
@@ -749,15 +793,15 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                   />
                 </div>
                 {config.planeRadial && (
-                  <div className="space-y-3">
-                    <Label className="text-muted-foreground flex items-center gap-2">
-                      <Move className="w-4 h-4" />
-                      Position Offset
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground text-xs flex items-center gap-1.5">
+                      <Move className="w-3.5 h-3.5" />
+                      Position
                     </Label>
-                    <div className="space-y-2">
+                    <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">Horizontal</span>
-                        <span className="text-xs text-muted-foreground">{config.planeOffsetX ?? 0}%</span>
+                        <span className="text-[10px] text-muted-foreground">Horizontal</span>
+                        <span className="text-[10px] text-muted-foreground">{config.planeOffsetX ?? 0}%</span>
                       </div>
                       <Slider
                         value={[config.planeOffsetX ?? 0]}
@@ -768,10 +812,10 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                         className="w-full"
                       />
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">Vertical</span>
-                        <span className="text-xs text-muted-foreground">{config.planeOffsetY ?? 0}%</span>
+                        <span className="text-[10px] text-muted-foreground">Vertical</span>
+                        <span className="text-[10px] text-muted-foreground">{config.planeOffsetY ?? 0}%</span>
                       </div>
                       <Slider
                         value={[config.planeOffsetY ?? 0]}
@@ -789,15 +833,15 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
 
             {/* Conic Controls */}
             {isConicMode && (
-              <div className="space-y-3 pt-2">
-                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Conic Settings</h4>
-                <div className="space-y-2">
+              <div className="rounded-lg bg-secondary/20 p-2.5 space-y-2.5">
+                <h4 className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Conic Settings</h4>
+                <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground flex items-center gap-2">
-                      <RotateCw className="w-4 h-4" />
+                    <Label className="text-muted-foreground text-xs flex items-center gap-1.5">
+                      <RotateCw className="w-3.5 h-3.5" />
                       Start Angle
                     </Label>
-                    <span className="text-xs text-muted-foreground">{config.conicStartAngle ?? 0}°</span>
+                    <span className="text-[10px] text-muted-foreground">{config.conicStartAngle ?? 0}°</span>
                   </div>
                   <Slider
                     value={[config.conicStartAngle ?? 0]}
@@ -808,13 +852,13 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                     className="w-full"
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground flex items-center gap-2">
-                      <Waves className="w-4 h-4" />
+                    <Label className="text-muted-foreground text-xs flex items-center gap-1.5">
+                      <Waves className="w-3.5 h-3.5" />
                       Spiral
                     </Label>
-                    <span className="text-xs text-muted-foreground">{config.conicSpiral ?? 0}%</span>
+                    <span className="text-[10px] text-muted-foreground">{config.conicSpiral ?? 0}%</span>
                   </div>
                   <Slider
                     value={[config.conicSpiral ?? 0]}
@@ -825,15 +869,15 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                     className="w-full"
                   />
                 </div>
-                <div className="space-y-3">
-                  <Label className="text-muted-foreground flex items-center gap-2">
-                    <Move className="w-4 h-4" />
-                    Center Offset
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground text-xs flex items-center gap-1.5">
+                    <Move className="w-3.5 h-3.5" />
+                    Center
                   </Label>
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">Horizontal</span>
-                      <span className="text-xs text-muted-foreground">{config.conicOffsetX ?? 0}%</span>
+                      <span className="text-[10px] text-muted-foreground">Horizontal</span>
+                      <span className="text-[10px] text-muted-foreground">{config.conicOffsetX ?? 0}%</span>
                     </div>
                     <Slider
                       value={[config.conicOffsetX ?? 0]}
@@ -844,10 +888,10 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                       className="w-full"
                     />
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">Vertical</span>
-                      <span className="text-xs text-muted-foreground">{config.conicOffsetY ?? 0}%</span>
+                      <span className="text-[10px] text-muted-foreground">Vertical</span>
+                      <span className="text-[10px] text-muted-foreground">{config.conicOffsetY ?? 0}%</span>
                     </div>
                     <Slider
                       value={[config.conicOffsetY ?? 0]}
@@ -864,11 +908,11 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
 
             {/* Glow Controls */}
             {isGlowMode && (
-              <div className="space-y-3 pt-2">
-                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Glow Settings</h4>
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">Style</Label>
-                  <div className="grid grid-cols-4 gap-2">
+              <div className="rounded-lg bg-secondary/20 p-2.5 space-y-2.5">
+                <h4 className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Glow Settings</h4>
+                <div className="space-y-1.5">
+                  <Label className="text-muted-foreground text-xs">Style</Label>
+                  <div className="grid grid-cols-4 gap-1.5">
                     {([
                       { value: 'scattered' as const, label: 'Scatter', icon: Target },
                       { value: 'clustered' as const, label: 'Cluster', icon: Circle },
@@ -881,24 +925,24 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                         <button
                           key={style.value}
                           onClick={() => onConfigChange({ glowStyle: style.value })}
-                          className={`py-2 px-1 rounded-lg text-xs font-medium transition-all flex flex-col items-center gap-1 ${
+                          className={`py-1.5 px-1 rounded-md text-[10px] font-medium transition-all flex flex-col items-center gap-0.5 ${
                             isActive
                               ? 'bg-primary text-primary-foreground'
                               : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
                           }`}
                           title={style.label}
                         >
-                          <Icon className="w-4 h-4" />
-                          <span className="text-[10px]">{style.label}</span>
+                          <Icon className="w-3.5 h-3.5" />
+                          <span>{style.label}</span>
                         </button>
                       );
                     })}
                   </div>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground">Orb Size</Label>
-                    <span className="text-xs text-muted-foreground">{config.glowOrbSize ?? 60}%</span>
+                    <Label className="text-muted-foreground text-xs">Orb Size</Label>
+                    <span className="text-[10px] text-muted-foreground">{config.glowOrbSize ?? 60}%</span>
                   </div>
                   <Slider
                     value={[config.glowOrbSize ?? 60]}
@@ -909,10 +953,10 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                     className="w-full"
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground">Spread</Label>
-                    <span className="text-xs text-muted-foreground">{config.glowSpread ?? 50}%</span>
+                    <Label className="text-muted-foreground text-xs">Spread</Label>
+                    <span className="text-[10px] text-muted-foreground">{config.glowSpread ?? 50}%</span>
                   </div>
                   <Slider
                     value={[config.glowSpread ?? 50]}
@@ -923,10 +967,10 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                     className="w-full"
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground">Distortion</Label>
-                    <span className="text-xs text-muted-foreground">{config.glowDistortion ?? 40}%</span>
+                    <Label className="text-muted-foreground text-xs">Distortion</Label>
+                    <span className="text-[10px] text-muted-foreground">{config.glowDistortion ?? 40}%</span>
                   </div>
                   <Slider
                     value={[config.glowDistortion ?? 40]}
@@ -937,10 +981,10 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                     className="w-full"
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground">Contrast</Label>
-                    <span className="text-xs text-muted-foreground">{config.glowShadowDensity ?? 50}%</span>
+                    <Label className="text-muted-foreground text-xs">Contrast</Label>
+                    <span className="text-[10px] text-muted-foreground">{config.glowShadowDensity ?? 50}%</span>
                   </div>
                   <Slider
                     value={[config.glowShadowDensity ?? 50]}
@@ -951,15 +995,15 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                     className="w-full"
                   />
                 </div>
-                <div className="space-y-3">
-                  <Label className="text-muted-foreground flex items-center gap-2">
-                    <Move className="w-4 h-4" />
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground text-xs flex items-center gap-1.5">
+                    <Move className="w-3.5 h-3.5" />
                     Position
                   </Label>
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">Horizontal</span>
-                      <span className="text-xs text-muted-foreground">{config.glowOffsetX ?? 0}%</span>
+                      <span className="text-[10px] text-muted-foreground">Horizontal</span>
+                      <span className="text-[10px] text-muted-foreground">{config.glowOffsetX ?? 0}%</span>
                     </div>
                     <Slider
                       value={[config.glowOffsetX ?? 0]}
@@ -970,10 +1014,10 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                       className="w-full"
                     />
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">Vertical</span>
-                      <span className="text-xs text-muted-foreground">{config.glowOffsetY ?? 0}%</span>
+                      <span className="text-[10px] text-muted-foreground">Vertical</span>
+                      <span className="text-[10px] text-muted-foreground">{config.glowOffsetY ?? 0}%</span>
                     </div>
                     <Slider
                       value={[config.glowOffsetY ?? 0]}
@@ -990,9 +1034,9 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
 
             {/* Waves Controls */}
             {isWavesMode && (
-              <div className="space-y-3 pt-2">
-                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Wave Settings</h4>
-                <div className="flex gap-2">
+              <div className="rounded-lg bg-secondary/20 p-2.5 space-y-2.5">
+                <h4 className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Wave Settings</h4>
+                <div className="flex gap-1.5">
                   {planeDirectionPresets.filter(p => !p.isRadial).map((preset) => {
                     const Icon = preset.icon;
                     const isActive = (config.wavesAngle ?? 0) === preset.angle;
@@ -1000,22 +1044,22 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                       <button
                         key={preset.label}
                         onClick={() => onConfigChange({ wavesAngle: preset.angle })}
-                        className={`flex-1 py-2 px-2 rounded-lg text-xs font-medium transition-all flex flex-col items-center gap-1 ${
+                        className={`flex-1 py-1.5 px-1.5 rounded-md text-xs font-medium transition-all flex flex-col items-center gap-0.5 ${
                           isActive
                             ? 'bg-primary text-primary-foreground'
                             : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
                         }`}
                         title={preset.label}
                       >
-                        <Icon className="w-4 h-4" />
+                        <Icon className="w-3.5 h-3.5" />
                       </button>
                     );
                   })}
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground">Angle</Label>
-                    <span className="text-xs text-muted-foreground">{config.wavesAngle ?? 0}°</span>
+                    <Label className="text-muted-foreground text-xs">Angle</Label>
+                    <span className="text-[10px] text-muted-foreground">{config.wavesAngle ?? 0}°</span>
                   </div>
                   <Slider
                     value={[config.wavesAngle ?? 0]}
@@ -1026,10 +1070,10 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                     className="w-full"
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground">Wave Count</Label>
-                    <span className="text-xs text-muted-foreground">{config.wavesCount ?? 5}</span>
+                    <Label className="text-muted-foreground text-xs">Wave Count</Label>
+                    <span className="text-[10px] text-muted-foreground">{config.wavesCount ?? 5}</span>
                   </div>
                   <Slider
                     value={[config.wavesCount ?? 5]}
@@ -1040,10 +1084,10 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                     className="w-full"
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground">Amplitude</Label>
-                    <span className="text-xs text-muted-foreground">{config.wavesAmplitude ?? 50}%</span>
+                    <Label className="text-muted-foreground text-xs">Amplitude</Label>
+                    <span className="text-[10px] text-muted-foreground">{config.wavesAmplitude ?? 50}%</span>
                   </div>
                   <Slider
                     value={[config.wavesAmplitude ?? 50]}
@@ -1057,14 +1101,14 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
               </div>
             )}
 
-            {/* Rotation (moved here from Position section) */}
-            <div className="space-y-2 pt-2">
+            {/* Rotation */}
+            <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <Label className="text-muted-foreground flex items-center gap-2">
+                <Label className="text-muted-foreground text-xs flex items-center gap-1.5">
                   <RotateCw className="w-3.5 h-3.5" />
                   Rotation
                 </Label>
-                <span className="text-xs text-muted-foreground">{config.gradientRotation ?? 0}°</span>
+                <span className="text-[10px] text-muted-foreground">{config.gradientRotation ?? 0}°</span>
               </div>
               <Slider
                 value={[config.gradientRotation ?? 0]}
@@ -1074,12 +1118,12 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                 step={5}
                 className="w-full"
               />
-              <div className="flex gap-1.5 mt-1">
+              <div className="flex gap-1 mt-0.5">
                 {[0, 45, 90, 135, 180, 270].map((angle) => (
                   <button
                     key={angle}
                     onClick={() => onConfigChange({ gradientRotation: angle })}
-                    className={`flex-1 py-1 px-1 rounded text-xs font-medium transition-all ${
+                    className={`flex-1 py-1 px-0.5 rounded text-[10px] font-medium transition-all ${
                       (config.gradientRotation ?? 0) === angle
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
@@ -1093,8 +1137,8 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
           </div>
 
           {/* ========== 2. COLORS ========== */}
-          <div className="border-t border-border/30 pt-4 space-y-4">
-            <h3 className="font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          <div className="rounded-xl bg-secondary/10 p-3 space-y-3">
+            <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               {isButtonRatio(config.aspectRatio) 
                 ? (config.buttonPreviewState === 'hover' ? 'Hover Colors' : 'Default Colors')
                 : 'Colors'
@@ -1102,7 +1146,7 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
             </h3>
             {!isButtonRatio(config.aspectRatio) && (
               <>
-                <div className="grid grid-cols-3 gap-3 mb-3">
+                <div className="grid grid-cols-3 gap-2">
                   {[...colorPresets].sort((a, b) => {
                     const currentEffectKey = config.type === 'plane' && config.wireframe 
                       ? 'plane'
@@ -1134,15 +1178,15 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                           setIsTextSafe(false);
                           setPresetWeightsBeforeTextSafe(null);
                         }}
-                        className="relative h-12 rounded-lg overflow-hidden border border-border hover:border-primary transition-colors group"
+                        className="relative h-10 rounded-lg overflow-hidden border border-border hover:border-primary transition-colors group"
                         style={{
                           background: `linear-gradient(135deg, ${getThemeColor0(theme)} 0%, ${preset.color1} 30%, ${preset.color2} 60%, ${preset.color3} 100%)`,
                         }}
                       >
                         {isRecommended && (
-                          <Sparkles className="absolute top-1 right-1 w-3 h-3 text-yellow-400 drop-shadow-md" />
+                          <Sparkles className="absolute top-0.5 right-0.5 w-2.5 h-2.5 text-yellow-400 drop-shadow-md" />
                         )}
-                        <span className="absolute inset-0 flex items-center justify-center text-white text-xs font-medium drop-shadow-md">
+                        <span className="absolute inset-0 flex items-center justify-center text-white text-[10px] font-medium drop-shadow-md">
                           {preset.name}
                         </span>
                       </button>
@@ -1151,27 +1195,27 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                 </div>
 
                 {/* Save Preset + Saved Presets */}
-                <div className="mb-4">
+                <div>
                   {showSaveInput ? (
-                    <div className="flex gap-2">
+                    <div className="flex gap-1.5">
                       <input
                         type="text"
                         value={savePresetName}
                         onChange={(e) => setSavePresetName(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleSavePreset()}
                         placeholder="Preset name..."
-                        className="flex-1 px-2 py-1.5 rounded-lg text-xs bg-secondary text-foreground border border-border focus:outline-none focus:border-primary"
+                        className="flex-1 px-2 py-1 rounded-lg text-xs bg-secondary text-foreground border border-border focus:outline-none focus:border-primary"
                         autoFocus
                       />
-                      <button onClick={handleSavePreset} className="px-2 py-1.5 rounded-lg text-xs bg-primary text-primary-foreground">Save</button>
-                      <button onClick={() => setShowSaveInput(false)} className="px-2 py-1.5 rounded-lg text-xs bg-secondary text-secondary-foreground">
+                      <button onClick={handleSavePreset} className="px-2 py-1 rounded-lg text-xs bg-primary text-primary-foreground">Save</button>
+                      <button onClick={() => setShowSaveInput(false)} className="px-2 py-1 rounded-lg text-xs bg-secondary text-secondary-foreground">
                         <X className="w-3 h-3" />
                       </button>
                     </div>
                   ) : (
                     <button
                       onClick={() => setShowSaveInput(true)}
-                      className="w-full py-1.5 rounded-lg text-xs font-medium bg-secondary/50 text-muted-foreground hover:bg-secondary/80 hover:text-foreground transition-colors flex items-center justify-center gap-1.5"
+                      className="w-full py-1 rounded-lg text-xs font-medium bg-secondary/50 text-muted-foreground hover:bg-secondary/80 hover:text-foreground transition-colors flex items-center justify-center gap-1.5"
                     >
                       <Save className="w-3 h-3" />
                       Save current
@@ -1180,24 +1224,24 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
 
                   {savedPresets.length > 0 && (
                     <div className="mt-2 space-y-1">
-                      <p className="text-xs text-muted-foreground/60">My Presets</p>
-                      <div className="grid grid-cols-3 gap-2">
+                      <p className="text-[10px] text-muted-foreground/60">My Presets</p>
+                      <div className="grid grid-cols-3 gap-1.5">
                         {savedPresets.map((preset) => (
                           <div key={preset.id} className="relative group">
                             <button
                               onClick={() => handleLoadSavedPreset(preset)}
-                              className="w-full h-10 rounded-lg overflow-hidden border border-border hover:border-primary transition-colors"
+                              className="w-full h-8 rounded-lg overflow-hidden border border-border hover:border-primary transition-colors"
                               style={{
                                 background: `linear-gradient(135deg, ${getThemeColor0(theme)} 0%, ${preset.config.color1} 35%, ${preset.config.color2} 65%, ${preset.config.color3} 100%)`,
                               }}
                             >
-                              <span className="text-white text-[10px] font-medium drop-shadow-md">{preset.name}</span>
+                              <span className="text-white text-[9px] font-medium drop-shadow-md">{preset.name}</span>
                             </button>
                             <button
                               onClick={() => deletePreset(preset.id)}
-                              className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                              className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                             >
-                              <Trash2 className="w-2.5 h-2.5" />
+                              <Trash2 className="w-2 h-2" />
                             </button>
                           </div>
                         ))}
@@ -1207,18 +1251,18 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                 </div>
               </>
             )}
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {/* Base Color Weight with Text Safe toggle */}
-              <div className="space-y-2 py-2 px-3 rounded-lg bg-secondary/30">
+              <div className="space-y-1.5 py-2 px-2.5 rounded-lg bg-secondary/30">
                 <div className="flex items-center justify-between">
-                  <Label className="text-muted-foreground flex items-center gap-2">
+                  <Label className="text-muted-foreground text-xs flex items-center gap-1.5">
                     <span 
-                      className="w-4 h-4 rounded border border-border inline-block"
+                      className="w-3.5 h-3.5 rounded border border-border inline-block"
                       style={{ backgroundColor: getThemeColor0(theme) }}
                     />
                     Base ({isDark ? 'Black' : 'White'})
                   </Label>
-                  <span className="text-xs text-muted-foreground">{config.colorWeight0}%</span>
+                  <span className="text-[10px] text-muted-foreground">{config.colorWeight0}%</span>
                 </div>
                 <Slider
                   value={[config.colorWeight0]}
@@ -1229,9 +1273,9 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                   className="w-full"
                 />
                 {/* Text Safe Toggle */}
-                <div className="flex items-center justify-between pt-1">
-                  <Label className="text-muted-foreground flex items-center gap-2 text-xs">
-                    <Type className="w-3.5 h-3.5" />
+                <div className="flex items-center justify-between pt-0.5">
+                  <Label className="text-muted-foreground flex items-center gap-1.5 text-xs">
+                    <Type className="w-3 h-3" />
                     Text Safe
                   </Label>
                   <Switch
@@ -1240,39 +1284,59 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                   />
                 </div>
                 {isTextSafe && (
-                  <p className="text-xs text-muted-foreground/70">
+                  <p className="text-[10px] text-muted-foreground/70">
                     Base increased to 65% for better text contrast
                   </p>
                 )}
               </div>
 
-              {/* Color Pickers with Weights */}
+              {/* Color Pickers with Weights - COMPACT layout */}
               {[
                 { key: 'color1', weightKey: 'colorWeight1', label: 'Color 1', weight: config.colorWeight1, color: isButtonRatio(config.aspectRatio) && config.buttonPreviewState === 'hover' ? config.hoverColor1 : config.color1 },
                 { key: 'color2', weightKey: 'colorWeight2', label: 'Color 2', weight: config.colorWeight2, color: isButtonRatio(config.aspectRatio) && config.buttonPreviewState === 'hover' ? config.hoverColor2 : config.color2 },
                 { key: 'color3', weightKey: 'colorWeight3', label: 'Color 3', weight: config.colorWeight3, color: isButtonRatio(config.aspectRatio) && config.buttonPreviewState === 'hover' ? config.hoverColor3 : config.color3 },
                 ...(config.color4 !== null ? [{ key: 'color4', weightKey: 'colorWeight4', label: 'Color 4', weight: config.colorWeight4, color: config.color4 }] : []),
               ].map(({ key, weightKey, label, weight, color }, index) => (
-                <div key={key} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={color}
-                        onChange={(e) => {
-                          if (isButtonRatio(config.aspectRatio) && config.buttonPreviewState === 'hover') {
-                            const hoverKey = key === 'color1' ? 'hoverColor1' : key === 'color2' ? 'hoverColor2' : 'hoverColor3';
-                            onConfigChange({ [hoverKey]: e.target.value });
-                          } else {
-                            onConfigChange({ [key]: e.target.value });
-                          }
-                        }}
-                        className="w-5 h-5 rounded cursor-pointer border border-border"
-                        style={{ padding: 0 }}
-                      />
-                      {label}
-                    </Label>
-                    <span className="text-xs text-muted-foreground">{weight}%</span>
+                <div key={key} className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={color}
+                      onChange={(e) => {
+                        if (isButtonRatio(config.aspectRatio) && config.buttonPreviewState === 'hover') {
+                          const hoverKey = key === 'color1' ? 'hoverColor1' : key === 'color2' ? 'hoverColor2' : 'hoverColor3';
+                          onConfigChange({ [hoverKey]: e.target.value });
+                        } else {
+                          onConfigChange({ [key]: e.target.value });
+                        }
+                      }}
+                      className="w-5 h-5 rounded cursor-pointer border border-border flex-shrink-0"
+                      style={{ padding: 0 }}
+                    />
+                    <span className="text-xs text-muted-foreground flex-1">{label}</span>
+                    <div className="flex gap-0.5">
+                      {activeBrandColors.map((brandColor) => (
+                        <button
+                          key={brandColor.hex}
+                          onClick={() => {
+                            if (isButtonRatio(config.aspectRatio) && config.buttonPreviewState === 'hover') {
+                              const hoverKey = key === 'color1' ? 'hoverColor1' : key === 'color2' ? 'hoverColor2' : 'hoverColor3';
+                              onConfigChange({ [hoverKey]: brandColor.hex });
+                            } else {
+                              onConfigChange({ [key]: brandColor.hex });
+                            }
+                          }}
+                          className={`w-3.5 h-3.5 rounded-full border transition-all ${
+                            color === brandColor.hex 
+                              ? 'border-primary scale-110' 
+                              : 'border-transparent hover:border-border'
+                          }`}
+                          style={{ backgroundColor: brandColor.hex }}
+                          title={brandColor.name}
+                        />
+                      ))}
+                    </div>
+                    <span className="text-[10px] text-muted-foreground w-7 text-right">{weight}%</span>
                   </div>
                   <Slider
                     value={[weight]}
@@ -1282,48 +1346,25 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                     step={1}
                     className="w-full"
                   />
-                  {/* Brand color quick-picks */}
-                  <div className="flex gap-1">
-                    {activeBrandColors.map((brandColor) => (
-                      <button
-                        key={brandColor.hex}
-                        onClick={() => {
-                          if (isButtonRatio(config.aspectRatio) && config.buttonPreviewState === 'hover') {
-                            const hoverKey = key === 'color1' ? 'hoverColor1' : key === 'color2' ? 'hoverColor2' : 'hoverColor3';
-                            onConfigChange({ [hoverKey]: brandColor.hex });
-                          } else {
-                            onConfigChange({ [key]: brandColor.hex });
-                          }
-                        }}
-                        className={`w-5 h-5 rounded-full border-2 transition-all ${
-                          color === brandColor.hex 
-                            ? 'border-primary scale-110' 
-                            : 'border-transparent hover:border-border'
-                        }`}
-                        style={{ backgroundColor: brandColor.hex }}
-                        title={brandColor.name}
-                      />
-                    ))}
-                  </div>
                   {/* Remove button for Color 4 */}
                   {key === 'color4' && (
                     <button
                       onClick={handleRemoveColor4}
-                      className="text-xs text-muted-foreground hover:text-destructive flex items-center gap-1 transition-colors"
+                      className="text-[10px] text-muted-foreground hover:text-destructive flex items-center gap-1 transition-colors"
                     >
-                      <Minus className="w-3 h-3" /> Remove Color 4
+                      <Minus className="w-2.5 h-2.5" /> Remove
                     </button>
                   )}
                 </div>
               ))}
 
-              {/* Add Color 4 button (only if not already added) */}
+              {/* Add Color 4 button */}
               {config.color4 === null && !isButtonRatio(config.aspectRatio) && (
                 <button
                   onClick={handleAddColor4}
-                  className="w-full py-2 rounded-lg text-xs font-medium bg-secondary/50 text-muted-foreground hover:bg-secondary/80 hover:text-foreground transition-colors flex items-center justify-center gap-1.5"
+                  className="w-full py-1.5 rounded-lg text-xs font-medium bg-secondary/50 text-muted-foreground hover:bg-secondary/80 hover:text-foreground transition-colors flex items-center justify-center gap-1.5"
                 >
-                  <Plus className="w-3.5 h-3.5" />
+                  <Plus className="w-3 h-3" />
                   Add 4th Color
                 </button>
               )}
@@ -1331,13 +1372,13 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
           </div>
 
           {/* ========== 3. ANIMATION ========== */}
-          <div className="border-t border-border/30 pt-4 space-y-4">
-            <h3 className="font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">Animation</h3>
-            <div className="space-y-3">
-              <div className="flex gap-2">
+          <div className="rounded-xl bg-secondary/10 p-3 space-y-3">
+            <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-muted-foreground">Animation</h3>
+            <div className="space-y-2.5">
+              <div className="flex gap-1.5">
                 <button
                   onClick={handleFreezeFrame}
-                  className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                  className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1.5 ${
                     config.frozenTime === null
                       ? 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
                       : 'bg-primary text-primary-foreground'
@@ -1345,35 +1386,35 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                 >
                   {config.frozenTime === null ? (
                     <>
-                      <Pause className="w-4 h-4" />
+                      <Pause className="w-3.5 h-3.5" />
                       Pause
                     </>
                   ) : (
                     <>
-                      <Play className="w-4 h-4" />
+                      <Play className="w-3.5 h-3.5" />
                       Play
                     </>
                   )}
                 </button>
                 <button
                   onClick={handleCaptureFrame}
-                  className="py-2 px-3 rounded-lg text-sm font-medium transition-all bg-secondary text-secondary-foreground hover:bg-secondary/80 flex items-center gap-2"
+                  className="py-1.5 px-2 rounded-lg text-xs font-medium transition-all bg-secondary text-secondary-foreground hover:bg-secondary/80 flex items-center gap-1.5"
                   title="Capture current frame"
                 >
-                  <Camera className="w-4 h-4" />
+                  <Camera className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={handleResetAnimation}
-                  className="py-2 px-3 rounded-lg text-sm font-medium transition-all bg-secondary text-secondary-foreground hover:bg-secondary/80 flex items-center gap-2"
+                  className="py-1.5 px-2 rounded-lg text-xs font-medium transition-all bg-secondary text-secondary-foreground hover:bg-secondary/80 flex items-center gap-1.5"
                   title="Reset animation"
                 >
-                  <RotateCcw className="w-4 h-4" />
+                  <RotateCcw className="w-3.5 h-3.5" />
                 </button>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <Label className="text-muted-foreground">Timeline</Label>
-                  <span className="text-xs text-muted-foreground">
+                  <Label className="text-muted-foreground text-xs">Timeline</Label>
+                  <span className="text-[10px] text-muted-foreground">
                     {(config.frozenTime ?? internalTime).toFixed(1)}s
                   </span>
                 </div>
@@ -1386,10 +1427,10 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                   className="w-full"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <Label className="text-muted-foreground">Speed</Label>
-                  <span className="text-xs text-muted-foreground">{config.speed.toFixed(1)}</span>
+                  <Label className="text-muted-foreground text-xs">Speed</Label>
+                  <span className="text-[10px] text-muted-foreground">{config.speed.toFixed(1)}</span>
                 </div>
                 <Slider
                   value={[config.speed]}
@@ -1404,71 +1445,27 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
           </div>
 
           {/* ========== 4. FINE TUNE (collapsible) ========== */}
-          <div className="border-t border-border/30 pt-4">
+          <div className="rounded-xl bg-secondary/10 p-3">
             <Collapsible>
               <CollapsibleTrigger className="flex items-center justify-between w-full group">
-                <h3 className="font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">Fine Tune</h3>
+                <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-muted-foreground">Fine Tune</h3>
                 <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
               </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-4 pt-4">
-                {/* Aspect Ratio (moved here) */}
-                <div>
-                  <Label className="text-muted-foreground mb-2 block">Aspect Ratio</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {aspectRatioOptions.map((option) => (
-                      <button
-                        key={option.value}
-                        onClick={() => onConfigChange({ aspectRatio: option.value })}
-                        className={`py-1.5 px-3 rounded-lg text-xs font-medium transition-all ${
-                          config.aspectRatio === option.value
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                        }`}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                    {onOpenButtonsPanel && (
-                      <button
-                        onClick={onOpenButtonsPanel}
-                        className="py-1.5 px-3 rounded-lg text-xs font-medium transition-all bg-accent text-accent-foreground hover:bg-accent/80"
-                      >
-                        Buttons
-                      </button>
-                    )}
-                  </div>
-                  {isHeroBannerRatio(config.aspectRatio) && (
-                    <div className="mt-3 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-muted-foreground">Black Fade</Label>
-                        <span className="text-xs text-muted-foreground">{config.bannerBlackFade}%</span>
-                      </div>
-                      <Slider
-                        value={[config.bannerBlackFade]}
-                        onValueChange={([value]) => onConfigChange({ bannerBlackFade: value })}
-                        min={15}
-                        max={50}
-                        step={1}
-                        className="w-full"
-                      />
-                    </div>
-                  )}
-                </div>
-
+              <CollapsibleContent className="space-y-2.5 pt-3">
                 {/* Grain */}
-                <div className="space-y-3">
+                <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground">Grain</Label>
+                    <Label className="text-muted-foreground text-xs">Grain</Label>
                     <Switch
                       checked={config.grain}
                       onCheckedChange={(checked) => onConfigChange({ grain: checked })}
                     />
                   </div>
                   {config.grain && (
-                    <div className="space-y-2">
+                    <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <Label className="text-muted-foreground text-xs">Intensity</Label>
-                        <span className="text-xs text-muted-foreground">{config.grainIntensity ?? 50}%</span>
+                        <Label className="text-muted-foreground text-[10px]">Intensity</Label>
+                        <span className="text-[10px] text-muted-foreground">{config.grainIntensity ?? 50}%</span>
                       </div>
                       <Slider
                         value={[config.grainIntensity ?? 50]}
@@ -1483,10 +1480,10 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                 </div>
 
                 {/* Strength */}
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground">Strength</Label>
-                    <span className="text-xs text-muted-foreground">{config.uStrength.toFixed(1)}</span>
+                    <Label className="text-muted-foreground text-xs">Strength</Label>
+                    <span className="text-[10px] text-muted-foreground">{config.uStrength.toFixed(1)}</span>
                   </div>
                   <Slider
                     value={[config.uStrength]}
@@ -1499,10 +1496,10 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                 </div>
 
                 {/* Density */}
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground">Density</Label>
-                    <span className="text-xs text-muted-foreground">{config.uDensity.toFixed(1)}</span>
+                    <Label className="text-muted-foreground text-xs">Density</Label>
+                    <span className="text-[10px] text-muted-foreground">{config.uDensity.toFixed(1)}</span>
                   </div>
                   <Slider
                     value={[config.uDensity]}
@@ -1515,10 +1512,10 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                 </div>
 
                 {/* Frequency */}
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground">Frequency</Label>
-                    <span className="text-xs text-muted-foreground">{config.uFrequency.toFixed(1)}</span>
+                    <Label className="text-muted-foreground text-xs">Frequency</Label>
+                    <span className="text-[10px] text-muted-foreground">{config.uFrequency.toFixed(1)}</span>
                   </div>
                   <Slider
                     value={[config.uFrequency]}
