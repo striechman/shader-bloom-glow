@@ -1506,6 +1506,46 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
             </div>
           </div>
 
+          {/* Position / Rotation */}
+          <div>
+            <h3 className="font-display text-lg font-medium mb-4 text-foreground">Position</h3>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-muted-foreground flex items-center gap-2">
+                    <RotateCw className="w-3.5 h-3.5" />
+                    Rotation
+                  </Label>
+                  <span className="text-xs text-muted-foreground">{config.gradientRotation ?? 0}°</span>
+                </div>
+                <Slider
+                  value={[config.gradientRotation ?? 0]}
+                  onValueChange={([value]) => onConfigChange({ gradientRotation: value })}
+                  min={0}
+                  max={360}
+                  step={5}
+                  className="w-full"
+                />
+                {/* Quick rotation presets */}
+                <div className="flex gap-1.5 mt-2">
+                  {[0, 45, 90, 135, 180, 270].map((angle) => (
+                    <button
+                      key={angle}
+                      onClick={() => onConfigChange({ gradientRotation: angle })}
+                      className={`flex-1 py-1 px-1 rounded text-xs font-medium transition-all ${
+                        (config.gradientRotation ?? 0) === angle
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                      }`}
+                    >
+                      {angle}°
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Effects */}
           <div>
             <h3 className="font-display text-lg font-medium mb-4 text-foreground">Effects</h3>
