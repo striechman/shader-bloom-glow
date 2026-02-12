@@ -132,6 +132,8 @@ uniform float uGlowDistortion; // 0-1
 // Waves uniforms
 uniform float uWavesCount;
 uniform float uWavesAmplitude;
+// Global rotation
+uniform float uRotation;
 
 varying vec2 vUv;
 varying vec3 vPosition;
@@ -183,7 +185,15 @@ void main() {
   float density = max(0.0, uDensity);
   float strength = max(0.0, uStrength);
   
-  vec2 centeredUv = vUv - 0.5;
+  // Apply global rotation to UV coordinates
+  float cosR = cos(uRotation);
+  float sinR = sin(uRotation);
+  vec2 rotatedUv = vec2(
+    (vUv.x - 0.5) * cosR - (vUv.y - 0.5) * sinR + 0.5,
+    (vUv.x - 0.5) * sinR + (vUv.y - 0.5) * cosR + 0.5
+  );
+  
+  vec2 centeredUv = rotatedUv - 0.5;
   
   // Edge fade (vignette) for Mesh mode - SUBTLE fade to prevent harsh canvas edges
   // Keep it minimal so colors reach the edges properly
@@ -202,7 +212,7 @@ void main() {
     float sphereDist = dist * 1.8;
     
     // Smooth 3D-like lighting
-    vec3 noisePos = vec3(vUv * 2.0 * freq, uTime * 0.2);
+    vec3 noisePos = vec3(rotatedUv * 2.0 * freq, uTime * 0.2);
     float n1 = snoise(noisePos) * 0.5 + 0.5;
     float n2 = snoise(noisePos * 1.5 + 50.0) * 0.3;
     
@@ -249,7 +259,7 @@ void main() {
     
     // Add wave distortion (only when enabled)
     if (uPlaneWave > 0.01) {
-      vec3 wavePos = vec3(vUv * 3.0, uTime * 0.3);
+      vec3 wavePos = vec3(rotatedUv * 3.0, uTime * 0.3);
       float waveNoise = snoise(wavePos) * uPlaneWave * 0.25;
       baseNoise += waveNoise;
     }
@@ -287,7 +297,7 @@ void main() {
     }
     
     // Add subtle noise for organic feel
-    vec3 noisePos = vec3(vUv * 2.0 * freq, uTime * 0.2);
+    vec3 noisePos = vec3(rotatedUv * 2.0 * freq, uTime * 0.2);
     float organicNoise = snoise(noisePos) * 0.05 * density;
     
     noise = normalized + organicNoise;
@@ -309,8 +319,8 @@ void main() {
     vec2 perpDir = vec2(-waveDir.y, waveDir.x);
     
     // Project UV onto wave direction
-    float alongWave = dot(vUv - 0.5, waveDir) + 0.5;
-    float acrossWave = dot(vUv - 0.5, perpDir);
+    float alongWave = dot(rotatedUv - 0.5, waveDir) + 0.5;
+    float acrossWave = dot(rotatedUv - 0.5, perpDir);
     
     // Create layered waves along the perpendicular direction
     float wave1 = sin(acrossWave * waveFreq * 6.28318 + uTime * 0.5) * amplitude;
@@ -324,7 +334,7 @@ void main() {
     float baseNoise = clamp(wavyPos, 0.0, 1.0);
     
     // Add flowing noise
-    vec3 noisePos = vec3(vUv * 2.0 * freq, uTime * 0.2);
+    vec3 noisePos = vec3(rotatedUv * 2.0 * freq, uTime * 0.2);
     float organicNoise = snoise(noisePos) * 0.1 * density;
     
     noise = baseNoise + organicNoise;
@@ -332,7 +342,7 @@ void main() {
     
   } else {
     // WATER MODE: Smooth flowing liquid effect with proper color weight support
-    vec3 noisePos = vec3(vUv * 1.5 * freq, uTime * 0.15);
+    vec3 noisePos = vec3(rotatedUv * 1.5 * freq, uTime * 0.15);
     
     // Smooth flowing noise layers - covering full 0-1 range for proper weight distribution
     float n1 = snoise(noisePos) * 0.5 + 0.5;
@@ -340,7 +350,7 @@ void main() {
     float n3 = snoise(noisePos * 0.5 + 60.0) * 0.15;
     
     // Gentle wave motion
-    float wave = sin(vUv.x * 4.0 + vUv.y * 3.0 + uTime * 0.3) * 0.08;
+    float wave = sin(rotatedUv.x * 4.0 + rotatedUv.y * 3.0 + uTime * 0.3) * 0.08;
     
     // Blend noise layers for smooth liquid look - ensure full range coverage
     float baseNoise = n1 + n2 + n3 + wave * density;
@@ -391,7 +401,7 @@ void main() {
     vec3 sColor4 = linearToSrgb(uColor4);
     
     float t = uTime * 0.15;
-    vec2 sampleUv = vUv;
+    vec2 sampleUv = rotatedUv;
     
     // Aurora stretch: vertical curtain effect
     if (uMeshStretch) {
@@ -525,7 +535,7 @@ void main() {
     vec3 sColor4 = linearToSrgb(uColor4);
     
     float t = uTime * 0.12;
-    vec2 st = vUv;
+    vec2 st = rotatedUv;
     
     // Apply global offset to shift entire glow arrangement
     st -= uGlowOffset;
@@ -794,6 +804,7 @@ export const Custom4ColorGradient = forwardRef<THREE.Mesh, Custom4ColorGradientP
     // Waves uniforms
     uWavesCount: { value: config.wavesCount ?? 5 },
     uWavesAmplitude: { value: (config.wavesAmplitude ?? 50) / 100 },
+    uRotation: { value: (config.gradientRotation ?? 0) * Math.PI / 180 },
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), []);
   
@@ -860,6 +871,7 @@ export const Custom4ColorGradient = forwardRef<THREE.Mesh, Custom4ColorGradientP
     // Update waves uniforms
     mat.uniforms.uWavesCount.value = config.wavesCount ?? 5;
     mat.uniforms.uWavesAmplitude.value = (config.wavesAmplitude ?? 50) / 100;
+    mat.uniforms.uRotation.value = (config.gradientRotation ?? 0) * Math.PI / 180;
     
     const isFrozen = config.frozenTime !== null;
     const shouldAnimate = config.animate && !isFrozen;

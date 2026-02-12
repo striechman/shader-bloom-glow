@@ -78,6 +78,9 @@ export interface GradientConfig {
   wavesCount: number; // 2-10 number of waves
   wavesAmplitude: number; // 0-100 wave height
   wavesAngle: number; // 0-360 degrees - wave direction
+  
+  // Global rotation (applies to all effects)
+  gradientRotation: number; // 0-360 degrees
 }
 
 export const defaultGradientConfig: GradientConfig = {
@@ -136,6 +139,8 @@ export const defaultGradientConfig: GradientConfig = {
   wavesCount: 5,
   wavesAmplitude: 50,
   wavesAngle: 0, // Horizontal waves by default
+  // Global rotation
+  gradientRotation: 0,
 };
 
 // Get theme-based color0 (black for dark mode, white for light mode)
