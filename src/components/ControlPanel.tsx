@@ -8,6 +8,7 @@ import { useState, useEffect, useRef } from 'react';
 import { GradientConfig, isHeroBannerRatio, isButtonRatio, getThemeColor0 } from '@/types/gradient';
 import { useTheme } from '@/hooks/useTheme';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { BUILT_IN_PRESETS } from '@/config/presets';
 
 // Plane direction presets
 const planeDirectionPresets = [
@@ -681,6 +682,37 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                     />
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Built-in Presets */}
+          {!isButtonRatio(config.aspectRatio) && (
+            <div>
+              <h3 className="font-display text-lg font-medium mb-4 text-foreground">Presets</h3>
+              <div className="grid grid-cols-2 gap-2 mb-6">
+                {BUILT_IN_PRESETS.map((preset) => (
+                  <button
+                    key={preset.id}
+                    onClick={() => onConfigChange({
+                      ...preset.config,
+                      color0: getThemeColor0(theme),
+                    } as Partial<GradientConfig>)}
+                    className="relative h-14 rounded-lg overflow-hidden border border-border hover:border-primary transition-colors group"
+                    style={{
+                      background: preset.config.type === 'glow'
+                        ? `radial-gradient(circle at 40% 40%, ${preset.config.color1} 0%, ${preset.config.color2 || '#000'} 40%, ${preset.config.color0 || '#000'} 80%)`
+                        : `linear-gradient(135deg, ${preset.config.color0 || '#000'} 0%, ${preset.config.color1} 30%, ${preset.config.color2 || preset.config.color1} 60%, ${preset.config.color3 || preset.config.color2 || preset.config.color1} 100%)`,
+                    }}
+                  >
+                    <span className="absolute inset-0 flex items-center justify-center text-white text-xs font-medium drop-shadow-md">
+                      {preset.name}
+                    </span>
+                    <span className="absolute bottom-0.5 right-1 text-[9px] text-white/50 uppercase tracking-wider">
+                      {preset.config.type === 'sphere' ? 'sphere' : preset.config.type}
+                    </span>
+                  </button>
+                ))}
               </div>
             </div>
           )}
