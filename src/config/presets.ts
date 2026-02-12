@@ -404,6 +404,100 @@ export const PRESET_PRISMATIC_WAVES: BuiltInPreset = {
 };
 
 // ============================================================
+// NEW FAVORITES
+// ============================================================
+
+export const PRESET_GOLDEN_WAVES: BuiltInPreset = {
+  id: 'golden-waves',
+  name: 'Golden Waves',
+  nameHe: 'גלי זהב',
+  description: 'Bold golden waves with violet and magenta accents',
+  category: 'vibrant',
+  config: {
+    type: 'waves',
+    color0: '#000000',
+    color1: '#6A00F4',
+    color2: '#EC008C',
+    color3: '#FDB515',
+    color4: null,
+    colorWeight0: 50,
+    colorWeight1: 14,
+    colorWeight2: 5,
+    colorWeight3: 32,
+    colorWeight4: 0,
+    wavesCount: 5,
+    wavesAmplitude: 50,
+    uStrength: 1.0,
+    uDensity: 1.2,
+    uFrequency: 1.5,
+    animate: false,
+    speed: 0.25,
+    frozenTime: 4.50,
+    grain: false,
+  },
+};
+
+export const PRESET_WARM_GLOW: BuiltInPreset = {
+  id: 'warm-glow',
+  name: 'Warm Glow',
+  nameHe: 'זוהר חם',
+  description: 'Warm sunset glow with yellow, coral, magenta and violet orbs',
+  category: 'vibrant',
+  config: {
+    type: 'glow',
+    color0: '#000000',
+    color1: '#FDB515',
+    color2: '#F2665F',
+    color3: '#EC008C',
+    color4: '#6A00F4',
+    colorWeight0: 37,
+    colorWeight1: 22,
+    colorWeight2: 16,
+    colorWeight3: 13,
+    colorWeight4: 12,
+    glowOrbSize: 60,
+    glowShadowDensity: 50,
+    uStrength: 1.5,
+    uDensity: 1.0,
+    uFrequency: 2.0,
+    animate: false,
+    speed: 0.25,
+    frozenTime: 7.00,
+    grain: false,
+  },
+};
+
+export const PRESET_VIOLET_TIDE: BuiltInPreset = {
+  id: 'violet-tide',
+  name: 'Violet Tide',
+  nameHe: 'גאות סגולה',
+  description: 'Deep violet waves with coral and magenta undertones',
+  category: 'dark',
+  config: {
+    type: 'waves',
+    color0: '#000000',
+    color1: '#6A00F4',
+    color2: '#EC008C',
+    color3: '#F2665F',
+    color4: '#F2665F',
+    colorWeight0: 59,
+    colorWeight1: 19,
+    colorWeight2: 9,
+    colorWeight3: 9,
+    colorWeight4: 5,
+    wavesCount: 5,
+    wavesAmplitude: 50,
+    uStrength: 1.0,
+    uDensity: 1.2,
+    uFrequency: 1.5,
+    animate: false,
+    speed: 0.25,
+    frozenTime: 7.80,
+    grain: false,
+  },
+};
+
+// ============================================================
 // Export all presets
 // ============================================================
 
@@ -412,12 +506,15 @@ export const BUILT_IN_PRESETS: BuiltInPreset[] = [
   PRESET_DARK_SUNRISE,
   PRESET_DEEP_AURORA,
   PRESET_OCEAN_DEPTH,
+  PRESET_VIOLET_TIDE,
   
   // Vibrant
   PRESET_NEON_NIGHTS,
   PRESET_SUNSET_BLAZE,
   PRESET_LUMINOUS_GLOW,
   PRESET_PRISMATIC_WAVES,
+  PRESET_GOLDEN_WAVES,
+  PRESET_WARM_GLOW,
   
   // Minimal
   PRESET_BLUE_BEACON,
