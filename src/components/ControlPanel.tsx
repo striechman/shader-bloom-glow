@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Minus } from 'lucide-react';
+import { Plus, Minus, Sparkles } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -82,26 +82,21 @@ const brandColors = [
 // Rule: Presets must use at least 2 colors from the first 5 (non-black/white)
 const activeBrandColors = brandColors.slice(0, 5); // Yellow, Coral, Magenta, Violet, Blue
 
-// Color presets with 4 colors (color0 is always theme-based black/white)
-// Each preset uses at least 2 brand colors (not counting black/white)
-// BRANDING RULE: Color0 is FIXED at 30%. Color1-4 must sum to 70%.
+// Art-directed color presets organized by visual family
+// Each preset has curated weights for distinct mood + recommended effect pairings
 const colorPresets = [
-  // Presets where color0 is the base (black/white based on theme), colors 1-3 are brand colors
-  // Weight0 = 30% (fixed), Weight1-3 must sum to 70%
-  { name: 'Royal', color1: '#6A00F4', color2: '#EC008C', color3: '#00C2FF', color4: null, weight0: 30, weight1: 25, weight2: 25, weight3: 20, weight4: 0 },
-  { name: 'Sunset', color1: '#FDB515', color2: '#EC008C', color3: '#F2665F', color4: null, weight0: 30, weight1: 25, weight2: 25, weight3: 20, weight4: 0 },
-  { name: 'Ocean', color1: '#00C2FF', color2: '#6A00F4', color3: '#EC008C', color4: null, weight0: 30, weight1: 25, weight2: 25, weight3: 20, weight4: 0 },
-  { name: 'Coral', color1: '#F2665F', color2: '#6A00F4', color3: '#FDB515', color4: null, weight0: 30, weight1: 25, weight2: 25, weight3: 20, weight4: 0 },
-  { name: 'Neon', color1: '#EC008C', color2: '#00C2FF', color3: '#6A00F4', color4: null, weight0: 30, weight1: 25, weight2: 25, weight3: 20, weight4: 0 },
-  { name: 'Electric', color1: '#00C2FF', color2: '#EC008C', color3: '#FDB515', color4: null, weight0: 30, weight1: 25, weight2: 25, weight3: 20, weight4: 0 },
-  // Presets with white accent - still maintain 30% base, colors sum to 70%
-  { name: 'Blush', color1: '#EC008C', color2: '#F2665F', color3: '#FFFFFF', color4: null, weight0: 30, weight1: 25, weight2: 25, weight3: 20, weight4: 0 },
-  { name: 'Violet', color1: '#EC008C', color2: '#6A00F4', color3: '#00C2FF', color4: null, weight0: 30, weight1: 25, weight2: 25, weight3: 20, weight4: 0 },
-  { name: 'Warm', color1: '#FDB515', color2: '#F2665F', color3: '#EC008C', color4: null, weight0: 30, weight1: 25, weight2: 25, weight3: 20, weight4: 0 },
-  // New favorites from debug screenshots
-  { name: 'Golden', color1: '#6A00F4', color2: '#EC008C', color3: '#FDB515', color4: null, weight0: 50, weight1: 14, weight2: 5, weight3: 32, weight4: 0 },
-  { name: 'Ember', color1: '#FDB515', color2: '#F2665F', color3: '#EC008C', color4: '#6A00F4', weight0: 37, weight1: 22, weight2: 16, weight3: 13, weight4: 12 },
-  { name: 'Dusk', color1: '#6A00F4', color2: '#EC008C', color3: '#F2665F', color4: '#F2665F', weight0: 59, weight1: 19, weight2: 9, weight3: 9, weight4: 5 },
+  // === Bold / High Contrast ===
+  { name: 'Royal', color1: '#6A00F4', color2: '#EC008C', color3: '#00C2FF', color4: null, weight0: 35, weight1: 30, weight2: 20, weight3: 15, weight4: 0, recommendedFor: ['waves', 'plane', 'conic'] },
+  { name: 'Neon', color1: '#EC008C', color2: '#00C2FF', color3: '#6A00F4', color4: null, weight0: 30, weight1: 30, weight2: 25, weight3: 15, weight4: 0, recommendedFor: ['sphere', 'conic', 'plane'] },
+  { name: 'Golden', color1: '#FDB515', color2: '#6A00F4', color3: '#EC008C', color4: null, weight0: 40, weight1: 32, weight2: 16, weight3: 12, weight4: 0, recommendedFor: ['glow', 'plane', 'waves'] },
+  // === Warm / Analogous ===
+  { name: 'Sunset', color1: '#FDB515', color2: '#F2665F', color3: '#EC008C', color4: null, weight0: 30, weight1: 28, weight2: 24, weight3: 18, weight4: 0, recommendedFor: ['glow', 'plane', 'waterPlane'] },
+  { name: 'Ember', color1: '#F2665F', color2: '#EC008C', color3: '#FDB515', color4: '#6A00F4', weight0: 35, weight1: 25, weight2: 20, weight3: 12, weight4: 8, recommendedFor: ['glow', 'waves', 'sphere'] },
+  { name: 'Coral', color1: '#F2665F', color2: '#FDB515', color3: '#6A00F4', color4: null, weight0: 35, weight1: 30, weight2: 22, weight3: 13, weight4: 0, recommendedFor: ['waterPlane', 'sphere', 'plane'] },
+  // === Cool / Atmospheric ===
+  { name: 'Ocean', color1: '#00C2FF', color2: '#6A00F4', color3: '#EC008C', color4: null, weight0: 40, weight1: 28, weight2: 20, weight3: 12, weight4: 0, recommendedFor: ['waterPlane', 'waves', 'plane'] },
+  { name: 'Dusk', color1: '#6A00F4', color2: '#EC008C', color3: '#F2665F', color4: null, weight0: 50, weight1: 22, weight2: 16, weight3: 12, weight4: 0, recommendedFor: ['waves', 'glow', 'waterPlane'] },
+  { name: 'Electric', color1: '#00C2FF', color2: '#EC008C', color3: '#FDB515', color4: null, weight0: 30, weight1: 28, weight2: 24, weight3: 18, weight4: 0, recommendedFor: ['conic', 'plane', 'sphere'] },
 ];
 
 // Complete effect presets for each gradient type - resets ALL relevant settings
@@ -701,30 +696,41 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
             </h3>
             {!isButtonRatio(config.aspectRatio) && (
               <div className="grid grid-cols-3 gap-3 mb-4">
-                {colorPresets.map((preset, index) => (
-                  <button
-                    key={index}
-                    onClick={() => onConfigChange({ 
-                      color1: preset.color1, 
-                      color2: preset.color2, 
-                      color3: preset.color3,
-                      color4: preset.color4,
-                      colorWeight0: preset.weight0,
-                      colorWeight1: preset.weight1,
-                      colorWeight2: preset.weight2,
-                      colorWeight3: preset.weight3,
-                      colorWeight4: preset.weight4,
-                    })}
-                    className="relative h-12 rounded-lg overflow-hidden border border-border hover:border-primary transition-colors group"
-                    style={{
-                      background: `linear-gradient(135deg, #000000 0%, ${preset.color1} 30%, ${preset.color2} 60%, ${preset.color3} 100%)`,
-                    }}
-                  >
-                    <span className="absolute inset-0 flex items-center justify-center text-white text-xs font-medium drop-shadow-md">
-                      {preset.name}
-                    </span>
-                  </button>
-                ))}
+                {colorPresets.map((preset, index) => {
+                  // Determine current effect key for recommendation matching
+                  const currentEffectKey = config.type === 'plane' && config.wireframe 
+                    ? 'plane' // mesh/aurora are still plane-based
+                    : config.type;
+                  const isRecommended = preset.recommendedFor.includes(currentEffectKey);
+                  
+                  return (
+                    <button
+                      key={index}
+                      onClick={() => onConfigChange({ 
+                        color1: preset.color1, 
+                        color2: preset.color2, 
+                        color3: preset.color3,
+                        color4: preset.color4,
+                        colorWeight0: preset.weight0,
+                        colorWeight1: preset.weight1,
+                        colorWeight2: preset.weight2,
+                        colorWeight3: preset.weight3,
+                        colorWeight4: preset.weight4,
+                      })}
+                      className="relative h-12 rounded-lg overflow-hidden border border-border hover:border-primary transition-colors group"
+                      style={{
+                        background: `linear-gradient(135deg, #000000 0%, ${preset.color1} 30%, ${preset.color2} 60%, ${preset.color3} 100%)`,
+                      }}
+                    >
+                      {isRecommended && (
+                        <Sparkles className="absolute top-1 right-1 w-3 h-3 text-yellow-400 drop-shadow-md" />
+                      )}
+                      <span className="absolute inset-0 flex items-center justify-center text-white text-xs font-medium drop-shadow-md">
+                        {preset.name}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             )}
             <div className="space-y-4">
