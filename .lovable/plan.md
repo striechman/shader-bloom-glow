@@ -1,103 +1,90 @@
 
 
-# Fix Glow Regression + Remove Sharp Transitions in Water/Conic/Waves
+# Color Presets Redesign - Art Director Approach
 
-## Three Issues to Fix
+## The Problem
 
-### Issue 1: Glow Mode Lost Its Look
-**What happened**: Removing weight from orb intensity entirely means all orbs blast at equal full power (`glowIntensity = 3.0+`). With additive blending, where orbs overlap they sum above 1.0 and clip to white, washing everything out.
+Right now all 12 color presets are "flat" - they all have equal weights (30/25/25/20) except for 3 newer ones. They're also not organized by visual logic, and there's no consideration for how different effects render the same colors differently.
 
-**Fix**: Add back a *soft* weight factor using `mix(0.5, 1.0, clamp(w * 3.0, 0.0, 1.0))`. This means:
-- A 5% weight color still glows at ~57% intensity (vivid, not dim)
-- A 25% weight color glows at ~100% intensity (full brightness)
-- Colors stay bright regardless of weight, but there's enough modulation to prevent the blow-out when all orbs stack up
+## Design Philosophy
 
-```text
-Before (too aggressive):  orb1 *= w1 * glowIntensity     (5% weight = 5% brightness)
-Bad fix (no modulation):  orb1 *= glowIntensity           (all orbs equal = white blow-out)
-New fix (soft floor):     orb1 *= glowIntensity * mix(0.5, 1.0, clamp(w1*3.0, 0.0, 1.0))
-                                                           (5% weight = ~57% brightness)
-```
+As an art director would approach this: color combinations work differently depending on **contrast relationships**, **temperature harmony**, and **visual weight distribution**. The key insight is that a preset isn't just "which colors" - it's also "how much of each color" because weight balance dramatically changes the mood.
 
-### Issue 2: Water/Conic/Waves Sharp "Amoeba" Transitions
-**What happened**: The adaptive cap `minZone * 0.4` crushes transition width globally when ANY color has a small weight. Example with default weights (w3=5%):
-```text
-minZone = 0.05 (5%)
-maxTrans = 0.05 * 0.4 = 0.02
-transitionWidth: 0.10 --> capped to 0.02 (5x sharper!)
-```
-This makes ALL transitions sharp, not just the narrow one.
+## Proposed Preset System
 
-**Fix**: Remove the adaptive cap entirely. The original transition logic (`baseTrans + blurFactor * 0.20`) already produces smooth, liquid transitions. The sRGB conversion was the real needed fix for color accuracy -- the transition width was fine as-is.
+### 1. Reorganized Color Presets (Universal - work across all effects)
 
-### Issue 3: Mesh Mode -- Same Glow Fix Needed
-The mesh mode has the same issue as glow: weight was fully removed from intensity. Apply the same soft floor approach so colors stay vivid but don't blow out when stacked.
+Group presets into 3 visual families, ordered from bold to subtle:
 
----
+**Bold / High Contrast (dominant accent color)**
+| Name | Color1 | Color2 | Color3 | Color4 | W0 | W1 | W2 | W3 | W4 | Logic |
+|------|--------|--------|--------|--------|----|----|----|----|-----|-------|
+| Royal | #6A00F4 (Violet) | #EC008C (Magenta) | #00C2FF (Blue) | - | 35 | 30 | 20 | 15 | 0 | Cool triad, violet leads |
+| Neon | #EC008C (Magenta) | #00C2FF (Blue) | #6A00F4 (Violet) | - | 30 | 30 | 25 | 15 | 0 | Magenta punch, high energy |
+| Golden | #FDB515 (Gold) | #6A00F4 (Violet) | #EC008C (Magenta) | - | 40 | 32 | 16 | 12 | 0 | Warm accent on dark, complementary contrast |
 
-## Changes in `src/components/Custom4ColorGradient.tsx`
+**Warm / Analogous (colors flow into each other)**
+| Name | Color1 | Color2 | Color3 | Color4 | W0 | W1 | W2 | W3 | W4 | Logic |
+|------|--------|--------|--------|--------|----|----|----|----|-----|-------|
+| Sunset | #FDB515 (Gold) | #F2665F (Coral) | #EC008C (Magenta) | - | 30 | 28 | 24 | 18 | 0 | Warm analogous flow, gold to magenta |
+| Ember | #F2665F (Coral) | #EC008C (Magenta) | #FDB515 (Gold) | #6A00F4 (Violet) | 35 | 25 | 20 | 12 | 8 | 4-color warmth with cool violet anchor |
+| Coral | #F2665F (Coral) | #FDB515 (Gold) | #6A00F4 (Violet) | - | 35 | 30 | 22 | 13 | 0 | Coral dominant, warm-cool bridge |
 
-### Change 1: Mesh Mode -- Soft Weight Floor (lines ~477-481)
-Replace constant-intensity Gaussians with soft weight modulation:
+**Cool / Atmospheric (depth and mystery)**
+| Name | Color1 | Color2 | Color3 | Color4 | W0 | W1 | W2 | W3 | W4 | Logic |
+|------|--------|--------|--------|--------|----|----|----|----|-----|-------|
+| Ocean | #00C2FF (Blue) | #6A00F4 (Violet) | #EC008C (Magenta) | - | 40 | 28 | 20 | 12 | 0 | Deep cool with magenta accent |
+| Dusk | #6A00F4 (Violet) | #EC008C (Magenta) | #F2665F (Coral) | - | 50 | 22 | 16 | 12 | 0 | Heavy dark, violet whisper |
+| Electric | #00C2FF (Blue) | #EC008C (Magenta) | #FDB515 (Gold) | - | 30 | 28 | 24 | 18 | 0 | Full spectrum split-complementary |
 
-```glsl
-// Before (no weight modulation):
-float g1 = exp(...) * glowBoost;
+### 2. Key Design Decisions
 
-// After (soft floor -- stays bright even at low weight):
-float wFactor1 = mix(0.5, 1.0, clamp(w1 * 3.0, 0.0, 1.0));
-float g1 = exp(-d1 * d1 / (r1 * r1)) * glowBoost * wFactor1;
-// Same for g2, g3, g4
-```
+**Remove duplicates**: "Violet" and "Royal" are nearly identical (same 3 colors). "Warm" and "Sunset" are also too similar. Cut from 12 to 9 distinct presets.
 
-### Change 2: Glow Mode -- Soft Weight Floor (lines ~561-567)
-Same approach for orb intensity:
+**Remove "Blush"**: White as color3 is problematic - it washes out in light mode and looks odd in most effects. Not a good universal preset.
 
-```glsl
-// Before (no weight modulation):
-orb1 *= glowIntensity;
+**Varying weights instead of flat 30/25/25/20**: Each preset gets curated weights that create a distinct mood. More base color (W0) = more cinematic depth. More accent = more energy. This is the #1 thing that makes presets feel "designed" vs "random".
 
-// After:
-orb1 *= glowIntensity * mix(0.5, 1.0, clamp(w1 * 3.0, 0.0, 1.0));
-// Same for orb2, orb3, orb4
-```
+**Color order matters**: Color1 should always be the **dominant accent** (gets the most weight after base). This ensures the preset thumbnail accurately represents the actual result.
 
-### Change 3: Water/Conic/Waves -- Remove Adaptive Cap (lines ~634-639)
-Delete the 6 lines that implement the adaptive transition width cap:
+### 3. Should Effects Have Separate Presets?
 
-```glsl
-// DELETE these lines:
-float minZone = min(w1, min(w2, w3));
-if (uHasColor4) minZone = min(minZone, w4);
-float maxTrans = minZone * 0.4;
-transitionWidth = min(transitionWidth, max(maxTrans, 0.02));
-```
+**No - keep presets universal.** Here's why:
 
-The remaining transition logic stays as-is:
-```glsl
-float baseTrans = 0.10;
-float transitionWidth = baseTrans + blurFactor * 0.20;
-float strengthMod = 1.0 + strength * 0.15;
-transitionWidth = transitionWidth / strengthMod;
-transitionWidth = max(transitionWidth, 0.06);
-// (adaptive cap removed -- transitions stay smooth)
-```
+- The current architecture already separates "effect params" from "colors" - when you switch effects, colors are preserved. This is the right pattern.
+- Having per-effect presets would create a confusing UX (too many choices, preset meaning changes when switching effects).
+- Instead, the **weight balance** already handles effect differences naturally: high-base presets (Dusk at 50%) look great on Waves/Glow, while balanced presets (Neon at 30%) shine on Mesh/Sphere.
 
----
+**What we should do instead**: Add a small "recommended" indicator (a subtle star or dot) on 2-3 presets that work especially well with the currently selected effect. This guides without restricting.
 
-## What Each Mode Will Look Like After
+### 4. Recommended Pairings (shown via subtle indicator)
 
-| Mode | Change | Result |
-|------|--------|--------|
-| Mesh | Soft weight floor on Gaussian intensity | Colors vivid at any weight, no blow-out |
-| Glow | Soft weight floor on orb intensity | Restored delicate light-in-darkness balance |
-| Water | Remove adaptive cap, keep sRGB | Smooth liquid transitions, accurate colors |
-| Conic | Remove adaptive cap, keep sRGB | Smooth angular transitions, accurate colors |
-| Waves | Remove adaptive cap, keep sRGB | Smooth wave transitions, accurate colors |
-| Plane | No changes | Already working correctly |
+| Effect | Best Presets | Why |
+|--------|-------------|-----|
+| Glow | Ember, Golden, Sunset | Warm colors create beautiful luminous orbs |
+| Waves | Dusk, Ocean, Royal | High contrast with dark base makes wave layers pop |
+| Mesh/Aurora | Ocean, Royal, Neon | Cool colors blend beautifully in organic noise |
+| Plane | Golden, Sunset, Electric | Clean gradients benefit from clear color separation |
+| Conic | Neon, Electric, Royal | Radial symmetry needs high-energy colors |
+| Sphere | Any (most forgiving effect) | - |
+| Water | Ocean, Dusk, Coral | Natural tones suit water movement |
 
-## What Does NOT Change
-- sRGB color conversion stays (color accuracy fix is preserved)
-- No UI changes
-- No new parameters
-- Plane mode untouched
+## Technical Implementation
+
+### Files to modify:
+1. **`src/components/ControlPanel.tsx`**:
+   - Replace the `colorPresets` array with 9 curated presets (organized bold/warm/cool)
+   - Add a `recommendedFor` field to each preset (array of effect names)
+   - Show a subtle sparkle/star icon on recommended presets based on current `config.type`
+   - Update grid from `grid-cols-3` to accommodate 9 items cleanly (3x3 grid)
+
+2. **`src/config/presets.ts`**:
+   - Update built-in presets to match the new color/weight values for consistency
+   - Remove presets that duplicate the new color presets
+
+### UI Changes:
+- 3x3 grid of preset swatches
+- Each swatch shows the gradient preview with the preset name
+- Recommended presets for current effect get a small star icon in the corner
+- Optional: thin separator lines between the 3 groups (bold/warm/cool) or subtle group labels
+
