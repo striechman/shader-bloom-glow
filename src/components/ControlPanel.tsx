@@ -513,7 +513,7 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
         style={!isOpen ? { pointerEvents: 'none' } : undefined}
       >
         
-        <div className={`p-4 md:p-6 space-y-5 ${isMobile ? 'pb-8' : 'pt-6'}`}>
+        <div className={`p-5 md:p-6 space-y-6 ${isMobile ? 'pb-8' : 'pt-6'}`}>
           {/* Panel Header with close button */}
           <div className="flex items-center justify-between">
             <h2 className="font-display text-lg md:text-xl font-semibold text-foreground">Settings</h2>
@@ -544,16 +544,16 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
           </div>
 
           {/* ========== 0. OUTPUT FORMAT ========== */}
-          <div className="rounded-xl bg-secondary/10 p-3 space-y-3">
+          <div className="rounded-xl bg-secondary/10 p-4 space-y-3">
             <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-muted-foreground">Output Format</h3>
             <div className="flex flex-wrap gap-1.5">
               {aspectRatioOptions.map((option) => (
                 <button
                   key={option.value}
                   onClick={() => onConfigChange({ aspectRatio: option.value })}
-                  className={`py-1.5 px-2.5 rounded-lg text-xs font-medium transition-all ${
+                  className={`py-2 px-3 rounded-lg text-sm font-medium transition-all ${
                     config.aspectRatio === option.value
-                      ? 'bg-primary text-primary-foreground'
+                      ? 'bg-primary text-primary-foreground shadow-sm'
                       : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
                   }`}
                 >
@@ -588,11 +588,11 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
           </div>
 
           {/* ========== 1. SHAPE & STYLE ========== */}
-          <div className="rounded-xl bg-secondary/10 p-3 space-y-3">
+          <div className="rounded-xl bg-secondary/10 p-4 space-y-4">
             <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-muted-foreground">Shape & Style</h3>
             
             {/* Shape Selection Grid */}
-            <div className="grid grid-cols-4 gap-1.5">
+            <div className="grid grid-cols-4 gap-2">
               {shapeOptions.map((shape) => {
                 const isActive = shape.label === 'Aurora' 
                   ? config.type === 'plane' && config.wireframe && config.meshStretch === true
@@ -613,9 +613,9 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                   <button
                     key={shape.label}
                     onClick={handleShapeClick}
-                    className={`py-1.5 px-2 rounded-lg text-xs font-medium transition-all ${
+                    className={`py-2 px-2 rounded-lg text-sm font-medium transition-all ${
                       isActive
-                        ? 'bg-primary text-primary-foreground'
+                        ? 'bg-primary text-primary-foreground shadow-sm'
                         : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
                     }`}
                   >
@@ -1137,7 +1137,7 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
           </div>
 
           {/* ========== 2. COLORS ========== */}
-          <div className="rounded-xl bg-secondary/10 p-3 space-y-3">
+          <div className="rounded-xl bg-secondary/10 p-4 space-y-4">
             <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               {isButtonRatio(config.aspectRatio) 
                 ? (config.buttonPreviewState === 'hover' ? 'Hover Colors' : 'Default Colors')
@@ -1146,7 +1146,7 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
             </h3>
             {!isButtonRatio(config.aspectRatio) && (
               <>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-3 gap-2.5">
                   {[...colorPresets].sort((a, b) => {
                     const currentEffectKey = config.type === 'plane' && config.wireframe 
                       ? 'plane'
@@ -1178,15 +1178,15 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                           setIsTextSafe(false);
                           setPresetWeightsBeforeTextSafe(null);
                         }}
-                        className="relative h-10 rounded-lg overflow-hidden border border-border hover:border-primary transition-colors group"
+                        className="relative h-12 rounded-xl overflow-hidden border-2 border-border/50 hover:border-primary transition-all hover:scale-[1.02] group"
                         style={{
                           background: `linear-gradient(135deg, ${getThemeColor0(theme)} 0%, ${preset.color1} 30%, ${preset.color2} 60%, ${preset.color3} 100%)`,
                         }}
                       >
                         {isRecommended && (
-                          <Sparkles className="absolute top-0.5 right-0.5 w-2.5 h-2.5 text-yellow-400 drop-shadow-md" />
+                          <Sparkles className="absolute top-1 right-1 w-3 h-3 text-yellow-400 drop-shadow-md" />
                         )}
-                        <span className="absolute inset-0 flex items-center justify-center text-white text-[10px] font-medium drop-shadow-md">
+                        <span className="absolute inset-0 flex items-center justify-center text-white text-xs font-medium drop-shadow-lg">
                           {preset.name}
                         </span>
                       </button>
@@ -1251,18 +1251,18 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                 </div>
               </>
             )}
-            <div className="space-y-2.5">
+            <div className="space-y-3">
               {/* Base Color Weight with Text Safe toggle */}
-              <div className="space-y-1.5 py-2 px-2.5 rounded-lg bg-secondary/30">
+              <div className="space-y-2 py-3 px-3 rounded-xl bg-secondary/30">
                 <div className="flex items-center justify-between">
-                  <Label className="text-muted-foreground text-xs flex items-center gap-1.5">
+                  <Label className="text-muted-foreground text-sm flex items-center gap-2">
                     <span 
-                      className="w-3.5 h-3.5 rounded border border-border inline-block"
+                      className="w-5 h-5 rounded-md border border-border inline-block"
                       style={{ backgroundColor: getThemeColor0(theme) }}
                     />
                     Base ({isDark ? 'Black' : 'White'})
                   </Label>
-                  <span className="text-[10px] text-muted-foreground">{config.colorWeight0}%</span>
+                  <span className="text-xs font-medium text-muted-foreground">{config.colorWeight0}%</span>
                 </div>
                 <Slider
                   value={[config.colorWeight0]}
@@ -1273,9 +1273,9 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                   className="w-full"
                 />
                 {/* Text Safe Toggle */}
-                <div className="flex items-center justify-between pt-0.5">
-                  <Label className="text-muted-foreground flex items-center gap-1.5 text-xs">
-                    <Type className="w-3 h-3" />
+                <div className="flex items-center justify-between pt-1">
+                  <Label className="text-muted-foreground flex items-center gap-2 text-sm">
+                    <Type className="w-4 h-4" />
                     Text Safe
                   </Label>
                   <Switch
@@ -1284,59 +1284,61 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                   />
                 </div>
                 {isTextSafe && (
-                  <p className="text-[10px] text-muted-foreground/70">
+                  <p className="text-xs text-muted-foreground/70">
                     Base increased to 65% for better text contrast
                   </p>
                 )}
               </div>
 
-              {/* Color Pickers with Weights - COMPACT layout */}
+              {/* Color Pickers with Weights */}
               {[
                 { key: 'color1', weightKey: 'colorWeight1', label: 'Color 1', weight: config.colorWeight1, color: isButtonRatio(config.aspectRatio) && config.buttonPreviewState === 'hover' ? config.hoverColor1 : config.color1 },
                 { key: 'color2', weightKey: 'colorWeight2', label: 'Color 2', weight: config.colorWeight2, color: isButtonRatio(config.aspectRatio) && config.buttonPreviewState === 'hover' ? config.hoverColor2 : config.color2 },
                 { key: 'color3', weightKey: 'colorWeight3', label: 'Color 3', weight: config.colorWeight3, color: isButtonRatio(config.aspectRatio) && config.buttonPreviewState === 'hover' ? config.hoverColor3 : config.color3 },
                 ...(config.color4 !== null ? [{ key: 'color4', weightKey: 'colorWeight4', label: 'Color 4', weight: config.colorWeight4, color: config.color4 }] : []),
               ].map(({ key, weightKey, label, weight, color }, index) => (
-                <div key={key} className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="color"
-                      value={color}
-                      onChange={(e) => {
-                        if (isButtonRatio(config.aspectRatio) && config.buttonPreviewState === 'hover') {
-                          const hoverKey = key === 'color1' ? 'hoverColor1' : key === 'color2' ? 'hoverColor2' : 'hoverColor3';
-                          onConfigChange({ [hoverKey]: e.target.value });
-                        } else {
-                          onConfigChange({ [key]: e.target.value });
-                        }
-                      }}
-                      className="w-5 h-5 rounded cursor-pointer border border-border flex-shrink-0"
-                      style={{ padding: 0 }}
-                    />
-                    <span className="text-xs text-muted-foreground flex-1">{label}</span>
-                    <div className="flex gap-0.5">
-                      {activeBrandColors.map((brandColor) => (
-                        <button
-                          key={brandColor.hex}
-                          onClick={() => {
-                            if (isButtonRatio(config.aspectRatio) && config.buttonPreviewState === 'hover') {
-                              const hoverKey = key === 'color1' ? 'hoverColor1' : key === 'color2' ? 'hoverColor2' : 'hoverColor3';
-                              onConfigChange({ [hoverKey]: brandColor.hex });
-                            } else {
-                              onConfigChange({ [key]: brandColor.hex });
-                            }
-                          }}
-                          className={`w-3.5 h-3.5 rounded-full border transition-all ${
-                            color === brandColor.hex 
-                              ? 'border-primary scale-110' 
-                              : 'border-transparent hover:border-border'
-                          }`}
-                          style={{ backgroundColor: brandColor.hex }}
-                          title={brandColor.name}
-                        />
-                      ))}
-                    </div>
-                    <span className="text-[10px] text-muted-foreground w-7 text-right">{weight}%</span>
+                <div key={key} className="space-y-2 py-2 px-3 rounded-xl bg-secondary/20">
+                  <div className="flex items-center gap-3">
+                    <label className="relative w-7 h-7 rounded-lg overflow-hidden cursor-pointer border-2 border-border/50 hover:border-primary transition-colors flex-shrink-0">
+                      <input
+                        type="color"
+                        value={color}
+                        onChange={(e) => {
+                          if (isButtonRatio(config.aspectRatio) && config.buttonPreviewState === 'hover') {
+                            const hoverKey = key === 'color1' ? 'hoverColor1' : key === 'color2' ? 'hoverColor2' : 'hoverColor3';
+                            onConfigChange({ [hoverKey]: e.target.value });
+                          } else {
+                            onConfigChange({ [key]: e.target.value });
+                          }
+                        }}
+                        className="absolute inset-0 w-full h-full cursor-pointer opacity-0"
+                      />
+                      <span className="block w-full h-full rounded-md" style={{ backgroundColor: color }} />
+                    </label>
+                    <span className="text-sm text-foreground font-medium flex-1">{label}</span>
+                    <span className="text-xs font-medium text-muted-foreground w-8 text-right">{weight}%</span>
+                  </div>
+                  <div className="flex gap-1.5 pl-10">
+                    {activeBrandColors.map((brandColor) => (
+                      <button
+                        key={brandColor.hex}
+                        onClick={() => {
+                          if (isButtonRatio(config.aspectRatio) && config.buttonPreviewState === 'hover') {
+                            const hoverKey = key === 'color1' ? 'hoverColor1' : key === 'color2' ? 'hoverColor2' : 'hoverColor3';
+                            onConfigChange({ [hoverKey]: brandColor.hex });
+                          } else {
+                            onConfigChange({ [key]: brandColor.hex });
+                          }
+                        }}
+                        className={`w-5 h-5 rounded-full border-2 transition-all hover:scale-110 ${
+                          color === brandColor.hex 
+                            ? 'border-primary ring-2 ring-primary/30 scale-110' 
+                            : 'border-border/30 hover:border-border'
+                        }`}
+                        style={{ backgroundColor: brandColor.hex }}
+                        title={brandColor.name}
+                      />
+                    ))}
                   </div>
                   <Slider
                     value={[weight]}
@@ -1350,9 +1352,9 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                   {key === 'color4' && (
                     <button
                       onClick={handleRemoveColor4}
-                      className="text-[10px] text-muted-foreground hover:text-destructive flex items-center gap-1 transition-colors"
+                      className="text-xs text-muted-foreground hover:text-destructive flex items-center gap-1 transition-colors"
                     >
-                      <Minus className="w-2.5 h-2.5" /> Remove
+                      <Minus className="w-3 h-3" /> Remove Color 4
                     </button>
                   )}
                 </div>
@@ -1362,9 +1364,9 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
               {config.color4 === null && !isButtonRatio(config.aspectRatio) && (
                 <button
                   onClick={handleAddColor4}
-                  className="w-full py-1.5 rounded-lg text-xs font-medium bg-secondary/50 text-muted-foreground hover:bg-secondary/80 hover:text-foreground transition-colors flex items-center justify-center gap-1.5"
+                  className="w-full py-2 rounded-xl text-sm font-medium bg-secondary/50 text-muted-foreground hover:bg-secondary/80 hover:text-foreground transition-colors flex items-center justify-center gap-2"
                 >
-                  <Plus className="w-3 h-3" />
+                  <Plus className="w-4 h-4" />
                   Add 4th Color
                 </button>
               )}
@@ -1372,7 +1374,7 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
           </div>
 
           {/* ========== 3. ANIMATION ========== */}
-          <div className="rounded-xl bg-secondary/10 p-3 space-y-3">
+          <div className="rounded-xl bg-secondary/10 p-4 space-y-4">
             <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-muted-foreground">Animation</h3>
             <div className="space-y-2.5">
               <div className="flex gap-1.5">
@@ -1445,7 +1447,7 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
           </div>
 
           {/* ========== 4. FINE TUNE (collapsible) ========== */}
-          <div className="rounded-xl bg-secondary/10 p-3">
+          <div className="rounded-xl bg-secondary/10 p-4">
             <Collapsible>
               <CollapsibleTrigger className="flex items-center justify-between w-full group">
                 <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-muted-foreground">Fine Tune</h3>
