@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Minus, Sparkles } from 'lucide-react';
+import { Plus, Minus, Sparkles, Save, Trash2, Type } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -8,6 +8,7 @@ import { useState, useEffect, useRef } from 'react';
 import { GradientConfig, isHeroBannerRatio, isButtonRatio, getThemeColor0 } from '@/types/gradient';
 import { useTheme } from '@/hooks/useTheme';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { usePresets } from '@/hooks/usePresets';
 
 
 // Plane direction presets
@@ -83,20 +84,21 @@ const brandColors = [
 const activeBrandColors = brandColors.slice(0, 5); // Yellow, Coral, Magenta, Violet, Blue
 
 // Art-directed color presets organized by visual family
-// Each preset has curated weights for distinct mood + recommended effect pairings
+// Ordered by black-emergence contrast: Bold (sharp pop) → Warm (analogous flow) → Cool (atmospheric depth)
+// Adjacent colors follow analogous harmony rules to prevent muddy midtones
 const colorPresets = [
-  // === Bold / High Contrast ===
-  { name: 'Royal', color1: '#6A00F4', color2: '#EC008C', color3: '#00C2FF', color4: null, weight0: 35, weight1: 30, weight2: 20, weight3: 15, weight4: 0, recommendedFor: ['waves', 'plane', 'conic'] },
+  // === Bold / High Contrast (color pops sharply from black) ===
+  { name: 'Golden', color1: '#FDB515', color2: '#EC008C', color3: '#6A00F4', color4: null, weight0: 40, weight1: 32, weight2: 16, weight3: 12, weight4: 0, recommendedFor: ['glow', 'plane', 'waves'] },
   { name: 'Neon', color1: '#EC008C', color2: '#00C2FF', color3: '#6A00F4', color4: null, weight0: 30, weight1: 30, weight2: 25, weight3: 15, weight4: 0, recommendedFor: ['sphere', 'conic', 'plane'] },
-  { name: 'Golden', color1: '#FDB515', color2: '#6A00F4', color3: '#EC008C', color4: null, weight0: 40, weight1: 32, weight2: 16, weight3: 12, weight4: 0, recommendedFor: ['glow', 'plane', 'waves'] },
-  // === Warm / Analogous ===
+  { name: 'Electric', color1: '#00C2FF', color2: '#EC008C', color3: '#FDB515', color4: null, weight0: 30, weight1: 28, weight2: 24, weight3: 18, weight4: 0, recommendedFor: ['conic', 'plane', 'sphere'] },
+  // === Warm / Analogous (colors melt into each other) ===
   { name: 'Sunset', color1: '#FDB515', color2: '#F2665F', color3: '#EC008C', color4: null, weight0: 30, weight1: 28, weight2: 24, weight3: 18, weight4: 0, recommendedFor: ['glow', 'plane', 'waterPlane'] },
   { name: 'Ember', color1: '#F2665F', color2: '#EC008C', color3: '#FDB515', color4: '#6A00F4', weight0: 35, weight1: 25, weight2: 20, weight3: 12, weight4: 8, recommendedFor: ['glow', 'waves', 'sphere'] },
   { name: 'Coral', color1: '#F2665F', color2: '#FDB515', color3: '#6A00F4', color4: null, weight0: 35, weight1: 30, weight2: 22, weight3: 13, weight4: 0, recommendedFor: ['waterPlane', 'sphere', 'plane'] },
-  // === Cool / Atmospheric ===
+  // === Cool / Atmospheric (deep, lots of black) ===
   { name: 'Ocean', color1: '#00C2FF', color2: '#6A00F4', color3: '#EC008C', color4: null, weight0: 40, weight1: 28, weight2: 20, weight3: 12, weight4: 0, recommendedFor: ['waterPlane', 'waves', 'plane'] },
+  { name: 'Royal', color1: '#6A00F4', color2: '#EC008C', color3: '#00C2FF', color4: null, weight0: 35, weight1: 30, weight2: 20, weight3: 15, weight4: 0, recommendedFor: ['waves', 'plane', 'conic'] },
   { name: 'Dusk', color1: '#6A00F4', color2: '#EC008C', color3: '#F2665F', color4: null, weight0: 50, weight1: 22, weight2: 16, weight3: 12, weight4: 0, recommendedFor: ['waves', 'glow', 'waterPlane'] },
-  { name: 'Electric', color1: '#00C2FF', color2: '#EC008C', color3: '#FDB515', color4: null, weight0: 30, weight1: 28, weight2: 24, weight3: 18, weight4: 0, recommendedFor: ['conic', 'plane', 'sphere'] },
 ];
 
 // Complete effect presets for each gradient type - resets ALL relevant settings
@@ -204,6 +206,11 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
   const [internalTime, setInternalTime] = useState(0);
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
+  const [isTextSafe, setIsTextSafe] = useState(false);
+  const [presetWeightsBeforeTextSafe, setPresetWeightsBeforeTextSafe] = useState<number[] | null>(null);
+  const { presets: savedPresets, savePreset, loadPreset, deletePreset } = usePresets();
+  const [showSaveInput, setShowSaveInput] = useState(false);
+  const [savePresetName, setSavePresetName] = useState('');
   
   // Track animation time for freeze frame
   useEffect(() => {
@@ -432,6 +439,44 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
     startTimeRef.current = null;
     setInternalTime(0);
     onConfigChange({ frozenTime: null, animate: true });
+  };
+
+  const handleTextSafeToggle = (enabled: boolean) => {
+    setIsTextSafe(enabled);
+    if (enabled) {
+      // Save current weights so we can restore
+      setPresetWeightsBeforeTextSafe([
+        config.colorWeight0, config.colorWeight1, config.colorWeight2, 
+        config.colorWeight3, config.colorWeight4
+      ]);
+      // Force base to 65%, redistribute remaining 35% proportionally
+      handleBaseWeightChange(65);
+    } else if (presetWeightsBeforeTextSafe) {
+      // Restore previous weights
+      onConfigChange({
+        colorWeight0: presetWeightsBeforeTextSafe[0],
+        colorWeight1: presetWeightsBeforeTextSafe[1],
+        colorWeight2: presetWeightsBeforeTextSafe[2],
+        colorWeight3: presetWeightsBeforeTextSafe[3],
+        colorWeight4: presetWeightsBeforeTextSafe[4],
+      });
+      setPresetWeightsBeforeTextSafe(null);
+    }
+  };
+
+  const handleSavePreset = () => {
+    if (savePresetName.trim()) {
+      savePreset(savePresetName.trim(), config);
+      setSavePresetName('');
+      setShowSaveInput(false);
+    }
+  };
+
+  const handleLoadSavedPreset = (preset: typeof savedPresets[0]) => {
+    const presetConfig = loadPreset(preset);
+    onConfigChange(presetConfig);
+    setIsTextSafe(false);
+    setPresetWeightsBeforeTextSafe(null);
   };
 
   const isWireframeMode = config.wireframe;
@@ -695,47 +740,108 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
               }
             </h3>
             {!isButtonRatio(config.aspectRatio) && (
-              <div className="grid grid-cols-3 gap-3 mb-4">
-                {colorPresets.map((preset, index) => {
-                  // Determine current effect key for recommendation matching
-                  const currentEffectKey = config.type === 'plane' && config.wireframe 
-                    ? 'plane' // mesh/aurora are still plane-based
-                    : config.type;
-                  const isRecommended = preset.recommendedFor.includes(currentEffectKey);
-                  
-                  return (
+              <>
+                <div className="grid grid-cols-3 gap-3 mb-3">
+                  {colorPresets.map((preset, index) => {
+                    const currentEffectKey = config.type === 'plane' && config.wireframe 
+                      ? 'plane'
+                      : config.type;
+                    const isRecommended = preset.recommendedFor.includes(currentEffectKey);
+                    
+                    return (
+                      <button
+                        key={index}
+                        onClick={() => {
+                          onConfigChange({ 
+                            color1: preset.color1, 
+                            color2: preset.color2, 
+                            color3: preset.color3,
+                            color4: preset.color4,
+                            colorWeight0: preset.weight0,
+                            colorWeight1: preset.weight1,
+                            colorWeight2: preset.weight2,
+                            colorWeight3: preset.weight3,
+                            colorWeight4: preset.weight4,
+                          });
+                          setIsTextSafe(false);
+                          setPresetWeightsBeforeTextSafe(null);
+                        }}
+                        className="relative h-12 rounded-lg overflow-hidden border border-border hover:border-primary transition-colors group"
+                        style={{
+                          background: `linear-gradient(135deg, ${getThemeColor0(theme)} 0%, ${preset.color1} 30%, ${preset.color2} 60%, ${preset.color3} 100%)`,
+                        }}
+                      >
+                        {isRecommended && (
+                          <Sparkles className="absolute top-1 right-1 w-3 h-3 text-yellow-400 drop-shadow-md" />
+                        )}
+                        <span className="absolute inset-0 flex items-center justify-center text-white text-xs font-medium drop-shadow-md">
+                          {preset.name}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Save Preset + Saved Presets */}
+                <div className="mb-4">
+                  {showSaveInput ? (
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={savePresetName}
+                        onChange={(e) => setSavePresetName(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSavePreset()}
+                        placeholder="Preset name..."
+                        className="flex-1 px-2 py-1.5 rounded-lg text-xs bg-secondary text-foreground border border-border focus:outline-none focus:border-primary"
+                        autoFocus
+                      />
+                      <button onClick={handleSavePreset} className="px-2 py-1.5 rounded-lg text-xs bg-primary text-primary-foreground">Save</button>
+                      <button onClick={() => setShowSaveInput(false)} className="px-2 py-1.5 rounded-lg text-xs bg-secondary text-secondary-foreground">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ) : (
                     <button
-                      key={index}
-                      onClick={() => onConfigChange({ 
-                        color1: preset.color1, 
-                        color2: preset.color2, 
-                        color3: preset.color3,
-                        color4: preset.color4,
-                        colorWeight0: preset.weight0,
-                        colorWeight1: preset.weight1,
-                        colorWeight2: preset.weight2,
-                        colorWeight3: preset.weight3,
-                        colorWeight4: preset.weight4,
-                      })}
-                      className="relative h-12 rounded-lg overflow-hidden border border-border hover:border-primary transition-colors group"
-                      style={{
-                        background: `linear-gradient(135deg, #000000 0%, ${preset.color1} 30%, ${preset.color2} 60%, ${preset.color3} 100%)`,
-                      }}
+                      onClick={() => setShowSaveInput(true)}
+                      className="w-full py-1.5 rounded-lg text-xs font-medium bg-secondary/50 text-muted-foreground hover:bg-secondary/80 hover:text-foreground transition-colors flex items-center justify-center gap-1.5"
                     >
-                      {isRecommended && (
-                        <Sparkles className="absolute top-1 right-1 w-3 h-3 text-yellow-400 drop-shadow-md" />
-                      )}
-                      <span className="absolute inset-0 flex items-center justify-center text-white text-xs font-medium drop-shadow-md">
-                        {preset.name}
-                      </span>
+                      <Save className="w-3 h-3" />
+                      Save current
                     </button>
-                  );
-                })}
-              </div>
+                  )}
+
+                  {/* Saved presets */}
+                  {savedPresets.length > 0 && (
+                    <div className="mt-2 space-y-1">
+                      <p className="text-xs text-muted-foreground/60">My Presets</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {savedPresets.map((preset) => (
+                          <div key={preset.id} className="relative group">
+                            <button
+                              onClick={() => handleLoadSavedPreset(preset)}
+                              className="w-full h-10 rounded-lg overflow-hidden border border-border hover:border-primary transition-colors"
+                              style={{
+                                background: `linear-gradient(135deg, ${getThemeColor0(theme)} 0%, ${preset.config.color1} 35%, ${preset.config.color2} 65%, ${preset.config.color3} 100%)`,
+                              }}
+                            >
+                              <span className="text-white text-[10px] font-medium drop-shadow-md">{preset.name}</span>
+                            </button>
+                            <button
+                              onClick={() => deletePreset(preset.id)}
+                              className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <Trash2 className="w-2.5 h-2.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
             )}
             <div className="space-y-4">
-              {/* Base Color Weight Slider (theme-based: black in dark, white in light) */}
-              {/* Minimum 30%, can go up to 100% */}
+              {/* Base Color Weight with Text Safe toggle */}
               <div className="space-y-2 py-2 px-3 rounded-lg bg-secondary/30">
                 <div className="flex items-center justify-between">
                   <Label className="text-muted-foreground flex items-center gap-2">
@@ -751,14 +857,28 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                 </div>
                 <Slider
                   value={[config.colorWeight0]}
-                  onValueChange={([value]) => handleBaseWeightChange(value)}
+                  onValueChange={([value]) => {
+                    handleBaseWeightChange(value);
+                    if (isTextSafe && value < 65) setIsTextSafe(false);
+                  }}
                   min={30}
                   max={100}
                   step={1}
                   className="w-full"
                 />
+                {/* Text Safe Toggle */}
+                <div className="flex items-center justify-between pt-1">
+                  <Label className="text-muted-foreground flex items-center gap-1.5 text-xs">
+                    <Type className="w-3.5 h-3.5" />
+                    Text Safe
+                  </Label>
+                  <Switch
+                    checked={isTextSafe}
+                    onCheckedChange={handleTextSafeToggle}
+                  />
+                </div>
                 <p className="text-xs text-muted-foreground/70">
-                  Minimum 30% for brand consistency
+                  {isTextSafe ? 'Optimized for text readability (65% base)' : 'Toggle for presentation/banner backgrounds'}
                 </p>
               </div>
               
