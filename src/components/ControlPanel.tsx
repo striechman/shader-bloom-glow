@@ -82,7 +82,7 @@ const brandColors = [
 
 // Brand colors (for UI selection)
 // Rule: Presets must use at least 2 colors from the first 5 (non-black/white)
-const activeBrandColors = brandColors.slice(0, 5); // Yellow, Coral, Magenta, Violet, Blue
+const activeBrandColors = brandColors; // All brand colors including black & white
 
 // Art-directed color presets organized by visual family
 // Ordered by black-emergence contrast: Bold (sharp pop) → Warm (analogous flow) → Cool (atmospheric depth)
