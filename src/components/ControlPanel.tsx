@@ -179,7 +179,7 @@ const effectPresets: Record<string, Partial<GradientConfig>> = {
     uDensity: 1.0,
     uFrequency: 2,
     glowOrbSize: 60,
-    glowShadowDensity: 50,
+    glowShadowDensity: 0,
     glowStyle: 'scattered',
     glowSpread: 50,
     glowOffsetX: 0,
