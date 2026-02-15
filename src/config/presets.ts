@@ -354,7 +354,7 @@ export const PRESET_LUMINOUS_GLOW: BuiltInPreset = {
     colorWeight4: 10,
     
     glowOrbSize: 60,
-    glowShadowDensity: 45,
+    glowShadowDensity: 0,
     
     uStrength: 1.5,
     uDensity: 1.0,
@@ -456,7 +456,7 @@ export const PRESET_WARM_GLOW: BuiltInPreset = {
     colorWeight3: 13,
     colorWeight4: 12,
     glowOrbSize: 60,
-    glowShadowDensity: 50,
+    glowShadowDensity: 0,
     uStrength: 1.5,
     uDensity: 1.0,
     uFrequency: 2.0,

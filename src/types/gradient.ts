@@ -129,7 +129,7 @@ export const defaultGradientConfig: GradientConfig = {
   conicOffsetY: 0,
   // Glow defaults
   glowOrbSize: 60,
-  glowShadowDensity: 50,
+  glowShadowDensity: 0,
   glowStyle: 'scattered',
   glowSpread: 50,
   glowOffsetX: 0,
