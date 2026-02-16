@@ -1318,11 +1318,14 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                     <span className="text-sm text-foreground font-medium flex-1">{label}</span>
                     <span className="text-xs font-medium text-muted-foreground w-8 text-right">{weight}%</span>
                   </div>
-                  <div className="flex gap-1.5 pl-10">
+                  <div className="flex gap-2 pl-10 flex-wrap">
                     {activeBrandColors.map((brandColor) => (
                       <button
                         key={brandColor.hex}
-                        onClick={() => {
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
                           if (isButtonRatio(config.aspectRatio) && config.buttonPreviewState === 'hover') {
                             const hoverKey = key === 'color1' ? 'hoverColor1' : key === 'color2' ? 'hoverColor2' : 'hoverColor3';
                             onConfigChange({ [hoverKey]: brandColor.hex });
@@ -1330,10 +1333,14 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                             onConfigChange({ [key]: brandColor.hex });
                           }
                         }}
-                        className={`w-5 h-5 rounded-full border-2 transition-all hover:scale-110 ${
-                          color === brandColor.hex 
+                        className={`w-7 h-7 rounded-full border-2 transition-all hover:scale-110 cursor-pointer ${
+                          color.toUpperCase() === brandColor.hex.toUpperCase()
                             ? 'border-primary ring-2 ring-primary/30 scale-110' 
-                            : 'border-border/30 hover:border-border'
+                            : brandColor.hex === '#000000' 
+                              ? 'border-border/60 hover:border-border' 
+                              : brandColor.hex === '#FFFFFF'
+                                ? 'border-border/60 hover:border-border'
+                                : 'border-border/30 hover:border-border'
                         }`}
                         style={{ backgroundColor: brandColor.hex }}
                         title={brandColor.name}
