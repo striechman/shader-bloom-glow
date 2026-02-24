@@ -788,7 +788,7 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                   <Slider
                     value={[config.planeSpread ?? 50]}
                     onValueChange={([value]) => onConfigChange({ planeSpread: value })}
-                    min={0}
+                    min={70}
                     max={100}
                     step={5}
                     className="w-full"
