@@ -1359,12 +1359,19 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                       <button
                         key={index}
                         onClick={() => {
+                          // Swap black/white in preset colors based on theme
+                          const themeSwap = (c: string | null) => {
+                            if (!c) return c;
+                            if (c === '#000000' && theme === 'light') return '#FFFFFF';
+                            if (c === '#FFFFFF' && theme === 'dark') return '#000000';
+                            return c;
+                          };
                           onConfigChange({ 
-                            color1: preset.color1, 
-                            color2: preset.color2, 
-                            color3: preset.color3,
-                            color4: preset.color4,
-                            color5: preset.color5,
+                            color1: themeSwap(preset.color1)!, 
+                            color2: themeSwap(preset.color2)!, 
+                            color3: themeSwap(preset.color3)!,
+                            color4: themeSwap(preset.color4),
+                            color5: themeSwap(preset.color5),
                             colorWeight0: preset.weight0,
                             colorWeight1: preset.weight1,
                             colorWeight2: preset.weight2,
@@ -1379,9 +1386,14 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                         className="relative h-12 rounded-xl overflow-hidden border-2 border-border/50 hover:border-primary transition-all hover:scale-[1.02] group"
                         style={{
                           background: (() => {
-                            const colors = [getThemeColor0(theme), preset.color1, preset.color2, preset.color3];
-                            if (preset.color4) colors.push(preset.color4);
-                            if (preset.color5) colors.push(preset.color5);
+                            const swap = (c: string) => {
+                              if (c === '#000000' && theme === 'light') return '#FFFFFF';
+                              if (c === '#FFFFFF' && theme === 'dark') return '#000000';
+                              return c;
+                            };
+                            const colors = [getThemeColor0(theme), swap(preset.color1), swap(preset.color2), swap(preset.color3)];
+                            if (preset.color4) colors.push(swap(preset.color4));
+                            if (preset.color5) colors.push(swap(preset.color5));
                             const step = 100 / (colors.length - 1);
                             const stops = colors.map((c, i) => `${c} ${Math.round(i * step)}%`).join(', ');
                             return `linear-gradient(135deg, ${stops})`;
