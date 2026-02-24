@@ -243,30 +243,31 @@ void main() {
     // IMPORTANT: Ensure noise covers full 0.0 to 1.0 range to respect color weights (especially 30% black)
     float baseNoise;
     
-    // Apply offset, scale and drift
-    // Scale < 1.0 compresses the gradient into a smaller area (all colors visible)
+    // Drift for subtle animation
     vec2 drift = vec2(sin(uTime * 0.22), cos(uTime * 0.18)) * 0.02;
     float scale = max(uPlaneScale, 0.1);
-    vec2 offsetCenter = (centeredUv + drift - uPlaneOffset) * (1.0 / scale);
     
-    // Domain warping for organic distortion
+    // Domain warping for organic distortion (applied to base UV)
+    vec2 warpedUv = centeredUv + drift;
     if (uWarpStrength > 0.01) {
+      vec2 warpSample = warpedUv * 0.7;
       vec2 warpOff;
-      warpOff.x = snoise(vec3(offsetCenter * 0.7, uTime * 0.2));
-      warpOff.y = snoise(vec3(offsetCenter * 0.7 + 5.2, uTime * 0.2));
-      offsetCenter += warpOff * uWarpStrength * 0.08;
+      warpOff.x = snoise(vec3(warpSample, uTime * 0.2));
+      warpOff.y = snoise(vec3(warpSample + 5.2, uTime * 0.2));
+      warpedUv += warpOff * uWarpStrength * 0.08;
     }
     
     if (uPlaneRadial) {
-      // Radial gradient from offset center outward
-      // Normalize by the natural radius at scale=1 offset=0 (corner distance ~0.707)
-      baseNoise = length(offsetCenter) / 0.707;
+      // Radial gradient: offset shifts center, scale zooms
+      vec2 radialCenter = warpedUv - uPlaneOffset;
+      baseNoise = length(radialCenter) / (0.707 * scale);
     } else {
-      // Linear gradient with custom angle and offset
+      // Linear gradient: compute normalized value at ORIGINAL coords first,
+      // then apply scale (zoom) and offset (pan) as a viewport transform.
       vec2 direction = vec2(cos(uPlaneAngle), sin(uPlaneAngle));
-      float dotProduct = dot(offsetCenter, direction);
-      // FIXED normalization: always normalize by the natural gradient extent at scale=1, offset=0.
-      // This way scale actually zooms and offset actually moves the gradient.
+      
+      // Step 1: Normalize dot product to 0-1 at original scale (no offset)
+      float rawDot = dot(warpedUv, direction);
       vec2 cr1 = vec2(-0.5, -0.5);
       vec2 cr2 = vec2( 0.5, -0.5);
       vec2 cr3 = vec2(-0.5,  0.5);
@@ -277,7 +278,12 @@ void main() {
       float dp4 = dot(cr4, direction);
       float minDP = min(min(dp1, dp2), min(dp3, dp4));
       float maxDP = max(max(dp1, dp2), max(dp3, dp4));
-      baseNoise = (dotProduct - minDP) / (maxDP - minDP);
+      float baseDotNorm = (rawDot - minDP) / (maxDP - minDP); // 0-1 across screen
+      
+      // Step 2: Apply scale as zoom (>1 = zoom in, <1 = zoom out)
+      // and offset as pan in gradient space
+      float offsetInGradSpace = dot(uPlaneOffset, direction) / (maxDP - minDP);
+      baseNoise = (baseDotNorm - 0.5) / scale + 0.5 + offsetInGradSpace;
     }
     
     // Add wave distortion (only when enabled)
