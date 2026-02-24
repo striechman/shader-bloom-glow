@@ -95,7 +95,7 @@ const colorPresets: Array<{
   fullPreset?: Partial<GradientConfig>; // Optional: also applies effect settings (full preset)
 }> = [
   // === Bold / High Contrast (color pops sharply from black) ===
-  { name: 'Golden', color1: '#FDB515', color2: '#EC008C', color3: '#6A00F4', color4: null, weight0: 40, weight1: 32, weight2: 16, weight3: 12, weight4: 0, recommendedFor: ['glow', 'plane', 'waves'] },
+  { name: 'Golden', color1: '#FDB515', color2: '#EC008C', color3: '#6A00F4', color4: '#000000', weight0: 40, weight1: 26, weight2: 13, weight3: 10, weight4: 12, recommendedFor: ['glow', 'plane', 'waves'] },
   { name: 'Neon', color1: '#EC008C', color2: '#00C2FF', color3: '#6A00F4', color4: null, weight0: 30, weight1: 30, weight2: 25, weight3: 15, weight4: 0, recommendedFor: ['sphere', 'conic', 'plane'] },
   { name: 'Electric', color1: '#00C2FF', color2: '#EC008C', color3: '#FDB515', color4: null, weight0: 30, weight1: 28, weight2: 24, weight3: 18, weight4: 0, recommendedFor: ['conic', 'plane', 'sphere'] },
   // === Warm / Analogous (colors melt into each other) ===
