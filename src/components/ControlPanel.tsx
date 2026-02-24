@@ -130,10 +130,10 @@ const colorPresets: Array<{
       animate: false, frozenTime: 3.0, grain: false,
     },
   },
-  { name: 'Ember', color1: '#EC008C', color2: '#F2665F', color3: '#FDB515', color4: null, color5: null, weight0: 34, weight1: 28, weight2: 22, weight3: 16, weight4: 0, weight5: 0, recommendedFor: ['glow', 'mesh', 'waves', 'plane', 'sphere'] },
+  { name: 'Ember', color1: '#EC008C', color2: '#F2665F', color3: '#FDB515', color4: '#000000', color5: null, weight0: 30, weight1: 24, weight2: 20, weight3: 14, weight4: 12, weight5: 0, recommendedFor: ['glow', 'mesh', 'waves', 'plane', 'sphere'] },
   // === Cool / Atmospheric (deep, lots of black) ===
   { name: 'Ocean', color1: '#00C2FF', color2: '#6A00F4', color3: '#EC008C', color4: null, color5: null, weight0: 40, weight1: 28, weight2: 20, weight3: 12, weight4: 0, weight5: 0, recommendedFor: ['waterPlane', 'waves', 'plane'] },
-  { name: 'Royal', color1: '#6A00F4', color2: '#EC008C', color3: '#00C2FF', color4: null, color5: null, weight0: 35, weight1: 30, weight2: 20, weight3: 15, weight4: 0, weight5: 0, recommendedFor: ['waves', 'plane', 'conic'] },
+  { name: 'Royal', color1: '#6A00F4', color2: '#EC008C', color3: '#00C2FF', color4: '#000000', color5: null, weight0: 30, weight1: 26, weight2: 18, weight3: 14, weight4: 12, weight5: 0, recommendedFor: ['waves', 'plane', 'conic'] },
   { name: 'Dusk', color1: '#6A00F4', color2: '#EC008C', color3: '#F2665F', color4: null, color5: null, weight0: 50, weight1: 22, weight2: 16, weight3: 12, weight4: 0, weight5: 0, recommendedFor: ['waves', 'glow', 'waterPlane', 'conic', 'plane'] },
 ];
 // Complete effect presets for each gradient type - resets ALL relevant settings
