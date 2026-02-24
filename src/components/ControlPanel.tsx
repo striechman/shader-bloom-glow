@@ -655,7 +655,7 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                   <Slider
                     value={[config.meshBlur ?? 50]}
                     onValueChange={([value]) => onConfigChange({ meshBlur: value })}
-                    min={0}
+                    min={50}
                     max={100}
                     step={1}
                     className="w-full"
