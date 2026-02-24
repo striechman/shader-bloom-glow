@@ -903,6 +903,20 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                     className="w-full"
                   />
                 </div>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-muted-foreground">Scale</span>
+                    <span className="text-[10px] text-muted-foreground">{config.planeScale ?? 100}%</span>
+                  </div>
+                  <Slider
+                    value={[config.planeScale ?? 100]}
+                    onValueChange={([value]) => onConfigChange({ planeScale: value })}
+                    min={10}
+                    max={100}
+                    step={5}
+                    className="w-full"
+                  />
+                </div>
                 <div className="space-y-2">
                   <Label className="text-muted-foreground text-xs flex items-center gap-1.5">
                     <Move className="w-3.5 h-3.5" />
