@@ -1470,14 +1470,14 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
                         <Label className="text-muted-foreground text-[10px]">Intensity</Label>
-                        <span className="text-[10px] text-muted-foreground">{config.grainIntensity ?? 50}%</span>
+                        <span className="text-[10px] text-muted-foreground">{config.grainIntensity ?? 10}%</span>
                       </div>
                       <Slider
-                        value={[config.grainIntensity ?? 50]}
+                        value={[config.grainIntensity ?? 10]}
                         onValueChange={([value]) => onConfigChange({ grainIntensity: value })}
-                        min={5}
-                        max={100}
-                        step={5}
+                        min={0}
+                        max={10}
+                        step={1}
                         className="w-full"
                       />
                     </div>
