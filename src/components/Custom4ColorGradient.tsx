@@ -261,8 +261,8 @@ void main() {
       // Linear gradient with custom angle and offset
       vec2 direction = vec2(cos(uPlaneAngle), sin(uPlaneAngle));
       float dotProduct = dot(offsetCenter, direction);
-      // Calculate max possible dot product for normalization
-      float maxDot = abs(direction.x) * 0.5 + abs(direction.y) * 0.5;
+      // Normalize against UNSCALED half-extent so that scale actually compresses the gradient
+      float maxDot = (abs(direction.x) * 0.5 + abs(direction.y) * 0.5) * (1.0 / scale);
       // Normalize to full 0-1 range
       baseNoise = (dotProduct / maxDot) * 0.5 + 0.5;
     }
