@@ -41,10 +41,10 @@ const shapeOptions: { value: GradientConfig['type']; wireframe: boolean; label: 
   { value: 'plane', wireframe: false, label: 'Plane', presetKey: 'plane' },
   { value: 'plane', wireframe: true, label: 'Mesh', presetKey: 'mesh' },
   { value: 'plane', wireframe: true, label: 'Aura', presetKey: 'aura' },
-  // Premium styles (include colors + engine settings)
-  { value: 'plane', wireframe: true, label: 'Silk', presetKey: 'fluidSilk', isPremium: true, includesColors: true },
-  { value: 'glow', wireframe: false, label: 'Edge', presetKey: 'ambientEdge', isPremium: true, includesColors: true },
-  { value: 'plane', wireframe: false, label: 'Prism', presetKey: 'prismaticGlass', isPremium: true, includesColors: true },
+  // Premium styles (engine settings only - colors come from selected preset)
+  { value: 'plane', wireframe: true, label: 'Silk', presetKey: 'fluidSilk', isPremium: true },
+  { value: 'glow', wireframe: false, label: 'Edge', presetKey: 'ambientEdge', isPremium: true },
+  { value: 'plane', wireframe: false, label: 'Prism', presetKey: 'prismaticGlass', isPremium: true },
 ];
 
 const aspectRatioOptions: { value: GradientConfig['aspectRatio']; label: string; category?: string }[] = [
@@ -251,8 +251,6 @@ const effectPresets: Record<string, Partial<GradientConfig>> = {
     meshBlur: 80, meshNoiseScale: 0.3, meshWarpStrength: 2.0, meshStretch: false,
     uStrength: 1.5, uDensity: 0.8, uFrequency: 1.5,
     animate: true, speed: 0.1, grain: false, grainIntensity: 5,
-    color1: '#00C2FF', color2: '#EC008C', color3: '#6A00F4', color4: null,
-    colorWeight0: 40, colorWeight1: 25, colorWeight2: 20, colorWeight3: 15, colorWeight4: 0,
   },
   ambientEdge: {
     type: 'glow', glowOrbSize: 85, glowShadowDensity: 0, glowStyle: 'scattered' as const,
@@ -260,16 +258,12 @@ const effectPresets: Record<string, Partial<GradientConfig>> = {
     uStrength: 1.0, uDensity: 0.8, uFrequency: 1.5,
     animate: true, speed: 0.15, grain: false, grainIntensity: 5,
     meshStretch: false,
-    color1: '#F2665F', color2: '#FDB515', color3: '#6A00F4', color4: null,
-    colorWeight0: 55, colorWeight1: 20, colorWeight2: 15, colorWeight3: 10, colorWeight4: 0,
   },
   prismaticGlass: {
     type: 'plane', planeAngle: 45, planeRadial: false,
     planeSpread: 80, planeWave: 0, wireframe: false, meshStretch: false,
     uStrength: 1.0, uDensity: 0.5, uFrequency: 1.0,
     animate: true, speed: 0.2, grain: false, grainIntensity: 5,
-    color1: '#FDB515', color2: '#EC008C', color3: '#6A00F4', color4: '#00C2FF',
-    colorWeight0: 85, colorWeight1: 5, colorWeight2: 4, colorWeight3: 3, colorWeight4: 3,
   },
 };
 
