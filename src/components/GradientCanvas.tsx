@@ -80,7 +80,7 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
     }
   };
   
-  const grainOpacity = config.grain ? (config.grainIntensity ?? 50) / 100 : 0;
+  const grainOpacity = config.grain ? (config.grainIntensity ?? 10) / 10 : 0;
   
   // Create config with current colors for the 4-color gradient
   const gradientConfig = useMemo(() => ({

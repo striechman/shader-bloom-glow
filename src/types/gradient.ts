@@ -32,7 +32,7 @@ export interface GradientConfig {
   
   // Effects
   grain: boolean;
-  grainIntensity: number; // 0-100 (controls grain visibility)
+  grainIntensity: number; // 0-10 (controls grain visibility)
   uStrength: number;
   uDensity: number;
   uFrequency: number;
@@ -102,8 +102,8 @@ export const defaultGradientConfig: GradientConfig = {
   hoverColor2: '#6A00F4',
   hoverColor3: '#000000',
   buttonPreviewState: 'default',
-  grain: false,
-  grainIntensity: 50,
+  grain: true,
+  grainIntensity: 10,
   uStrength: 4,
   uDensity: 1.3,
   uFrequency: 5.5,
