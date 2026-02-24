@@ -99,10 +99,16 @@ const colorPresets: Array<{
       type: 'glow', glowOrbSize: 75, glowShadowDensity: 0, glowStyle: 'clustered',
       glowSpread: 70, glowOffsetX: -15, glowOffsetY: 0, glowDistortion: 50,
       uStrength: 1.5, uDensity: 1.0, uFrequency: 2.0,
-      animate: false, speed: 0.2, frozenTime: 5.50, grain: true, grainIntensity: 5,
+      animate: false, speed: 0.2, frozenTime: 5.50, grain: false, grainIntensity: 5,
     },
   },
-  { name: 'Sunset', color1: '#FDB515', color2: '#F2665F', color3: '#EC008C', color4: null, weight0: 30, weight1: 28, weight2: 24, weight3: 18, weight4: 0, recommendedFor: ['glow', 'plane', 'waterPlane'] },
+  { name: 'Sunset', color1: '#FF6B6B', color2: '#FDB515', color3: '#6A00F4', color4: null, weight0: 35, weight1: 30, weight2: 25, weight3: 10, weight4: 0, recommendedFor: ['plane', 'waves'],
+    fullPreset: {
+      type: 'plane', planeAngle: 90, planeRadial: false,
+      planeSpread: 60, planeWave: 0,
+      animate: false, frozenTime: 3.0, grain: false,
+    },
+  },
   { name: 'Ember', color1: '#F2665F', color2: '#EC008C', color3: '#FDB515', color4: '#6A00F4', weight0: 35, weight1: 25, weight2: 20, weight3: 12, weight4: 8, recommendedFor: ['glow', 'waves', 'sphere'] },
   { name: 'Coral', color1: '#F2665F', color2: '#FDB515', color3: '#6A00F4', color4: null, weight0: 35, weight1: 30, weight2: 22, weight3: 13, weight4: 0, recommendedFor: ['waterPlane', 'sphere', 'plane'] },
   // === Cool / Atmospheric (deep, lots of black) ===
