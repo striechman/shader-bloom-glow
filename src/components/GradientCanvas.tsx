@@ -126,12 +126,19 @@ export const GradientCanvas = ({ config, onConfigChange }: GradientCanvasProps) 
       <div
         ref={containerRef}
         style={getContainerStyle()}
-        className={`relative flex items-center justify-center ${canDrag ? 'cursor-grab active:cursor-grabbing' : ''}`}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerLeave={handlePointerUp}
+        className="relative flex items-center justify-center"
       >
+        {/* Drag overlay for Plane mode - sits above Canvas to capture pointer events */}
+        {canDrag && (
+          <div
+            className="absolute inset-0 z-[5] cursor-grab active:cursor-grabbing"
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerLeave={handlePointerUp}
+          />
+        )}
+        
         {use4ColorMode ? (
           /* 4-color gradient for Mesh and Plane modes */
           <Canvas

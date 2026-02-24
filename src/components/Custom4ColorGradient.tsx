@@ -241,9 +241,10 @@ void main() {
     float baseNoise;
     
     // Apply offset, scale and drift
+    // Scale < 1.0 compresses the gradient into a smaller area (all colors visible)
     vec2 drift = vec2(sin(uTime * 0.22), cos(uTime * 0.18)) * 0.02;
     float scale = max(uPlaneScale, 0.1);
-    vec2 offsetCenter = (centeredUv - uPlaneOffset + drift) / scale;
+    vec2 offsetCenter = (centeredUv + drift - uPlaneOffset) * (1.0 / scale);
     
     if (uPlaneRadial) {
       // Radial gradient from offset center outward - start from 0 at center
