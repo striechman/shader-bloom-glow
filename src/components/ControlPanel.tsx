@@ -124,7 +124,7 @@ const colorPresets: Array<{
       animate: false, speed: 0.2, frozenTime: 5.50, grain: false, grainIntensity: 5,
     },
   },
-  { name: 'Sunset', color1: '#FF6B6B', color2: '#FDB515', color3: '#6A00F4', color4: null, color5: null, weight0: 35, weight1: 30, weight2: 25, weight3: 10, weight4: 0, weight5: 0, recommendedFor: ['plane', 'waves'],
+  { name: 'Sunset', color1: '#FF6B6B', color2: '#FDB515', color3: '#6A00F4', color4: '#000000', color5: null, weight0: 35, weight1: 17, weight2: 17, weight3: 17, weight4: 13, weight5: 0, recommendedFor: ['plane', 'waves'],
     fullPreset: {
       type: 'plane', planeAngle: 90, planeRadial: false,
       planeSpread: 60, planeWave: 0,
