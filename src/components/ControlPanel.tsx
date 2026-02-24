@@ -101,7 +101,13 @@ const colorPresets: Array<{
       planeOffsetX: -45, planeOffsetY: -35, planeAngle: 45, grain: true, grainIntensity: 4,
     },
   },
-  { name: 'Neon', color1: '#EC008C', color2: '#00C2FF', color3: '#6A00F4', color4: null, weight0: 30, weight1: 30, weight2: 25, weight3: 15, weight4: 0, recommendedFor: ['sphere', 'conic', 'plane'] },
+  { name: 'Neon', color1: '#EC008C', color2: '#6A00F4', color3: '#00C2FF', color4: '#000000', weight0: 30, weight1: 25, weight2: 22, weight3: 13, weight4: 10, recommendedFor: ['plane', 'sphere', 'conic'],
+    fullPreset: {
+      type: 'plane', planeSpread: 90, planeWave: 10, uStrength: 0.3, uFrequency: 1,
+      planeAngle: 135, grain: true, grainIntensity: 3,
+      meshBlur: 90, meshNoiseScale: 0.3, meshStyle: 'center' as const, meshWarpStrength: 1.2,
+    },
+  },
   { name: 'Electric', color1: '#00C2FF', color2: '#EC008C', color3: '#FDB515', color4: null, weight0: 30, weight1: 28, weight2: 24, weight3: 18, weight4: 0, recommendedFor: ['conic', 'plane', 'sphere'] },
   // === Warm / Analogous (colors melt into each other) ===
   { name: 'Spotlight', color1: '#E8920D', color2: '#F06030', color3: '#EC008C', color4: null, weight0: 55, weight1: 20, weight2: 15, weight3: 10, weight4: 0, recommendedFor: ['glow'],
