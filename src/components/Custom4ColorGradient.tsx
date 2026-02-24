@@ -262,12 +262,22 @@ void main() {
       baseNoise = length(offsetCenter) * 2.0;
     } else {
       // Linear gradient with custom angle and offset
-      vec2 direction = vec2(cos(uPlaneAngle), sin(uPlaneAngle));
-      float dotProduct = dot(offsetCenter, direction);
-      // Calculate max possible dot product for normalization
-      float maxDot = abs(direction.x) * 0.5 + abs(direction.y) * 0.5;
-      // Normalize to full 0-1 range
-      baseNoise = (dotProduct / maxDot) * 0.5 + 0.5;
+          vec2 direction = vec2(cos(uPlaneAngle), sin(uPlaneAngle));
+          float dotProduct = dot(offsetCenter, direction);
+          // Compute actual min/max dotProduct across visible canvas corners (post-offset, post-scale)
+          // This ensures noise covers full 0-1 range regardless of offset position
+          vec2 off = uPlaneOffset; // already normalized (-0.5..0.5)
+          vec2 cr1 = (vec2(-0.5, -0.5) - off) * (1.0 / scale);
+          vec2 cr2 = (vec2( 0.5, -0.5) - off) * (1.0 / scale);
+          vec2 cr3 = (vec2(-0.5,  0.5) - off) * (1.0 / scale);
+          vec2 cr4 = (vec2( 0.5,  0.5) - off) * (1.0 / scale);
+          float dp1 = dot(cr1, direction);
+          float dp2 = dot(cr2, direction);
+          float dp3 = dot(cr3, direction);
+          float dp4 = dot(cr4, direction);
+          float minDP = min(min(dp1, dp2), min(dp3, dp4));
+          float maxDP = max(max(dp1, dp2), max(dp3, dp4));
+          baseNoise = (dotProduct - minDP) / (maxDP - minDP);
     }
     
     // Add wave distortion (only when enabled)
