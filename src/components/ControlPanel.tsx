@@ -766,6 +766,20 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                     />
                   </div>
                 )}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-muted-foreground text-xs">Warp</Label>
+                    <span className="text-[10px] text-muted-foreground">{(config.meshWarpStrength ?? 1.2).toFixed(1)}</span>
+                  </div>
+                  <Slider
+                    value={[config.meshWarpStrength ?? 1.2]}
+                    onValueChange={([value]) => onConfigChange({ meshWarpStrength: value })}
+                    min={0}
+                    max={3}
+                    step={0.1}
+                    className="w-full"
+                  />
+                </div>
               </div>
             )}
 
@@ -1509,25 +1523,6 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
               </div>
             </div>
                 </div>
-
-                {/* Warp (Mesh/Aurora only) */}
-                {isWireframeMode && (
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-muted-foreground text-xs">Warp</Label>
-                      <span className="text-[10px] text-muted-foreground">{(config.meshWarpStrength ?? 1.2).toFixed(1)}</span>
-                    </div>
-                    <Slider
-                      value={[config.meshWarpStrength ?? 1.2]}
-                      onValueChange={([value]) => onConfigChange({ meshWarpStrength: value })}
-                      min={0}
-                      max={3}
-                      step={0.1}
-                      className="w-full"
-                    />
-                  </div>
-                )}
-
           {/* ========== 4. FINE TUNE (collapsible) ========== */}
           <div className="rounded-xl bg-secondary/10 p-4">
             <Collapsible>
