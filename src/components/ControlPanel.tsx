@@ -41,10 +41,6 @@ const shapeOptions: { value: GradientConfig['type']; wireframe: boolean; label: 
   { value: 'plane', wireframe: false, label: 'Plane', presetKey: 'plane' },
   { value: 'plane', wireframe: true, label: 'Mesh', presetKey: 'mesh' },
   { value: 'plane', wireframe: true, label: 'Aurora', presetKey: 'aurora' },
-  { value: 'waves', wireframe: false, label: 'Waves', presetKey: 'waves' },
-  { value: 'conic', wireframe: false, label: 'Conic', presetKey: 'conic' },
-  { value: 'sphere', wireframe: false, label: 'Sphere', presetKey: 'sphere' },
-  { value: 'waterPlane', wireframe: false, label: 'Water', presetKey: 'water' },
 ];
 
 const aspectRatioOptions: { value: GradientConfig['aspectRatio']; label: string; category?: string }[] = [
