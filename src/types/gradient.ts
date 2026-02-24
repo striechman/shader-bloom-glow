@@ -110,7 +110,7 @@ export const defaultGradientConfig: GradientConfig = {
   frozenTime: null,
   meshNoiseScale: 3.0,
   meshBlur: 50,
-  meshStyle: 'organic',
+  meshStyle: 'center',
   meshFlowAngle: 45,
   meshCenterInward: true,
   meshStretch: false,
