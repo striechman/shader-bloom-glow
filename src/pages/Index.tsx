@@ -42,7 +42,7 @@ const Index = () => {
         }
       >
         <div id="gradient-stage" className="fixed inset-0 overflow-hidden">
-          <GradientCanvas config={config} />
+          <GradientCanvas config={config} onConfigChange={handleConfigChange} />
         </div>
       </Suspense>
 

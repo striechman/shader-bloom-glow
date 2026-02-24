@@ -3,15 +3,43 @@ import { ShaderGradientCanvas, ShaderGradient } from '@shadergradient/react';
 import { GradientConfig, aspectRatioValues, isHeroBannerRatio, isButtonRatio } from '@/types/gradient';
 import { Custom4ColorGradient } from './Custom4ColorGradient';
 import { GradientDebugOverlay } from './GradientDebugOverlay';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
 interface GradientCanvasProps {
   config: GradientConfig;
+  onConfigChange?: (updates: Partial<GradientConfig>) => void;
 }
 
-export const GradientCanvas = ({ config }: GradientCanvasProps) => {
+export const GradientCanvas = ({ config, onConfigChange }: GradientCanvasProps) => {
   const [showDebug, setShowDebug] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
+  
+  // Check if dragging is supported (Plane mode only, non-button)
+  const isPlaneMode = config.type === 'plane' && !config.wireframe;
+  const canDrag = isPlaneMode && !!onConfigChange;
+  
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    if (!canDrag) return;
+    isDragging.current = true;
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  }, [canDrag]);
+  
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!isDragging.current || !canDrag || !containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    // Convert mouse position to -50..50 range
+    const x = Math.round(((e.clientX - rect.left) / rect.width - 0.5) * -100);
+    const y = Math.round(((e.clientY - rect.top) / rect.height - 0.5) * -100);
+    const clampedX = Math.max(-50, Math.min(50, x));
+    const clampedY = Math.max(-50, Math.min(50, y));
+    onConfigChange?.({ planeOffsetX: clampedX, planeOffsetY: clampedY });
+  }, [canDrag, onConfigChange]);
+  
+  const handlePointerUp = useCallback(() => {
+    isDragging.current = false;
+  }, []);
   const isButton = isButtonRatio(config.aspectRatio);
   const isFrozen = config.frozenTime !== null;
   const isStaticMode = isButton ? true : (!config.animate || isFrozen);
@@ -96,8 +124,13 @@ export const GradientCanvas = ({ config }: GradientCanvasProps) => {
   return (
     <div className="absolute inset-0 z-0 flex items-center justify-center overflow-hidden p-4">
       <div
+        ref={containerRef}
         style={getContainerStyle()}
-        className="relative flex items-center justify-center"
+        className={`relative flex items-center justify-center ${canDrag ? 'cursor-grab active:cursor-grabbing' : ''}`}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerLeave={handlePointerUp}
       >
         {use4ColorMode ? (
           /* 4-color gradient for Mesh and Plane modes */
