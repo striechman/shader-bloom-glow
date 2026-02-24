@@ -131,8 +131,13 @@ const colorPresets: Array<{
       animate: false, frozenTime: 3.0, grain: false,
     },
   },
-  { name: 'Ember', color1: '#F2665F', color2: '#EC008C', color3: '#FDB515', color4: '#6A00F4', color5: null, weight0: 35, weight1: 25, weight2: 20, weight3: 12, weight4: 8, weight5: 0, recommendedFor: ['glow', 'waves', 'sphere'] },
-  { name: 'Coral', color1: '#F2665F', color2: '#FDB515', color3: '#6A00F4', color4: null, color5: null, weight0: 35, weight1: 30, weight2: 22, weight3: 13, weight4: 0, weight5: 0, recommendedFor: ['waterPlane', 'sphere', 'plane'] },
+  { name: 'Ember', color1: '#F2665F', color2: '#EC008C', color3: '#FDB515', color4: '#6A00F4', color5: null, weight0: 28, weight1: 22, weight2: 20, weight3: 18, weight4: 12, weight5: 0, recommendedFor: ['glow', 'waves', 'sphere'],
+    fullPreset: {
+      type: 'glow', glowOrbSize: 65, glowShadowDensity: 0,
+      uStrength: 1.2, uDensity: 1.0, uFrequency: 2.5,
+      animate: false, speed: 0.2, frozenTime: 4.50, grain: true, grainIntensity: 5,
+    },
+  },
   // === Cool / Atmospheric (deep, lots of black) ===
   { name: 'Ocean', color1: '#00C2FF', color2: '#6A00F4', color3: '#EC008C', color4: null, color5: null, weight0: 40, weight1: 28, weight2: 20, weight3: 12, weight4: 0, weight5: 0, recommendedFor: ['waterPlane', 'waves', 'plane'] },
   { name: 'Royal', color1: '#6A00F4', color2: '#EC008C', color3: '#00C2FF', color4: null, color5: null, weight0: 35, weight1: 30, weight2: 20, weight3: 15, weight4: 0, weight5: 0, recommendedFor: ['waves', 'plane', 'conic'] },
