@@ -40,9 +40,8 @@ const shapeOptions: { value: GradientConfig['type']; wireframe: boolean; label: 
   { value: 'glow', wireframe: false, label: 'Glow', presetKey: 'glow' },
   { value: 'plane', wireframe: false, label: 'Plane', presetKey: 'plane' },
   { value: 'plane', wireframe: true, label: 'Mesh', presetKey: 'mesh' },
-  { value: 'plane', wireframe: true, label: 'Aurora', presetKey: 'aurora' },
+  { value: 'plane', wireframe: true, label: 'Aura', presetKey: 'aura' },
   // Premium styles (include colors + engine settings)
-  { value: 'plane', wireframe: true, label: 'Aura', presetKey: 'cognitiveAura', isPremium: true, includesColors: true },
   { value: 'plane', wireframe: true, label: 'Silk', presetKey: 'fluidSilk', isPremium: true, includesColors: true },
   { value: 'glow', wireframe: false, label: 'Edge', presetKey: 'ambientEdge', isPremium: true, includesColors: true },
   { value: 'plane', wireframe: false, label: 'Prism', presetKey: 'prismaticGlass', isPremium: true, includesColors: true },
@@ -131,7 +130,7 @@ const colorPresets: Array<{
       animate: false, frozenTime: 3.0, grain: false,
     },
   },
-  { name: 'Ember', color1: '#F2665F', color2: '#EC008C', color3: '#FDB515', color4: '#6A00F4', color5: null, weight0: 28, weight1: 22, weight2: 20, weight3: 18, weight4: 12, weight5: 0, recommendedFor: ['glow', 'waves', 'sphere'],
+  { name: 'Ember', color1: '#F2665F', color2: '#EC008C', color3: '#FDB515', color4: '#6A00F4', color5: '#000000', weight0: 28, weight1: 20, weight2: 18, weight3: 16, weight4: 10, weight5: 8, recommendedFor: ['glow', 'waves', 'sphere'],
     fullPreset: {
       type: 'glow', glowOrbSize: 65, glowShadowDensity: 0,
       uStrength: 1.2, uDensity: 1.0, uFrequency: 2.5,
@@ -172,16 +171,11 @@ const effectPresets: Record<string, Partial<GradientConfig>> = {
     grain: false,
     grainIntensity: 5,
   },
-  // AURORA: Stretched curtain effect - vertical light columns
-  aurora: {
-    uStrength: 0.5,
-    uDensity: 1.0,
-    uFrequency: 2.0,
-    meshNoiseScale: 0.3,
-    meshBlur: 95,
-    meshStyle: 'center',
-    meshStretch: true,
-    meshWarpStrength: 1.2,
+  // AURA: Centered radial glow with inward pull - replaces Aurora
+  aura: {
+    type: 'plane', wireframe: true, meshStyle: 'center', meshCenterInward: true,
+    meshBlur: 95, meshNoiseScale: 0.3, meshWarpStrength: 1.5, meshStretch: false,
+    uStrength: 2.0, uDensity: 1.0, uFrequency: 2.0,
     speed: 0.15,
     grain: false,
     grainIntensity: 5,
@@ -692,10 +686,10 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
               <div className="grid grid-cols-4 gap-2">
                 {shapeOptions.filter(s => !s.isPremium).map((shape) => {
                   const isActive = activePremiumStyle === null && (
-                    shape.label === 'Aurora' 
-                      ? config.type === 'plane' && config.wireframe && config.meshStretch === true
+                    shape.label === 'Aura' 
+                      ? config.type === 'plane' && config.wireframe && config.meshCenterInward === true
                       : shape.label === 'Mesh'
-                        ? config.type === 'plane' && config.wireframe && !config.meshStretch
+                        ? config.type === 'plane' && config.wireframe && !config.meshCenterInward
                         : config.type === shape.value && config.wireframe === shape.wireframe
                   );
                   
