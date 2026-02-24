@@ -469,12 +469,15 @@ void main() {
       c5 = vec2(0.5) + flowDir * 0.12 + perpDir * 0.18 * sin(t * 0.3);
     } else if (uMeshStyle == 2) {
       if (uMeshCenterInward) {
-        // Colors cluster toward center
-        c1 = vec2(0.5 + sin(t * 0.5) * 0.14, 0.5 + cos(t * 0.7) * 0.14);
-        c2 = vec2(0.5 + cos(t * 0.6) * 0.16, 0.5 + sin(t * 0.4) * 0.16);
-        c3 = vec2(0.5 + sin(t * 0.8) * 0.12, 0.5 + cos(t * 0.5) * 0.12);
-        c4 = vec2(0.5 + cos(t * 0.3) * 0.15, 0.5 + sin(t * 0.9) * 0.15);
-        c5 = vec2(0.5 + sin(t * 0.6) * 0.13, 0.5 + cos(t * 0.4) * 0.13);
+        // Colors cluster toward center but with enough separation to maintain identity
+        // Use angular offsets (golden angle ~2.4 rad) so orbs don't stack on top of each other
+        float baseRadius = 0.22;
+        float angleStep = 2.39996; // golden angle for optimal spread
+        c1 = vec2(0.5 + cos(angleStep * 1.0 + t * 0.5) * baseRadius, 0.5 + sin(angleStep * 1.0 + t * 0.7) * baseRadius);
+        c2 = vec2(0.5 + cos(angleStep * 2.0 + t * 0.6) * baseRadius * 0.85, 0.5 + sin(angleStep * 2.0 + t * 0.4) * baseRadius * 0.85);
+        c3 = vec2(0.5 + cos(angleStep * 3.0 + t * 0.8) * baseRadius * 0.7, 0.5 + sin(angleStep * 3.0 + t * 0.5) * baseRadius * 0.7);
+        c4 = vec2(0.5 + cos(angleStep * 4.0 + t * 0.3) * baseRadius * 0.95, 0.5 + sin(angleStep * 4.0 + t * 0.9) * baseRadius * 0.95);
+        c5 = vec2(0.5 + cos(angleStep * 5.0 + t * 0.6) * baseRadius * 0.75, 0.5 + sin(angleStep * 5.0 + t * 0.4) * baseRadius * 0.75);
       } else {
         // Colors at corners
         c1 = vec2(0.2 + sin(t * 0.5) * 0.06, 0.2 + cos(t * 0.7) * 0.06);
