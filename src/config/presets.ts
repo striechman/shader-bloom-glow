@@ -497,6 +497,42 @@ export const PRESET_VIOLET_TIDE: BuiltInPreset = {
   },
 };
 
+export const PRESET_WARM_SPOTLIGHT: BuiltInPreset = {
+  id: 'warm-spotlight',
+  name: 'Warm Spotlight',
+  nameHe: 'זרקור חם',
+  description: 'Analogous warm spectrum with asymmetric light source and heavy black dominance',
+  category: 'vibrant',
+  config: {
+    type: 'glow',
+    color0: '#000000',
+    color1: '#E8920D',  // Warm amber/gold
+    color2: '#F06030',  // Coral orange
+    color3: '#EC008C',  // Hot pink/magenta
+    color4: null,
+    colorWeight0: 55,
+    colorWeight1: 20,
+    colorWeight2: 15,
+    colorWeight3: 10,
+    colorWeight4: 0,
+    glowOrbSize: 75,
+    glowShadowDensity: 0,
+    glowStyle: 'clustered',
+    glowSpread: 70,
+    glowOffsetX: -15,
+    glowOffsetY: 0,
+    glowDistortion: 50,
+    uStrength: 1.5,
+    uDensity: 1.0,
+    uFrequency: 2.0,
+    animate: false,
+    speed: 0.2,
+    frozenTime: 5.50,
+    grain: true,
+    grainIntensity: 5,
+  },
+};
+
 // ============================================================
 // Export all presets
 // ============================================================
@@ -515,6 +551,7 @@ export const BUILT_IN_PRESETS: BuiltInPreset[] = [
   PRESET_PRISMATIC_WAVES,
   PRESET_GOLDEN_WAVES,
   PRESET_WARM_GLOW,
+  PRESET_WARM_SPOTLIGHT,
   
   // Minimal
   PRESET_BLUE_BEACON,
