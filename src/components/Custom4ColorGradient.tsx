@@ -667,22 +667,29 @@ void main() {
     
   } else if (uGradientType == 2) {
     // =========================================================================
-    // PLANE MODE: Weighted Segments with Proper Color Distribution
+    // PLANE MODE: Weighted Segments with Smooth Fading (sRGB blending)
     // =========================================================================
-    float spreadMult = mix(0.008, 0.12, uPlaneSpread);
-    float transitionWidth = spreadMult + blurFactor * 0.14;
+    vec3 sColor0 = linearToSrgb(uColor0);
+    vec3 sColor1 = linearToSrgb(uColor1);
+    vec3 sColor2 = linearToSrgb(uColor2);
+    vec3 sColor3 = linearToSrgb(uColor3);
+    vec3 sColor4 = linearToSrgb(uColor4);
+
+    float spreadMult = mix(0.05, 0.18, uPlaneSpread);
+    float transitionWidth = spreadMult + blurFactor * 0.22;
+    transitionWidth = max(transitionWidth, 0.06);
     
-    float blend01 = smoothstep(threshold0, threshold0 + transitionWidth * 2.0, noise);
+    float blend01 = smoothstep(threshold0 - transitionWidth * 0.5, threshold0 + transitionWidth * 1.5, noise);
     float blend12 = smoothstep(threshold1 - transitionWidth, threshold1 + transitionWidth, noise);
     float blend23 = smoothstep(threshold2 - transitionWidth, threshold2 + transitionWidth, noise);
     float blend34 = smoothstep(threshold3 - transitionWidth, threshold3 + transitionWidth, noise);
     
-    finalColor = uColor0;
-    finalColor = mix(finalColor, uColor1, blend01);
-    finalColor = mix(finalColor, uColor2, blend12);
-    finalColor = mix(finalColor, uColor3, blend23);
+    finalColor = sColor0;
+    finalColor = mix(finalColor, sColor1, blend01);
+    finalColor = mix(finalColor, sColor2, blend12);
+    finalColor = mix(finalColor, sColor3, blend23);
     if (uHasColor4) {
-      finalColor = mix(finalColor, uColor4, blend34);
+      finalColor = mix(finalColor, sColor4, blend34);
     }
     
   } else {
@@ -717,12 +724,7 @@ void main() {
     }
   }
   
-  // Color space:
-  // Mesh, Glow, and threshold modes (Water/Conic/Waves) all blend in sRGB.
-  // Only Plane mode (type 2) still blends in linear and needs conversion.
-  if (uGradientType == 2) {
-    finalColor = linearToSrgb(finalColor);
-  }
+  // Color space: All modes now blend in sRGB. No per-mode conversion needed.
 
   // Subtle ordered dithering to reduce banding on static gradients
   // (Amplitude ~ < 1 LSB in 8-bit sRGB)
