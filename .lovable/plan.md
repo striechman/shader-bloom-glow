@@ -1,98 +1,92 @@
 
 
-# Plane Mode Smoothing + Spotlight/Sunset Differentiation
+# Domain Warping + Smootherstep + Premium Presets
 
-## Problem 1: Plane Mode Transitions Too Sharp
+## Overview
 
-The current Plane blending code (lines 668-686 in `Custom4ColorGradient.tsx`) has two issues causing harsh transitions:
+Implementing Gemini's three core recommendations to upgrade the gradient engine from "lava lamp" aesthetics to Apple/OpenAI-level fluid visuals:
 
-1. **Blending in Linear RGB** - Plane is the only mode that blends colors in linear space then converts to sRGB at the end (line 723-725). All other modes (Mesh, Glow, Water, Conic, Waves) blend in sRGB for smoother perceptual results.
+1. **Smootherstep** - Replace `smoothstep` with Ken Perlin's 6th-degree polynomial for buttery-smooth color transitions
+2. **Domain Warping** - Warp noise coordinates through a second noise layer to create silk/smoke flow instead of circular blobs
+3. **4 New Premium Presets** - Cognitive Aura, Fluid Silk, Ambient Edge, Prismatic Glass
 
-2. **Narrow transition widths** - The `transitionWidth` calculation uses `spreadMult` range of 0.008-0.12 which is too tight. Compare with the "Other Modes" block which uses 0.10 base + 0.20 blur factor. The Plane transitions are roughly 2-3x narrower.
+## What Changes
 
-3. **Asymmetric first transition only on one side** - `blend01` uses `threshold0` to `threshold0 + transitionWidth * 2.0` (one-sided), while blends 12/23/34 use symmetric ranges. This creates inconsistency.
+### 1. Smootherstep Function (All Modes)
 
-### Fix:
-- Convert colors to sRGB before blending (like all other modes)
-- Widen the transition widths significantly - use a base of ~0.08 minimum with wider blur influence
-- Make all transitions symmetric and generous
-- Remove the separate linearToSrgb conversion for Plane at line 723
+Add a `smootherstep` GLSL function and use it in Plane, Water, Conic, and Waves blending blocks. This gives smoother acceleration/deceleration at color boundaries -- the difference is subtle but removes any remaining "notch" feeling at transition edges.
 
-## Problem 2: Spotlight and Sunset Are Nearly Identical
+### 2. Domain Warping (Mesh + Aurora Only)
 
-Current presets comparison:
+The "amoeba" effect comes from directly using Simplex noise for blob distortion. Domain Warping feeds one noise field into another's coordinates, producing stretched, flowing shapes like silk or smoke.
 
-| | Spotlight | Sunset |
-|---|---|---|
-| Color 1 | #E8920D (amber) | #FDB515 (gold) |
-| Color 2 | #F06030 (orange) | #F2665F (coral) |
-| Color 3 | #EC008C (magenta) | #EC008C (magenta) |
-| Weight 0 | 55% | 30% |
+- Add a `meshWarpStrength` parameter to `GradientConfig` (range 0-3, default 1.2)
+- In the Mesh/Aurora shader block, warp the distortion coordinates through a secondary noise pass before computing blob distances
+- Expose as "Warp" slider in Fine Tune section (only for Mesh/Aurora)
+- Higher values = more fluid/silk look, lower values = classic blob look
 
-Both are warm analogous chains ending in magenta. Too similar.
+### 3. Four New Full Presets
 
-### Fix: Differentiate Sunset
-Rethink **Sunset** to represent a true sky sunset feel - shift it toward pink/purple tones that evoke dusk sky rather than warm spotlight:
-
-- **Sunset** -> Change to: color1: `#FF6B6B` (warm red-pink), color2: `#FDB515` (golden sun), color3: `#6A00F4` (deep purple horizon)
-- weight0: 35% (more color showing than Spotlight's 55%)
-- This creates a warm-to-cool transition (red -> gold -> purple) that reads as "sunset sky" vs Spotlight's concentrated warm glow
-
-Alternatively, since **Spotlight** is already a full preset locked to Glow mode, we can make **Sunset** a full preset too but for **Plane** mode - a horizontal gradient that actually looks like a sunset horizon.
+| Preset | Effect | Key Idea |
+|--------|--------|----------|
+| **Cognitive Aura** | Mesh (Center, Inward) | Pulsing center energy on dark bg, 2-3 colors, high blur, high base weight (65%) |
+| **Fluid Silk** | Mesh (Flow) | High warp strength (2.0), low frequency, slow speed -- silk/smoke feel |
+| **Ambient Edge** | Glow (Scattered) | Colors pushed to edges via large spread + center offset, clean center for text |
+| **Prismatic Glass** | Plane (Linear) | Base color 85%, other colors at 2-5% each -- subtle light refraction strips |
 
 ## Technical Details
 
+### File: `src/types/gradient.ts`
+- Add `meshWarpStrength: number` to `GradientConfig` interface (after `meshStretch`)
+- Add default value `meshWarpStrength: 1.2` to `defaultGradientConfig`
+
 ### File: `src/components/Custom4ColorGradient.tsx`
 
-**Plane blending block (lines 668-686)** - Replace with:
-
+**Add smootherstep function** (in fragment shader, before `main()`):
 ```glsl
-// PLANE MODE: Weighted Segments with Smooth Fading
-vec3 sColor0 = linearToSrgb(uColor0);
-vec3 sColor1 = linearToSrgb(uColor1);
-vec3 sColor2 = linearToSrgb(uColor2);
-vec3 sColor3 = linearToSrgb(uColor3);
-vec3 sColor4 = linearToSrgb(uColor4);
-
-float spreadMult = mix(0.05, 0.18, uPlaneSpread);
-float transitionWidth = spreadMult + blurFactor * 0.22;
-transitionWidth = max(transitionWidth, 0.06);
-
-float blend01 = smoothstep(threshold0 - transitionWidth * 0.5, threshold0 + transitionWidth * 1.5, noise);
-float blend12 = smoothstep(threshold1 - transitionWidth, threshold1 + transitionWidth, noise);
-float blend23 = smoothstep(threshold2 - transitionWidth, threshold2 + transitionWidth, noise);
-float blend34 = smoothstep(threshold3 - transitionWidth, threshold3 + transitionWidth, noise);
-
-finalColor = sColor0;
-finalColor = mix(finalColor, sColor1, blend01);
-finalColor = mix(finalColor, sColor2, blend12);
-finalColor = mix(finalColor, sColor3, blend23);
-if (uHasColor4) {
-  finalColor = mix(finalColor, sColor4, blend34);
+float smootherstep(float edge0, float edge1, float x) {
+    x = clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
+    return x * x * x * (x * (x * 6.0 - 15.0) + 10.0);
 }
 ```
 
-**Remove Plane-only sRGB conversion (lines 723-725)** - Remove the `if (uGradientType == 2)` block since Plane now blends in sRGB like everything else.
+**Replace all `smoothstep` calls** in Plane blending block (lines 682-685) and Other Modes block (lines 713-716) with `smootherstep`.
+
+**Add Domain Warping to Mesh mode** (lines ~469-480):
+- Add uniform `uWarpStrength`
+- Before computing distorted distances, warp the sample UV:
+```glsl
+// Domain Warping: feed noise into noise coordinates for fluid shapes
+vec2 warpOffset;
+warpOffset.x = snoise(vec3(sampleUv * noiseScale * 0.7, t * 0.2));
+warpOffset.y = snoise(vec3(sampleUv * noiseScale * 0.7 + 5.2, t * 0.2));
+vec2 warpedUv = sampleUv + warpOffset * uWarpStrength * 0.08;
+```
+- Use `warpedUv` instead of `sampleUv` for the distortion noise sampling (lines 471-474)
+- This transforms circular blobs into flowing, silk-like shapes
+
+**Add uniform declaration and wiring**:
+- Declare `uniform float uWarpStrength;` in shader
+- Add to uniforms object and useFrame update block
+
+### File: `src/components/CustomMeshGradient.tsx`
+- Add `uWarpStrength` uniform (same as Custom4ColorGradient)
+- Apply same domain warping logic in the light source position calculations
 
 ### File: `src/components/ControlPanel.tsx`
 
-**Sunset preset (line 105)** - Change colors and make it a full preset for Plane mode:
+**Add Warp slider** to Fine Tune section (visible for Mesh/Aurora only):
+- Label: "Warp" 
+- Range: 0 to 3, step 0.1
+- Maps to `meshWarpStrength`
 
+**Add 4 new presets** to `colorPresets` array:
 ```
-{
-  name: 'Sunset',
-  color1: '#FF6B6B',  // warm pink-red sky
-  color2: '#FDB515',  // golden sun
-  color3: '#6A00F4',  // deep purple horizon
-  weight0: 35, weight1: 30, weight2: 25, weight3: 10,
-  recommendedFor: ['plane', 'waves'],
-  fullPreset: {
-    type: 'plane', planeAngle: 90, planeRadial: false,
-    planeSpread: 60, planeWave: 0,
-    animate: false, frozenTime: 3.0, grain: false,
-  }
-}
+Cognitive Aura: Magenta + Violet on deep black (65% base), Mesh Center Inward, high blur
+Fluid Silk: Blue + Magenta, Mesh Flow, warpStrength 2.0, low frequency, slow speed
+Ambient Edge: Coral + Gold, Glow Scattered, large spread, offset to edges
+Prismatic Glass: Gold at 85% base + 5% Magenta + 5% Violet + 5% Blue, Plane Linear
 ```
 
-Also fix **Spotlight** preset: line 102 still has `grain: true` - change to `grain: false` to match the default.
+**Update effect presets** for Mesh and Aurora to include default `meshWarpStrength: 1.2`
 
