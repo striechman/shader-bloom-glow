@@ -246,6 +246,14 @@ void main() {
     float scale = max(uPlaneScale, 0.1);
     vec2 offsetCenter = (centeredUv + drift - uPlaneOffset) * (1.0 / scale);
     
+    // Domain warping for organic distortion
+    if (uWarpStrength > 0.01) {
+      vec2 warpOff;
+      warpOff.x = snoise(vec3(offsetCenter * 0.7, uTime * 0.2));
+      warpOff.y = snoise(vec3(offsetCenter * 0.7 + 5.2, uTime * 0.2));
+      offsetCenter += warpOff * uWarpStrength * 0.08;
+    }
+    
     if (uPlaneRadial) {
       // Radial gradient from offset center outward - start from 0 at center
       baseNoise = length(offsetCenter) * 2.0;
@@ -284,6 +292,15 @@ void main() {
   } else if (uGradientType == 4) {
     // CONIC MODE: Angular gradient with optional spiral
     vec2 offsetCenter = centeredUv - uConicOffset;
+    
+    // Domain warping for organic distortion
+    if (uWarpStrength > 0.01) {
+      vec2 warpOff;
+      warpOff.x = snoise(vec3(offsetCenter * 0.7, uTime * 0.2));
+      warpOff.y = snoise(vec3(offsetCenter * 0.7 + 5.2, uTime * 0.2));
+      offsetCenter += warpOff * uWarpStrength * 0.08;
+    }
+    
     float angle = atan(offsetCenter.y, offsetCenter.x);
     
     // Normalize angle from [-PI, PI] to [0, 1]
@@ -320,9 +337,18 @@ void main() {
     vec2 waveDir = vec2(cos(uPlaneAngle), sin(uPlaneAngle));
     vec2 perpDir = vec2(-waveDir.y, waveDir.x);
     
+    vec2 waveUv = rotatedUv;
+    // Domain warping for organic wave distortion
+    if (uWarpStrength > 0.01) {
+      vec2 warpOff;
+      warpOff.x = snoise(vec3(waveUv * 0.7, uTime * 0.2));
+      warpOff.y = snoise(vec3(waveUv * 0.7 + 5.2, uTime * 0.2));
+      waveUv += warpOff * uWarpStrength * 0.08;
+    }
+    
     // Project UV onto wave direction
-    float alongWave = dot(rotatedUv - 0.5, waveDir) + 0.5;
-    float acrossWave = dot(rotatedUv - 0.5, perpDir);
+    float alongWave = dot(waveUv - 0.5, waveDir) + 0.5;
+    float acrossWave = dot(waveUv - 0.5, perpDir);
     
     // Create layered waves along the perpendicular direction
     float wave1 = sin(acrossWave * waveFreq * 6.28318 + uTime * 0.5) * amplitude;
@@ -547,6 +573,14 @@ void main() {
     
     // Apply global offset to shift entire glow arrangement
     st -= uGlowOffset;
+    
+    // Domain warping for organic distortion on glow coordinates
+    if (uWarpStrength > 0.01) {
+      vec2 warpOff;
+      warpOff.x = snoise(vec3(st * 0.7, t * 0.2));
+      warpOff.y = snoise(vec3(st * 0.7 + 5.2, t * 0.2));
+      st += warpOff * uWarpStrength * 0.08;
+    }
     
     // Orb size from user control (mapped to Gaussian spread)
     float orbSize = mix(0.15, 0.55, uGlowOrbSize);
