@@ -59,9 +59,9 @@ export interface GradientConfig {
   planeRadial: boolean; // If true, radial gradient from center instead of linear
   planeWave: number; // 0-100 wave distortion amount
   planeSpread: number; // 0-100 how sharp/soft the color transitions are
-  planeOffsetX: number; // -50 to 50 horizontal offset of center
-  planeOffsetY: number; // -50 to 50 vertical offset of center
-  planeScale: number; // 10-100 scale/zoom of the gradient pattern
+  planeOffsetX: number; // -100 to 100 horizontal offset of center
+  planeOffsetY: number; // -100 to 100 vertical offset of center
+  planeScale: number; // 10-300 scale/zoom of the gradient pattern
   
   // Conic gradient settings
   conicStartAngle: number; // 0-360 degrees starting angle
