@@ -1,39 +1,84 @@
 
 
-# Add Warp Control to All Effect Styles
+# Scale & Position - כלי עיצוב מקצועי ופשוט
 
-## What This Does
-The "Warp" slider currently only appears for Mesh/Aurora modes. This change adds it to **all** effect modes: Plane, Conic, Glow, and Waves. Warp creates organic, fluid distortions by feeding noise into the coordinate system (domain warping).
+## הבעיה הנוכחית
 
-## Changes
+המערכת הנוכחית מגבילה את חופש הפעולה:
+- **Scale** מוגבל ל-10%-100% — אפשר רק לכווץ, לא לזום פנימה
+- **Position** מוגבל ל-50% בכל כיוון — לא מספיק חופש תנועה
+- **הנורמליזציה האחרונה** (התיקון לשחור) גורמת לכך שהזזת הגרדיינט מחלקת מחדש את הצבעים על הקנבס במקום באמת להזיז את הדפוס
+- **רק Plane** יש לו Position & Scale — למצבים אחרים (Glow, Mesh, Conic) יש מערכות offset נפרדות
+- **גרירה בעכבר** עובדת רק ב-Plane
 
-### 1. Shader Updates (`src/components/Custom4ColorGradient.tsx`)
+## הפתרון
 
-Add domain warping to each mode's shader branch:
+### 1. Scale מורחב — מ-"כיווץ בלבד" ל-"זום חופשי"
 
-- **Plane mode** (type 2): Apply warp to `offsetCenter` coordinates before computing linear/radial gradient. This will create organic distortions in the otherwise perfectly straight gradient lines.
+- שינוי הטווח מ-10-100% ל-**10-300%**
+- מתחת ל-100%: כל הצבעים נראים (מכווץ)
+- מעל 100%: זום פנימה — רואים חלק מהגרדיינט בגודל מוגדל
+- ברירת מחדל נשארת 100%
 
-- **Conic mode** (type 4): Apply warp to `offsetCenter` before computing the angle. This distorts the angular sweep into flowing, organic shapes.
+### 2. Position חופשי — טווח תנועה מלא
 
-- **Waves mode** (type 6): Apply warp to the wave coordinate calculation, creating irregularity in the wave patterns.
+- הרחבת הטווח מ-50% ל-**100%** בכל כיוון
+- מאפשר להזיז את הגרדיינט הרבה מעבר למרכז
+- במיוחד שימושי כשעושים זום פנימה — צריך יותר מקום לגרור
 
-- **Glow mode** (type 5): Apply warp to orb center positions, making the light orbs shift and distort organically.
+### 3. תיקון הלוגיקה בשיידר — הזזה אמיתית
 
-For each mode, the warp is applied as:
+הבעיה המרכזית: הנורמליזציה הנוכחית מחשבת min/max על פינות הקנבס, מה שגורם לכך שהגרדיינט תמיד "מתמלא" על כל הקנבס. במקום זה:
+
+- **Scale מתחת ל-100%**: נשאר כמו היום — כל הצבעים נראים
+- **Scale מעל 100%**: הנורמליזציה תהיה יחסית לגודל הגרדיינט המלא (לא לקנבס), כך שחלק מהצבעים "ייחתכו" מחוץ למסך
+- **Position**: יזיז את מרכז הגרדיינט באמת — צבעים ייעלמו מצד אחד ויופיעו בצד השני
+
+### 4. גרירה בעכבר משופרת
+
+- הרחבת טווח הגרירה בהתאם ל-Scale (כש-Scale גדול, גרירה צריכה להיות רחבה יותר)
+- עדכון ה-clamp ב-`handlePointerMove` לתמוך ב-100% במקום 50%
+
+### 5. UI מעודכן בפאנל הבקרה
+
+- **Scale slider**: טווח 10-300% עם סימון ב-100% כנקודת ייחוס
+- **Position sliders**: טווח -100 עד 100
+- **כפתור Reset**: כפתור קטן ליד Position & Scale שמחזיר ל-100% ומרכז (0,0)
+
+## פרטים טכניים
+
+### קבצים שישתנו:
+
+1. **`src/types/gradient.ts`**
+   - `planeScale`: שינוי תיעוד ל-10-300
+   - `planeOffsetX/Y`: שינוי תיעוד ל-100-
+
+2. **`src/components/Custom4ColorGradient.tsx`** (השיידר)
+   - שינוי הנורמליזציה ב-Plane mode: כשה-scale מעל 1.0, לא לנרמל ל-0-1 על כל הקנבס, אלא לתת לערכים "לזלוג" מחוץ ל-0-1 ולקצץ אותם ב-clamp — כך צבעים באמת נעלמים מהמסך
+   - עדכון הלוגיקה של `uPlaneScale` לתמוך בערכים מעל 1.0
+
+3. **`src/components/GradientCanvas.tsx`**
+   - עדכון `handlePointerMove` עם clamp ל-100- במקום 50-
+   - התאמת הסקייל של הגרירה ל-planeScale הנוכחי
+
+4. **`src/components/ControlPanel.tsx`**
+   - Scale slider: min=10, max=300, step=5
+   - Position sliders: min=-100, max=100
+   - הוספת כפתור Reset קומפקטי
+
+### לוגיקת השיידר החדשה (Plane mode):
+
 ```text
-warpOffset.x = snoise(vec3(uv * 0.7, time * 0.2))
-warpOffset.y = snoise(vec3(uv * 0.7 + 5.2, time * 0.2))
-warpedUv = uv + warpOffset * uWarpStrength * 0.08
+if scale <= 1.0:
+  // כמו היום - כל הצבעים נראים, נורמליזציה מלאה
+  normalize baseNoise to 0-1 across canvas corners
+
+if scale > 1.0:
+  // זום פנימה - נורמליזציה קבועה
+  // maxDot מחושב לפי scale=1.0 (הגרדיינט המלא)
+  // כך שחלק מהערכים ייחתכו ב-clamp
+  normalize based on full gradient size, not visible area
 ```
 
-When `meshWarpStrength = 0`, the warp has zero effect (no visual change from current behavior).
+זה מבטיח שכש-Scale=200% ו-Position ימינה, צד שמאל של המסך יהיה צבע אחד "טהור" וצד ימין ייחתך.
 
-### 2. UI Updates (`src/components/ControlPanel.tsx`)
-
-Add a "Warp" slider (identical to the one in Mesh Settings) to each effect section:
-- **Plane Direction** section (after the Position controls)
-- **Conic Settings** section (after the Center controls)
-- **Glow Settings** section (after the Position controls)
-- **Waves Settings** section (after the existing controls)
-
-Each slider: min=0, max=3, step=0.1, controls `meshWarpStrength`.
