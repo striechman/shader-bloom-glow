@@ -1384,7 +1384,14 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                         }}
                         className="relative h-12 rounded-xl overflow-hidden border-2 border-border/50 hover:border-primary transition-all hover:scale-[1.02] group"
                         style={{
-                          background: `linear-gradient(135deg, ${getThemeColor0(theme)} 0%, ${preset.color1} 30%, ${preset.color2} 60%, ${preset.color3} 100%)`,
+                          background: (() => {
+                            const colors = [getThemeColor0(theme), preset.color1, preset.color2, preset.color3];
+                            if (preset.color4) colors.push(preset.color4);
+                            if (preset.color5) colors.push(preset.color5);
+                            const step = 100 / (colors.length - 1);
+                            const stops = colors.map((c, i) => `${c} ${Math.round(i * step)}%`).join(', ');
+                            return `linear-gradient(135deg, ${stops})`;
+                          })(),
                         }}
                       >
                         {isRecommended && (
