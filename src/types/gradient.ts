@@ -106,7 +106,7 @@ export const defaultGradientConfig: GradientConfig = {
   buttonPreviewState: 'default',
   grain: false,
   grainIntensity: 5,
-  uStrength: 4,
+  uStrength: 0.4,
   uDensity: 1.3,
   uFrequency: 5.5,
   frozenTime: null,
@@ -122,7 +122,7 @@ export const defaultGradientConfig: GradientConfig = {
   planeAngle: 45,
   planeRadial: false,
   planeWave: 0,
-  planeSpread: 50,
+  planeSpread: 80,
   planeOffsetX: 0,
   planeOffsetY: 0,
   planeScale: 100, // Full size by default
