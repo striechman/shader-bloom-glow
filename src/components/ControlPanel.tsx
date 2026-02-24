@@ -928,16 +928,28 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                     value={[config.planeScale ?? 100]}
                     onValueChange={([value]) => onConfigChange({ planeScale: value })}
                     min={10}
-                    max={100}
+                    max={300}
                     step={5}
                     className="w-full"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-muted-foreground text-xs flex items-center gap-1.5">
-                    <Move className="w-3.5 h-3.5" />
-                    Position
-                  </Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-muted-foreground text-xs flex items-center gap-1.5">
+                      <Move className="w-3.5 h-3.5" />
+                      Position
+                    </Label>
+                    {(config.planeOffsetX !== 0 || config.planeOffsetY !== 0 || config.planeScale !== 100) && (
+                      <button
+                        onClick={() => onConfigChange({ planeOffsetX: 0, planeOffsetY: 0, planeScale: 100 })}
+                        className="text-[10px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-0.5"
+                        title="Reset position & scale"
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                        Reset
+                      </button>
+                    )}
+                  </div>
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] text-muted-foreground">Horizontal</span>
@@ -946,8 +958,8 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                     <Slider
                       value={[config.planeOffsetX ?? 0]}
                       onValueChange={([value]) => onConfigChange({ planeOffsetX: value })}
-                      min={-50}
-                      max={50}
+                      min={-100}
+                      max={100}
                       step={5}
                       className="w-full"
                     />
@@ -960,8 +972,8 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                     <Slider
                       value={[config.planeOffsetY ?? 0]}
                       onValueChange={([value]) => onConfigChange({ planeOffsetY: value })}
-                      min={-50}
-                      max={50}
+                      min={-100}
+                      max={100}
                       step={5}
                       className="w-full"
                     />

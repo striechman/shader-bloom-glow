@@ -29,11 +29,13 @@ export const GradientCanvas = ({ config, onConfigChange }: GradientCanvasProps) 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!isDragging.current || !canDrag || !containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
-    // Convert mouse position to -50..50 range
-    const x = Math.round(((e.clientX - rect.left) / rect.width - 0.5) * -100);
-    const y = Math.round(((e.clientY - rect.top) / rect.height - 0.5) * -100);
-    const clampedX = Math.max(-50, Math.min(50, x));
-    const clampedY = Math.max(-50, Math.min(50, y));
+    // Convert mouse position to offset range, scaled by planeScale
+    const scaleFactor = Math.max(1, (config.planeScale ?? 100) / 100);
+    const range = 100; // full range
+    const x = Math.round(((e.clientX - rect.left) / rect.width - 0.5) * -range * 2 * scaleFactor);
+    const y = Math.round(((e.clientY - rect.top) / rect.height - 0.5) * -range * 2 * scaleFactor);
+    const clampedX = Math.max(-range, Math.min(range, x));
+    const clampedY = Math.max(-range, Math.min(range, y));
     onConfigChange?.({ planeOffsetX: clampedX, planeOffsetY: clampedY });
   }, [canDrag, onConfigChange]);
   
