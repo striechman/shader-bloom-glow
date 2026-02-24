@@ -132,6 +132,8 @@ uniform float uGlowDistortion; // 0-1
 // Waves uniforms
 uniform float uWavesCount;
 uniform float uWavesAmplitude;
+// Domain warping
+uniform float uWarpStrength;
 // Global rotation
 uniform float uRotation;
 
@@ -155,6 +157,12 @@ vec3 linearToSrgb(vec3 linear) {
   vec3 low = linear * 12.92;
   vec3 high = 1.055 * pow(linear, vec3(1.0 / 2.4)) - 0.055;
   return mix(low, high, step(0.0031308, linear));
+}
+
+// Ken Perlin's smootherstep - 6th degree polynomial for buttery-smooth transitions
+float smootherstep(float edge0, float edge1, float x) {
+  x = clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
+  return x * x * x * (x * (x * 6.0 - 15.0) + 10.0);
 }
 
  // 8x8 Bayer ordered dithering (returns ~[-0.5, 0.5])
@@ -466,12 +474,18 @@ void main() {
       );
     }
     
+    // Domain Warping: feed noise into noise coordinates for fluid/silk shapes
+    vec2 warpOffset;
+    warpOffset.x = snoise(vec3(sampleUv * noiseScale * 0.7, t * 0.2));
+    warpOffset.y = snoise(vec3(sampleUv * noiseScale * 0.7 + 5.2, t * 0.2));
+    vec2 warpedUv = sampleUv + warpOffset * uWarpStrength * 0.08;
+    
     // Noise distortion: makes blobs organic (not perfect circles)
     float distortScale = 3.0 * noiseScale;
-    float distort1 = snoise(vec3(sampleUv * distortScale,           t * 0.3))          * 0.12;
-    float distort2 = snoise(vec3(sampleUv * distortScale + 50.0,    t * 0.25))         * 0.12;
-    float distort3 = snoise(vec3(sampleUv * distortScale + 100.0,   t * 0.2))          * 0.12;
-    float distort4 = snoise(vec3(sampleUv * distortScale + 150.0,   t * 0.35))         * 0.12;
+    float distort1 = snoise(vec3(warpedUv * distortScale,           t * 0.3))          * 0.12;
+    float distort2 = snoise(vec3(warpedUv * distortScale + 50.0,    t * 0.25))         * 0.12;
+    float distort3 = snoise(vec3(warpedUv * distortScale + 100.0,   t * 0.2))          * 0.12;
+    float distort4 = snoise(vec3(warpedUv * distortScale + 150.0,   t * 0.35))         * 0.12;
     
     // Noise-distorted distances from each color center
     float d1 = length(sampleUv - c1) + distort1;
@@ -679,10 +693,10 @@ void main() {
     float transitionWidth = spreadMult + blurFactor * 0.22;
     transitionWidth = max(transitionWidth, 0.06);
     
-    float blend01 = smoothstep(threshold0 - transitionWidth * 0.5, threshold0 + transitionWidth * 1.5, noise);
-    float blend12 = smoothstep(threshold1 - transitionWidth, threshold1 + transitionWidth, noise);
-    float blend23 = smoothstep(threshold2 - transitionWidth, threshold2 + transitionWidth, noise);
-    float blend34 = smoothstep(threshold3 - transitionWidth, threshold3 + transitionWidth, noise);
+    float blend01 = smootherstep(threshold0 - transitionWidth * 0.5, threshold0 + transitionWidth * 1.5, noise);
+    float blend12 = smootherstep(threshold1 - transitionWidth, threshold1 + transitionWidth, noise);
+    float blend23 = smootherstep(threshold2 - transitionWidth, threshold2 + transitionWidth, noise);
+    float blend34 = smootherstep(threshold3 - transitionWidth, threshold3 + transitionWidth, noise);
     
     finalColor = sColor0;
     finalColor = mix(finalColor, sColor1, blend01);
@@ -710,10 +724,10 @@ void main() {
     transitionWidth = max(transitionWidth, 0.06);
     
     
-    float blend01 = smoothstep(threshold0, threshold0 + transitionWidth * 1.5, noise);
-    float blend12 = smoothstep(threshold1 - transitionWidth * 0.5, threshold1 + transitionWidth, noise);
-    float blend23 = smoothstep(threshold2 - transitionWidth * 0.5, threshold2 + transitionWidth, noise);
-    float blend34 = smoothstep(threshold3 - transitionWidth * 0.5, threshold3 + transitionWidth, noise);
+    float blend01 = smootherstep(threshold0, threshold0 + transitionWidth * 1.5, noise);
+    float blend12 = smootherstep(threshold1 - transitionWidth * 0.5, threshold1 + transitionWidth, noise);
+    float blend23 = smootherstep(threshold2 - transitionWidth * 0.5, threshold2 + transitionWidth, noise);
+    float blend34 = smootherstep(threshold3 - transitionWidth * 0.5, threshold3 + transitionWidth, noise);
     
     finalColor = sColor0;
     finalColor = mix(finalColor, sColor1, blend01);
@@ -807,6 +821,7 @@ export const Custom4ColorGradient = forwardRef<THREE.Mesh, Custom4ColorGradientP
     uWavesCount: { value: config.wavesCount ?? 5 },
     uWavesAmplitude: { value: (config.wavesAmplitude ?? 50) / 100 },
     uRotation: { value: (config.gradientRotation ?? 0) * Math.PI / 180 },
+    uWarpStrength: { value: config.meshWarpStrength ?? 1.2 },
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), []);
   
@@ -874,6 +889,7 @@ export const Custom4ColorGradient = forwardRef<THREE.Mesh, Custom4ColorGradientP
     mat.uniforms.uWavesCount.value = config.wavesCount ?? 5;
     mat.uniforms.uWavesAmplitude.value = (config.wavesAmplitude ?? 50) / 100;
     mat.uniforms.uRotation.value = (config.gradientRotation ?? 0) * Math.PI / 180;
+    mat.uniforms.uWarpStrength.value = config.meshWarpStrength ?? 1.2;
     
     const isFrozen = config.frozenTime !== null;
     const shouldAnimate = config.animate && !isFrozen;

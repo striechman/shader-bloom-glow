@@ -115,6 +115,39 @@ const colorPresets: Array<{
   { name: 'Ocean', color1: '#00C2FF', color2: '#6A00F4', color3: '#EC008C', color4: null, weight0: 40, weight1: 28, weight2: 20, weight3: 12, weight4: 0, recommendedFor: ['waterPlane', 'waves', 'plane'] },
   { name: 'Royal', color1: '#6A00F4', color2: '#EC008C', color3: '#00C2FF', color4: null, weight0: 35, weight1: 30, weight2: 20, weight3: 15, weight4: 0, recommendedFor: ['waves', 'plane', 'conic'] },
   { name: 'Dusk', color1: '#6A00F4', color2: '#EC008C', color3: '#F2665F', color4: null, weight0: 50, weight1: 22, weight2: 16, weight3: 12, weight4: 0, recommendedFor: ['waves', 'glow', 'waterPlane', 'conic', 'plane'] },
+  // === Premium / Art-Directed (full presets with engine settings) ===
+  { name: 'Cognitive Aura', color1: '#EC008C', color2: '#6A00F4', color3: '#000000', color4: null, weight0: 65, weight1: 20, weight2: 15, weight3: 0, weight4: 0, recommendedFor: ['mesh'],
+    fullPreset: {
+      type: 'plane', wireframe: true, meshStyle: 'center', meshCenterInward: true,
+      meshBlur: 95, meshNoiseScale: 0.3, meshWarpStrength: 1.5, meshStretch: false,
+      uStrength: 2.0, uDensity: 1.0, uFrequency: 2.0,
+      animate: true, speed: 0.15, grain: false,
+    },
+  },
+  { name: 'Fluid Silk', color1: '#00C2FF', color2: '#EC008C', color3: '#6A00F4', color4: null, weight0: 40, weight1: 25, weight2: 20, weight3: 15, weight4: 0, recommendedFor: ['mesh'],
+    fullPreset: {
+      type: 'plane', wireframe: true, meshStyle: 'flow', meshFlowAngle: 30,
+      meshBlur: 80, meshNoiseScale: 0.3, meshWarpStrength: 2.0, meshStretch: false,
+      uStrength: 1.5, uDensity: 0.8, uFrequency: 1.5,
+      animate: true, speed: 0.1, grain: false,
+    },
+  },
+  { name: 'Ambient Edge', color1: '#F2665F', color2: '#FDB515', color3: '#6A00F4', color4: null, weight0: 55, weight1: 20, weight2: 15, weight3: 10, weight4: 0, recommendedFor: ['glow'],
+    fullPreset: {
+      type: 'glow', glowOrbSize: 85, glowShadowDensity: 0, glowStyle: 'scattered',
+      glowSpread: 90, glowOffsetX: 0, glowOffsetY: 0, glowDistortion: 30,
+      uStrength: 1.0, uDensity: 0.8, uFrequency: 1.5,
+      animate: true, speed: 0.15, grain: false,
+    },
+  },
+  { name: 'Prismatic Glass', color1: '#FDB515', color2: '#EC008C', color3: '#6A00F4', color4: '#00C2FF', weight0: 85, weight1: 5, weight2: 4, weight3: 3, weight4: 3, recommendedFor: ['plane'],
+    fullPreset: {
+      type: 'plane', planeAngle: 45, planeRadial: false,
+      planeSpread: 80, planeWave: 0, wireframe: false, meshStretch: false,
+      uStrength: 1.0, uDensity: 0.5, uFrequency: 1.0,
+      animate: true, speed: 0.2, grain: false,
+    },
+  },
 ];
 
 // Complete effect presets for each gradient type - resets ALL relevant settings
@@ -141,6 +174,7 @@ const effectPresets: Record<string, Partial<GradientConfig>> = {
     meshBlur: 70,
     meshStyle: 'center',
     meshStretch: false,
+    meshWarpStrength: 1.2,
     speed: 0.3,
     grain: false,
     grainIntensity: 5,
@@ -154,6 +188,7 @@ const effectPresets: Record<string, Partial<GradientConfig>> = {
     meshBlur: 95,
     meshStyle: 'center',
     meshStretch: true,
+    meshWarpStrength: 1.2,
     speed: 0.15,
     grain: false,
     grainIntensity: 5,
@@ -1473,7 +1508,25 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                 />
               </div>
             </div>
-          </div>
+                </div>
+
+                {/* Warp (Mesh/Aurora only) */}
+                {isWireframeMode && (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-muted-foreground text-xs">Warp</Label>
+                      <span className="text-[10px] text-muted-foreground">{(config.meshWarpStrength ?? 1.2).toFixed(1)}</span>
+                    </div>
+                    <Slider
+                      value={[config.meshWarpStrength ?? 1.2]}
+                      onValueChange={([value]) => onConfigChange({ meshWarpStrength: value })}
+                      min={0}
+                      max={3}
+                      step={0.1}
+                      className="w-full"
+                    />
+                  </div>
+                )}
 
           {/* ========== 4. FINE TUNE (collapsible) ========== */}
           <div className="rounded-xl bg-secondary/10 p-4">
