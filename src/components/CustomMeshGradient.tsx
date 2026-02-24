@@ -39,6 +39,7 @@ uniform float uGrain;
 uniform int uMeshStyle;
 uniform float uMeshFlowAngle;
 uniform bool uMeshCenterInward;
+uniform float uWarpStrength;
 
 varying vec2 vUv;
 
@@ -156,9 +157,15 @@ void main() {
   // Radius based on weights - larger weight = larger light source
   float baseRadius = 0.4 + uBlur * 0.3;
   
-  // Subtle animation offset
+  // Subtle animation offset with domain warping
   float timeOffset = uTime * 0.08;
   float slowTime = uTime * 0.03;
+  
+  // Domain Warping: warp UV coordinates for fluid/silk shapes
+  vec2 warpOffset;
+  warpOffset.x = snoise(vec3(uv * 2.0 * 0.7, slowTime * 2.0));
+  warpOffset.y = snoise(vec3(uv * 2.0 * 0.7 + 5.2, slowTime * 2.0));
+  vec2 warpedUv = uv + warpOffset * uWarpStrength * 0.06;
   
   // Light source positions - spread across the canvas
   // These positions create the "atmospheric" feel
@@ -210,11 +217,11 @@ void main() {
   float w3 = uWeight3 / 100.0;
   float w4 = uWeight4 / 100.0;
   
-  // Radial light contributions - each color is a "light source"
-  float light1 = radialLight(uv, pos1, baseRadius * (0.5 + w1), softness) * w1 * 2.0;
-  float light2 = radialLight(uv, pos2, baseRadius * (0.5 + w2), softness) * w2 * 2.0;
-  float light3 = radialLight(uv, pos3, baseRadius * (0.5 + w3), softness) * w3 * 2.0;
-  float light4 = uHasColor4 ? radialLight(uv, pos4, baseRadius * (0.5 + w4), softness) * w4 * 2.0 : 0.0;
+  // Radial light contributions - each color is a "light source" (using warped UV for fluid shapes)
+  float light1 = radialLight(warpedUv, pos1, baseRadius * (0.5 + w1), softness) * w1 * 2.0;
+  float light2 = radialLight(warpedUv, pos2, baseRadius * (0.5 + w2), softness) * w2 * 2.0;
+  float light3 = radialLight(warpedUv, pos3, baseRadius * (0.5 + w3), softness) * w3 * 2.0;
+  float light4 = uHasColor4 ? radialLight(warpedUv, pos4, baseRadius * (0.5 + w4), softness) * w4 * 2.0 : 0.0;
   
   // Strength affects how concentrated the lights are
   float strengthMod = 1.0 + uStrength * 0.5;
@@ -291,6 +298,7 @@ export function CustomMeshGradient({ config }: CustomMeshGradientProps) {
     uMeshStyle: { value: config.meshStyle === 'flow' ? 1 : config.meshStyle === 'center' ? 2 : 0 },
     uMeshFlowAngle: { value: (config.meshFlowAngle ?? 45) * Math.PI / 180 },
     uMeshCenterInward: { value: config.meshCenterInward ?? true },
+    uWarpStrength: { value: config.meshWarpStrength ?? 1.2 },
   }), []);
   
   useFrame((state) => {
@@ -319,6 +327,7 @@ export function CustomMeshGradient({ config }: CustomMeshGradientProps) {
     mat.uniforms.uMeshStyle.value = config.meshStyle === 'flow' ? 1 : config.meshStyle === 'center' ? 2 : 0;
     mat.uniforms.uMeshFlowAngle.value = (config.meshFlowAngle ?? 45) * Math.PI / 180;
     mat.uniforms.uMeshCenterInward.value = config.meshCenterInward ?? true;
+    mat.uniforms.uWarpStrength.value = config.meshWarpStrength ?? 1.2;
     
     const isFrozen = config.frozenTime !== null;
     const shouldAnimate = config.animate && !isFrozen;
