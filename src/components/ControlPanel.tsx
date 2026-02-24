@@ -83,13 +83,25 @@ const activeBrandColors = brandColors; // All brand colors including black & whi
 // Art-directed color presets organized by visual family
 // Ordered by black-emergence contrast: Bold (sharp pop) → Warm (analogous flow) → Cool (atmospheric depth)
 // Adjacent colors follow analogous harmony rules to prevent muddy midtones
-const colorPresets = [
+const colorPresets: Array<{
+  name: string; color1: string; color2: string; color3: string; color4: string | null;
+  weight0: number; weight1: number; weight2: number; weight3: number; weight4: number;
+  recommendedFor: string[];
+  fullPreset?: Partial<GradientConfig>; // Optional: also applies effect settings (full preset)
+}> = [
   // === Bold / High Contrast (color pops sharply from black) ===
   { name: 'Golden', color1: '#FDB515', color2: '#EC008C', color3: '#6A00F4', color4: null, weight0: 40, weight1: 32, weight2: 16, weight3: 12, weight4: 0, recommendedFor: ['glow', 'plane', 'waves'] },
   { name: 'Neon', color1: '#EC008C', color2: '#00C2FF', color3: '#6A00F4', color4: null, weight0: 30, weight1: 30, weight2: 25, weight3: 15, weight4: 0, recommendedFor: ['sphere', 'conic', 'plane'] },
   { name: 'Electric', color1: '#00C2FF', color2: '#EC008C', color3: '#FDB515', color4: null, weight0: 30, weight1: 28, weight2: 24, weight3: 18, weight4: 0, recommendedFor: ['conic', 'plane', 'sphere'] },
   // === Warm / Analogous (colors melt into each other) ===
-  { name: 'Spotlight', color1: '#E8920D', color2: '#F06030', color3: '#EC008C', color4: null, weight0: 55, weight1: 20, weight2: 15, weight3: 10, weight4: 0, recommendedFor: ['glow'] },
+  { name: 'Spotlight', color1: '#E8920D', color2: '#F06030', color3: '#EC008C', color4: null, weight0: 55, weight1: 20, weight2: 15, weight3: 10, weight4: 0, recommendedFor: ['glow'],
+    fullPreset: {
+      type: 'glow', glowOrbSize: 75, glowShadowDensity: 0, glowStyle: 'clustered',
+      glowSpread: 70, glowOffsetX: -15, glowOffsetY: 0, glowDistortion: 50,
+      uStrength: 1.5, uDensity: 1.0, uFrequency: 2.0,
+      animate: false, speed: 0.2, frozenTime: 5.50, grain: true, grainIntensity: 5,
+    },
+  },
   { name: 'Sunset', color1: '#FDB515', color2: '#F2665F', color3: '#EC008C', color4: null, weight0: 30, weight1: 28, weight2: 24, weight3: 18, weight4: 0, recommendedFor: ['glow', 'plane', 'waterPlane'] },
   { name: 'Ember', color1: '#F2665F', color2: '#EC008C', color3: '#FDB515', color4: '#6A00F4', weight0: 35, weight1: 25, weight2: 20, weight3: 12, weight4: 8, recommendedFor: ['glow', 'waves', 'sphere'] },
   { name: 'Coral', color1: '#F2665F', color2: '#FDB515', color3: '#6A00F4', color4: null, weight0: 35, weight1: 30, weight2: 22, weight3: 13, weight4: 0, recommendedFor: ['waterPlane', 'sphere', 'plane'] },
@@ -1177,6 +1189,7 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                             colorWeight2: preset.weight2,
                             colorWeight3: preset.weight3,
                             colorWeight4: preset.weight4,
+                            ...(preset.fullPreset || {}),
                           });
                           setIsTextSafe(false);
                           setPresetWeightsBeforeTextSafe(null);
