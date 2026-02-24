@@ -903,42 +903,40 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                     className="w-full"
                   />
                 </div>
-                {config.planeRadial && (
-                  <div className="space-y-2">
-                    <Label className="text-muted-foreground text-xs flex items-center gap-1.5">
-                      <Move className="w-3.5 h-3.5" />
-                      Position
-                    </Label>
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-muted-foreground">Horizontal</span>
-                        <span className="text-[10px] text-muted-foreground">{config.planeOffsetX ?? 0}%</span>
-                      </div>
-                      <Slider
-                        value={[config.planeOffsetX ?? 0]}
-                        onValueChange={([value]) => onConfigChange({ planeOffsetX: value })}
-                        min={-50}
-                        max={50}
-                        step={5}
-                        className="w-full"
-                      />
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground text-xs flex items-center gap-1.5">
+                    <Move className="w-3.5 h-3.5" />
+                    Position
+                  </Label>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-muted-foreground">Horizontal</span>
+                      <span className="text-[10px] text-muted-foreground">{config.planeOffsetX ?? 0}%</span>
                     </div>
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-muted-foreground">Vertical</span>
-                        <span className="text-[10px] text-muted-foreground">{config.planeOffsetY ?? 0}%</span>
-                      </div>
-                      <Slider
-                        value={[config.planeOffsetY ?? 0]}
-                        onValueChange={([value]) => onConfigChange({ planeOffsetY: value })}
-                        min={-50}
-                        max={50}
-                        step={5}
-                        className="w-full"
-                      />
-                    </div>
+                    <Slider
+                      value={[config.planeOffsetX ?? 0]}
+                      onValueChange={([value]) => onConfigChange({ planeOffsetX: value })}
+                      min={-50}
+                      max={50}
+                      step={5}
+                      className="w-full"
+                    />
                   </div>
-                )}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-muted-foreground">Vertical</span>
+                      <span className="text-[10px] text-muted-foreground">{config.planeOffsetY ?? 0}%</span>
+                    </div>
+                    <Slider
+                      value={[config.planeOffsetY ?? 0]}
+                      onValueChange={([value]) => onConfigChange({ planeOffsetY: value })}
+                      min={-50}
+                      max={50}
+                      step={5}
+                      className="w-full"
+                    />
+                  </div>
+                </div>
               </div>
             )}
 
