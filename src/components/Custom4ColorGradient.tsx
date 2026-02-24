@@ -258,45 +258,26 @@ void main() {
     }
     
     if (uPlaneRadial) {
-      // Radial gradient from offset center outward - start from 0 at center
-      baseNoise = length(offsetCenter) * 2.0;
+      // Radial gradient from offset center outward
+      // Normalize by the natural radius at scale=1 offset=0 (corner distance ~0.707)
+      baseNoise = length(offsetCenter) / 0.707;
     } else {
       // Linear gradient with custom angle and offset
-          vec2 direction = vec2(cos(uPlaneAngle), sin(uPlaneAngle));
-          float dotProduct = dot(offsetCenter, direction);
-          // Normalization strategy depends on scale:
-          // scale <= 1.0: normalize to visible canvas corners (all colors visible)
-          // scale > 1.0: normalize to FULL gradient size (colors get clipped = real zoom)
-          vec2 off = uPlaneOffset;
-          
-          if (scale <= 1.0) {
-            // All colors visible - normalize across visible canvas corners
-            vec2 cr1 = (vec2(-0.5, -0.5) - off) * (1.0 / scale);
-            vec2 cr2 = (vec2( 0.5, -0.5) - off) * (1.0 / scale);
-            vec2 cr3 = (vec2(-0.5,  0.5) - off) * (1.0 / scale);
-            vec2 cr4 = (vec2( 0.5,  0.5) - off) * (1.0 / scale);
-            float dp1 = dot(cr1, direction);
-            float dp2 = dot(cr2, direction);
-            float dp3 = dot(cr3, direction);
-            float dp4 = dot(cr4, direction);
-            float minDP = min(min(dp1, dp2), min(dp3, dp4));
-            float maxDP = max(max(dp1, dp2), max(dp3, dp4));
-            baseNoise = (dotProduct - minDP) / (maxDP - minDP);
-          } else {
-            // Zoom in - normalize based on full gradient at scale=1.0
-            // This means colors beyond the viewport get clipped
-            vec2 cr1 = vec2(-0.5, -0.5);
-            vec2 cr2 = vec2( 0.5, -0.5);
-            vec2 cr3 = vec2(-0.5,  0.5);
-            vec2 cr4 = vec2( 0.5,  0.5);
-            float dp1 = dot(cr1, direction);
-            float dp2 = dot(cr2, direction);
-            float dp3 = dot(cr3, direction);
-            float dp4 = dot(cr4, direction);
-            float minDP = min(min(dp1, dp2), min(dp3, dp4));
-            float maxDP = max(max(dp1, dp2), max(dp3, dp4));
-            baseNoise = (dotProduct - minDP) / (maxDP - minDP);
-          }
+      vec2 direction = vec2(cos(uPlaneAngle), sin(uPlaneAngle));
+      float dotProduct = dot(offsetCenter, direction);
+      // FIXED normalization: always normalize by the natural gradient extent at scale=1, offset=0.
+      // This way scale actually zooms and offset actually moves the gradient.
+      vec2 cr1 = vec2(-0.5, -0.5);
+      vec2 cr2 = vec2( 0.5, -0.5);
+      vec2 cr3 = vec2(-0.5,  0.5);
+      vec2 cr4 = vec2( 0.5,  0.5);
+      float dp1 = dot(cr1, direction);
+      float dp2 = dot(cr2, direction);
+      float dp3 = dot(cr3, direction);
+      float dp4 = dot(cr4, direction);
+      float minDP = min(min(dp1, dp2), min(dp3, dp4));
+      float maxDP = max(max(dp1, dp2), max(dp3, dp4));
+      baseNoise = (dotProduct - minDP) / (maxDP - minDP);
     }
     
     // Add wave distortion (only when enabled)
