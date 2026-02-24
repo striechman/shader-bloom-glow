@@ -113,7 +113,8 @@ uniform float uPlaneAngle; // Plane gradient angle in radians
 uniform bool uPlaneRadial; // If true, radial gradient from center
 uniform float uPlaneWave; // Wave distortion amount (0-1)
 uniform float uPlaneSpread; // Transition sharpness (0-1)
-uniform vec2 uPlaneOffset; // Center offset for radial
+uniform vec2 uPlaneOffset; // Center offset
+uniform float uPlaneScale; // Scale/zoom of gradient pattern
 uniform int uMeshStyle; // 0=organic, 1=flow, 2=center
 uniform float uMeshFlowAngle; // radians
 uniform bool uMeshCenterInward;
@@ -239,9 +240,10 @@ void main() {
     // IMPORTANT: Ensure noise covers full 0.0 to 1.0 range to respect color weights (especially 30% black)
     float baseNoise;
     
-    // Apply offset and drift
+    // Apply offset, scale and drift
     vec2 drift = vec2(sin(uTime * 0.22), cos(uTime * 0.18)) * 0.02;
-    vec2 offsetCenter = centeredUv - uPlaneOffset + drift;
+    float scale = max(uPlaneScale, 0.1);
+    vec2 offsetCenter = (centeredUv - uPlaneOffset + drift) / scale;
     
     if (uPlaneRadial) {
       // Radial gradient from offset center outward - start from 0 at center
@@ -792,6 +794,7 @@ export const Custom4ColorGradient = forwardRef<THREE.Mesh, Custom4ColorGradientP
     uPlaneWave: { value: (config.planeWave ?? 0) / 100 },
     uPlaneSpread: { value: (config.planeSpread ?? 50) / 100 },
     uPlaneOffset: { value: new THREE.Vector2((config.planeOffsetX ?? 0) / 100, (config.planeOffsetY ?? 0) / 100) },
+    uPlaneScale: { value: (config.planeScale ?? 100) / 100 },
     uMeshStyle: { value: config.meshStyle === 'flow' ? 1 : config.meshStyle === 'center' ? 2 : 0 },
     uMeshFlowAngle: { value: (config.meshFlowAngle ?? 45) * Math.PI / 180 },
     uMeshCenterInward: { value: config.meshCenterInward ?? true },
@@ -855,6 +858,7 @@ export const Custom4ColorGradient = forwardRef<THREE.Mesh, Custom4ColorGradientP
     mat.uniforms.uPlaneWave.value = (config.planeWave ?? 0) / 100;
     mat.uniforms.uPlaneSpread.value = (config.planeSpread ?? 50) / 100;
     mat.uniforms.uPlaneOffset.value.set((config.planeOffsetX ?? 0) / 100, (config.planeOffsetY ?? 0) / 100);
+    mat.uniforms.uPlaneScale.value = (config.planeScale ?? 100) / 100;
     
     // Update mesh style uniforms
     mat.uniforms.uMeshStyle.value = config.meshStyle === 'flow' ? 1 : config.meshStyle === 'center' ? 2 : 0;
