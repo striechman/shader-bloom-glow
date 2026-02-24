@@ -56,6 +56,7 @@ export const GradientCanvas = ({ config, onConfigChange }: GradientCanvasProps) 
         color2: config.hoverColor2,
         color3: config.hoverColor3,
         color4: null, // Buttons don't support color4
+        color5: null, // Buttons don't support color5
       };
     }
     return {
@@ -63,8 +64,9 @@ export const GradientCanvas = ({ config, onConfigChange }: GradientCanvasProps) 
       color2: config.color2,
       color3: config.color3,
       color4: config.color4,
+      color5: config.color5,
     };
-  }, [isButton, config.buttonPreviewState, config.color1, config.color2, config.color3, config.color4, config.hoverColor1, config.hoverColor2, config.hoverColor3]);
+  }, [isButton, config.buttonPreviewState, config.color1, config.color2, config.color3, config.color4, config.color5, config.hoverColor1, config.hoverColor2, config.hoverColor3]);
   
   // Calculate aspect ratio container styles
   const getContainerStyle = (): React.CSSProperties => {
@@ -118,6 +120,7 @@ export const GradientCanvas = ({ config, onConfigChange }: GradientCanvasProps) 
     color2: currentColors.color2,
     color3: currentColors.color3,
     color4: currentColors.color4,
+    color5: currentColors.color5,
     animate: isButton ? false : config.animate,
   }), [config, currentColors, isButton]);
   
