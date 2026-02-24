@@ -1,32 +1,39 @@
 
 
-# Fix Plane Mode: Mouse Drag + Scale Behavior
+# Add Warp Control to All Effect Styles
 
-## Two Issues to Fix
+## What This Does
+The "Warp" slider currently only appears for Mesh/Aurora modes. This change adds it to **all** effect modes: Plane, Conic, Glow, and Waves. Warp creates organic, fluid distortions by feeding noise into the coordinate system (domain warping).
 
-### Issue 1: Mouse Drag Not Working
-The pointer events are attached to the container `div`, but the `<Canvas>` element sits on top with `position: absolute` and intercepts all pointer events. The drag handlers never fire.
+## Changes
 
-**Fix**: Add a transparent overlay `div` on top of the Canvas (with `z-index`) that captures pointer events for dragging. The Canvas itself should have `pointer-events: none` during drag-capable mode, or we add an invisible interaction layer above it.
+### 1. Shader Updates (`src/components/Custom4ColorGradient.tsx`)
 
-### Issue 2: Scale Shrinks Colors Away Instead of Compressing Them
-Currently, dividing by `scale` **zooms in** (expands the gradient), so when you reduce the slider to 30%, the gradient gets bigger and colors outside the viewport disappear. The user wants the **opposite**: shrinking the gradient so all colors are compressed into a smaller area that can be positioned anywhere.
+Add domain warping to each mode's shader branch:
 
-**Fix**: Multiply by `(1/scale)` inverted -- actually, swap the logic: multiply `offsetCenter` by `scale` instead of dividing. When `planeScale = 30%` (0.3), the UV coordinates get compressed, making the full color range fit in ~30% of the canvas. The rest of the canvas shows the edge color (color0/black or the last color).
+- **Plane mode** (type 2): Apply warp to `offsetCenter` coordinates before computing linear/radial gradient. This will create organic distortions in the otherwise perfectly straight gradient lines.
 
-## Technical Changes
+- **Conic mode** (type 4): Apply warp to `offsetCenter` before computing the angle. This distorts the angular sweep into flowing, organic shapes.
 
-### File: `src/components/GradientCanvas.tsx`
-- Add a transparent drag overlay `div` positioned above the Canvas with `z-index: 5`
-- This overlay only renders in Plane mode and captures all pointer events
-- Move `onPointerDown/Move/Up/Leave` from the container to this overlay
+- **Waves mode** (type 6): Apply warp to the wave coordinate calculation, creating irregularity in the wave patterns.
 
-### File: `src/components/Custom4ColorGradient.tsx`
-- Change line 246 from `/ scale` to `* (1.0 / scale)` with inverted meaning:
-  - `planeScale = 100` (1.0) = full size (current default, no change)
-  - `planeScale = 30` (0.3) = gradient compressed to 30% of canvas area
-- The offset (`uPlaneOffset`) should be applied **before** scaling so the compressed gradient moves correctly
+- **Glow mode** (type 5): Apply warp to orb center positions, making the light orbs shift and distort organically.
 
-### File: `src/components/ControlPanel.tsx`
-- No changes needed (slider already exists)
+For each mode, the warp is applied as:
+```text
+warpOffset.x = snoise(vec3(uv * 0.7, time * 0.2))
+warpOffset.y = snoise(vec3(uv * 0.7 + 5.2, time * 0.2))
+warpedUv = uv + warpOffset * uWarpStrength * 0.08
+```
 
+When `meshWarpStrength = 0`, the warp has zero effect (no visual change from current behavior).
+
+### 2. UI Updates (`src/components/ControlPanel.tsx`)
+
+Add a "Warp" slider (identical to the one in Mesh Settings) to each effect section:
+- **Plane Direction** section (after the Position controls)
+- **Conic Settings** section (after the Center controls)
+- **Glow Settings** section (after the Position controls)
+- **Waves Settings** section (after the existing controls)
+
+Each slider: min=0, max=3, step=0.1, controls `meshWarpStrength`.
