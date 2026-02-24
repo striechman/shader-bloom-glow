@@ -108,7 +108,7 @@ const effectPresets: Record<string, Partial<GradientConfig>> = {
     uFrequency: 5.5,
     meshNoiseScale: 3.0,
     meshBlur: 50,
-    meshStyle: 'organic',
+    meshStyle: 'center',
     meshStretch: false,
     speed: 0.4,
     grain: false,
