@@ -992,7 +992,7 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                     value={[config.glowShadowDensity ?? 50]}
                     onValueChange={([value]) => onConfigChange({ glowShadowDensity: value })}
                     min={0}
-                    max={100}
+                    max={25}
                     step={1}
                     className="w-full"
                   />
