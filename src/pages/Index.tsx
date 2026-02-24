@@ -41,7 +41,11 @@ const Index = () => {
           <div className="fixed inset-0 bg-gradient-to-br from-background via-secondary to-background" />
         }
       >
-        <div id="gradient-stage" className="fixed inset-0 overflow-hidden">
+        <div 
+          id="gradient-stage" 
+          className="fixed inset-0 overflow-hidden transition-[right] duration-300 ease-in-out"
+          style={{ right: isPanelOpen ? '320px' : '0px' }}
+        >
           <GradientCanvas config={config} onConfigChange={handleConfigChange} />
         </div>
       </Suspense>
