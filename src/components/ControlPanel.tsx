@@ -642,7 +642,7 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                     value={[config.meshNoiseScale ?? 1]}
                     onValueChange={([value]) => onConfigChange({ meshNoiseScale: value })}
                     min={0.3}
-                    max={3}
+                    max={1}
                     step={0.05}
                     className="w-full"
                   />
