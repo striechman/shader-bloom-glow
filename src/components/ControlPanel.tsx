@@ -136,7 +136,7 @@ const effectPresets: Record<string, Partial<GradientConfig>> = {
     meshStyle: 'center',
     meshStretch: false,
     speed: 0.3,
-    grain: true,
+    grain: false,
     grainIntensity: 5,
   },
   // AURORA: Stretched curtain effect - vertical light columns
@@ -149,7 +149,7 @@ const effectPresets: Record<string, Partial<GradientConfig>> = {
     meshStyle: 'center',
     meshStretch: true,
     speed: 0.15,
-    grain: true,
+    grain: false,
     grainIntensity: 5,
   },
   plane: {
@@ -162,7 +162,7 @@ const effectPresets: Record<string, Partial<GradientConfig>> = {
     planeSpread: 50,
     meshStretch: false,
     speed: 0.4,
-    grain: true,
+    grain: false,
     grainIntensity: 5,
   },
   water: {
@@ -173,7 +173,7 @@ const effectPresets: Record<string, Partial<GradientConfig>> = {
     meshBlur: 70,
     meshStretch: false,
     speed: 0.3,
-    grain: true,
+    grain: false,
     grainIntensity: 5,
   },
   conic: {
@@ -184,7 +184,7 @@ const effectPresets: Record<string, Partial<GradientConfig>> = {
     conicSpiral: 0,
     meshStretch: false,
     speed: 0.4,
-    grain: true,
+    grain: false,
     grainIntensity: 5,
   },
   glow: {
@@ -200,7 +200,7 @@ const effectPresets: Record<string, Partial<GradientConfig>> = {
     glowDistortion: 40,
     meshStretch: false,
     speed: 0.25,
-    grain: true,
+    grain: false,
     grainIntensity: 5,
   },
   waves: {
@@ -212,7 +212,7 @@ const effectPresets: Record<string, Partial<GradientConfig>> = {
     wavesAngle: 0,
     meshStretch: false,
     speed: 0.25,
-    grain: true,
+    grain: false,
     grainIntensity: 5,
   },
 };

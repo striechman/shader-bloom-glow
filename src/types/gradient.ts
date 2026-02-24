@@ -102,7 +102,7 @@ export const defaultGradientConfig: GradientConfig = {
   hoverColor2: '#6A00F4',
   hoverColor3: '#000000',
   buttonPreviewState: 'default',
-  grain: true,
+  grain: false,
   grainIntensity: 5,
   uStrength: 4,
   uDensity: 1.3,
