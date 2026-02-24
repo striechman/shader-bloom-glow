@@ -36,11 +36,16 @@ interface ControlPanelProps {
   onOpenButtonsPanel?: () => void;
 }
 
-const shapeOptions: { value: GradientConfig['type']; wireframe: boolean; label: string; presetKey: string }[] = [
+const shapeOptions: { value: GradientConfig['type']; wireframe: boolean; label: string; presetKey: string; isPremium?: boolean; includesColors?: boolean }[] = [
   { value: 'glow', wireframe: false, label: 'Glow', presetKey: 'glow' },
   { value: 'plane', wireframe: false, label: 'Plane', presetKey: 'plane' },
   { value: 'plane', wireframe: true, label: 'Mesh', presetKey: 'mesh' },
   { value: 'plane', wireframe: true, label: 'Aurora', presetKey: 'aurora' },
+  // Premium styles (include colors + engine settings)
+  { value: 'plane', wireframe: true, label: 'Aura', presetKey: 'cognitiveAura', isPremium: true, includesColors: true },
+  { value: 'plane', wireframe: true, label: 'Silk', presetKey: 'fluidSilk', isPremium: true, includesColors: true },
+  { value: 'glow', wireframe: false, label: 'Edge', presetKey: 'ambientEdge', isPremium: true, includesColors: true },
+  { value: 'plane', wireframe: false, label: 'Prism', presetKey: 'prismaticGlass', isPremium: true, includesColors: true },
 ];
 
 const aspectRatioOptions: { value: GradientConfig['aspectRatio']; label: string; category?: string }[] = [
@@ -115,41 +120,7 @@ const colorPresets: Array<{
   { name: 'Ocean', color1: '#00C2FF', color2: '#6A00F4', color3: '#EC008C', color4: null, weight0: 40, weight1: 28, weight2: 20, weight3: 12, weight4: 0, recommendedFor: ['waterPlane', 'waves', 'plane'] },
   { name: 'Royal', color1: '#6A00F4', color2: '#EC008C', color3: '#00C2FF', color4: null, weight0: 35, weight1: 30, weight2: 20, weight3: 15, weight4: 0, recommendedFor: ['waves', 'plane', 'conic'] },
   { name: 'Dusk', color1: '#6A00F4', color2: '#EC008C', color3: '#F2665F', color4: null, weight0: 50, weight1: 22, weight2: 16, weight3: 12, weight4: 0, recommendedFor: ['waves', 'glow', 'waterPlane', 'conic', 'plane'] },
-  // === Premium / Art-Directed (full presets with engine settings) ===
-  { name: 'Cognitive Aura', color1: '#EC008C', color2: '#6A00F4', color3: '#000000', color4: null, weight0: 65, weight1: 20, weight2: 15, weight3: 0, weight4: 0, recommendedFor: ['mesh'],
-    fullPreset: {
-      type: 'plane', wireframe: true, meshStyle: 'center', meshCenterInward: true,
-      meshBlur: 95, meshNoiseScale: 0.3, meshWarpStrength: 1.5, meshStretch: false,
-      uStrength: 2.0, uDensity: 1.0, uFrequency: 2.0,
-      animate: true, speed: 0.15, grain: false,
-    },
-  },
-  { name: 'Fluid Silk', color1: '#00C2FF', color2: '#EC008C', color3: '#6A00F4', color4: null, weight0: 40, weight1: 25, weight2: 20, weight3: 15, weight4: 0, recommendedFor: ['mesh'],
-    fullPreset: {
-      type: 'plane', wireframe: true, meshStyle: 'flow', meshFlowAngle: 30,
-      meshBlur: 80, meshNoiseScale: 0.3, meshWarpStrength: 2.0, meshStretch: false,
-      uStrength: 1.5, uDensity: 0.8, uFrequency: 1.5,
-      animate: true, speed: 0.1, grain: false,
-    },
-  },
-  { name: 'Ambient Edge', color1: '#F2665F', color2: '#FDB515', color3: '#6A00F4', color4: null, weight0: 55, weight1: 20, weight2: 15, weight3: 10, weight4: 0, recommendedFor: ['glow'],
-    fullPreset: {
-      type: 'glow', glowOrbSize: 85, glowShadowDensity: 0, glowStyle: 'scattered',
-      glowSpread: 90, glowOffsetX: 0, glowOffsetY: 0, glowDistortion: 30,
-      uStrength: 1.0, uDensity: 0.8, uFrequency: 1.5,
-      animate: true, speed: 0.15, grain: false,
-    },
-  },
-  { name: 'Prismatic Glass', color1: '#FDB515', color2: '#EC008C', color3: '#6A00F4', color4: '#00C2FF', weight0: 85, weight1: 5, weight2: 4, weight3: 3, weight4: 3, recommendedFor: ['plane'],
-    fullPreset: {
-      type: 'plane', planeAngle: 45, planeRadial: false,
-      planeSpread: 80, planeWave: 0, wireframe: false, meshStretch: false,
-      uStrength: 1.0, uDensity: 0.5, uFrequency: 1.0,
-      animate: true, speed: 0.2, grain: false,
-    },
-  },
 ];
-
 // Complete effect presets for each gradient type - resets ALL relevant settings
 // BRANDING RULE: Color0 is FIXED at 30%. Color1-3 must sum to 70%.
 // Effect presets - ONLY parameters, NOT colors (colors are preserved when switching effects)
@@ -256,6 +227,40 @@ const effectPresets: Record<string, Partial<GradientConfig>> = {
     grain: false,
     grainIntensity: 5,
   },
+  // Premium styles (include colors + weights + full engine config)
+  cognitiveAura: {
+    type: 'plane', wireframe: true, meshStyle: 'center', meshCenterInward: true,
+    meshBlur: 95, meshNoiseScale: 0.3, meshWarpStrength: 1.5, meshStretch: false,
+    uStrength: 2.0, uDensity: 1.0, uFrequency: 2.0,
+    animate: true, speed: 0.15, grain: false, grainIntensity: 5,
+    color1: '#EC008C', color2: '#6A00F4', color3: '#000000', color4: null,
+    colorWeight0: 65, colorWeight1: 20, colorWeight2: 15, colorWeight3: 0, colorWeight4: 0,
+  },
+  fluidSilk: {
+    type: 'plane', wireframe: true, meshStyle: 'flow', meshFlowAngle: 30,
+    meshBlur: 80, meshNoiseScale: 0.3, meshWarpStrength: 2.0, meshStretch: false,
+    uStrength: 1.5, uDensity: 0.8, uFrequency: 1.5,
+    animate: true, speed: 0.1, grain: false, grainIntensity: 5,
+    color1: '#00C2FF', color2: '#EC008C', color3: '#6A00F4', color4: null,
+    colorWeight0: 40, colorWeight1: 25, colorWeight2: 20, colorWeight3: 15, colorWeight4: 0,
+  },
+  ambientEdge: {
+    type: 'glow', glowOrbSize: 85, glowShadowDensity: 0, glowStyle: 'scattered' as const,
+    glowSpread: 90, glowOffsetX: 0, glowOffsetY: 0, glowDistortion: 30,
+    uStrength: 1.0, uDensity: 0.8, uFrequency: 1.5,
+    animate: true, speed: 0.15, grain: false, grainIntensity: 5,
+    meshStretch: false,
+    color1: '#F2665F', color2: '#FDB515', color3: '#6A00F4', color4: null,
+    colorWeight0: 55, colorWeight1: 20, colorWeight2: 15, colorWeight3: 10, colorWeight4: 0,
+  },
+  prismaticGlass: {
+    type: 'plane', planeAngle: 45, planeRadial: false,
+    planeSpread: 80, planeWave: 0, wireframe: false, meshStretch: false,
+    uStrength: 1.0, uDensity: 0.5, uFrequency: 1.0,
+    animate: true, speed: 0.2, grain: false, grainIntensity: 5,
+    color1: '#FDB515', color2: '#EC008C', color3: '#6A00F4', color4: '#00C2FF',
+    colorWeight0: 85, colorWeight1: 5, colorWeight2: 4, colorWeight3: 3, colorWeight4: 3,
+  },
 };
 
 export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenButtonsPanel }: ControlPanelProps) => {
@@ -263,6 +268,7 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
   const [internalTime, setInternalTime] = useState(0);
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
+  const [activePremiumStyle, setActivePremiumStyle] = useState<string | null>(null);
   const [isTextSafe, setIsTextSafe] = useState(false);
   const [presetWeightsBeforeTextSafe, setPresetWeightsBeforeTextSafe] = useState<number[] | null>(null);
   const { presets: savedPresets, savePreset, loadPreset, deletePreset } = usePresets();
@@ -648,37 +654,72 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
             <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-muted-foreground">Shape & Style</h3>
             
             {/* Shape Selection Grid */}
-            <div className="grid grid-cols-4 gap-2">
-              {shapeOptions.map((shape) => {
-                const isActive = shape.label === 'Aurora' 
-                  ? config.type === 'plane' && config.wireframe && config.meshStretch === true
-                  : shape.label === 'Mesh'
-                    ? config.type === 'plane' && config.wireframe && !config.meshStretch
-                    : config.type === shape.value && config.wireframe === shape.wireframe;
-                
-                const handleShapeClick = () => {
-                  const effectSettings = effectPresets[shape.presetKey] || {};
-                  onConfigChange({ 
-                    type: shape.value, 
-                    wireframe: shape.wireframe,
-                    ...effectSettings
-                  });
-                };
-                
-                return (
-                  <button
-                    key={shape.label}
-                    onClick={handleShapeClick}
-                    className={`py-2 px-2 rounded-lg text-sm font-medium transition-all ${
-                      isActive
-                        ? 'bg-primary text-primary-foreground shadow-sm'
-                        : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                    }`}
-                  >
-                    {shape.label}
-                  </button>
-                );
-              })}
+            <div className="space-y-2">
+              <div className="grid grid-cols-4 gap-2">
+                {shapeOptions.filter(s => !s.isPremium).map((shape) => {
+                  const isActive = activePremiumStyle === null && (
+                    shape.label === 'Aurora' 
+                      ? config.type === 'plane' && config.wireframe && config.meshStretch === true
+                      : shape.label === 'Mesh'
+                        ? config.type === 'plane' && config.wireframe && !config.meshStretch
+                        : config.type === shape.value && config.wireframe === shape.wireframe
+                  );
+                  
+                  const handleShapeClick = () => {
+                    setActivePremiumStyle(null);
+                    const effectSettings = effectPresets[shape.presetKey] || {};
+                    onConfigChange({ 
+                      type: shape.value, 
+                      wireframe: shape.wireframe,
+                      ...effectSettings
+                    });
+                  };
+                  
+                  return (
+                    <button
+                      key={shape.label}
+                      onClick={handleShapeClick}
+                      className={`py-2 px-2 rounded-lg text-sm font-medium transition-all ${
+                        isActive
+                          ? 'bg-primary text-primary-foreground shadow-sm'
+                          : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                      }`}
+                    >
+                      {shape.label}
+                    </button>
+                  );
+                })}
+              </div>
+              {/* Premium Styles */}
+              <div className="grid grid-cols-4 gap-2">
+                {shapeOptions.filter(s => s.isPremium).map((shape) => {
+                  const isActive = activePremiumStyle === shape.presetKey;
+                  
+                  const handleShapeClick = () => {
+                    setActivePremiumStyle(shape.presetKey);
+                    const effectSettings = effectPresets[shape.presetKey] || {};
+                    onConfigChange({ 
+                      type: shape.value, 
+                      wireframe: shape.wireframe,
+                      ...effectSettings
+                    });
+                  };
+                  
+                  return (
+                    <button
+                      key={shape.label}
+                      onClick={handleShapeClick}
+                      className={`py-2 px-2 rounded-lg text-xs font-medium transition-all ${
+                        isActive
+                          ? 'bg-primary text-primary-foreground shadow-sm'
+                          : 'bg-accent text-accent-foreground hover:bg-accent/80'
+                      }`}
+                    >
+                      {shape.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {/* === Effect-Specific Controls (contextual, inset style) === */}
