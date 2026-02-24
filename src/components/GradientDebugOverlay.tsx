@@ -34,6 +34,9 @@ export function GradientDebugOverlay({ config, visible = true }: GradientDebugOv
   if (config.color4) {
     colors.push({ label: 'Color 4', color: config.color4, weight: config.colorWeight4 });
   }
+  if (config.color5) {
+    colors.push({ label: 'Color 5', color: config.color5, weight: config.colorWeight5 });
+  }
   
   // =========================================================================
   // DERIVED VALUES (match shader logic for debugging)

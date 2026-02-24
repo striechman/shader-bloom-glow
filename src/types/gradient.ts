@@ -9,6 +9,7 @@ export interface GradientConfig {
   color2: string;
   color3: string;
   color4: string | null; // Optional 4th color (null = not used)
+  color5: string | null; // Optional 5th color (null = not used)
   
   // Color Weights (percentages that sum to 100)
   colorWeight0: number; // Base color weight (black/white)
@@ -16,6 +17,7 @@ export interface GradientConfig {
   colorWeight2: number;
   colorWeight3: number;
   colorWeight4: number; // 0 when color4 is null
+  colorWeight5: number; // 0 when color5 is null
   
   // Hover Colors (for buttons)
   hoverColor1: string;
@@ -95,11 +97,13 @@ export const defaultGradientConfig: GradientConfig = {
   color2: '#EC008C',
   color3: '#000000',
   color4: null, // Optional 4th color - disabled by default
+  color5: null, // Optional 5th color - disabled by default
   colorWeight0: 30, // Base color weight (minimum 30%, can go up to 100%)
   colorWeight1: 25, // Color1-3 must sum to 70%
   colorWeight2: 25,
   colorWeight3: 20,
   colorWeight4: 0, // 0 when color4 is not used
+  colorWeight5: 0, // 0 when color5 is not used
   hoverColor1: '#EC008C',
   hoverColor2: '#6A00F4',
   hoverColor3: '#000000',

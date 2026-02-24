@@ -89,26 +89,26 @@ const activeBrandColors = brandColors; // All brand colors including black & whi
 // Ordered by black-emergence contrast: Bold (sharp pop) → Warm (analogous flow) → Cool (atmospheric depth)
 // Adjacent colors follow analogous harmony rules to prevent muddy midtones
 const colorPresets: Array<{
-  name: string; color1: string; color2: string; color3: string; color4: string | null;
-  weight0: number; weight1: number; weight2: number; weight3: number; weight4: number;
+  name: string; color1: string; color2: string; color3: string; color4: string | null; color5: string | null;
+  weight0: number; weight1: number; weight2: number; weight3: number; weight4: number; weight5: number;
   recommendedFor: string[];
   fullPreset?: Partial<GradientConfig>; // Optional: also applies effect settings (full preset)
 }> = [
   // === Bold / High Contrast (color pops sharply from black) ===
-  { name: 'Golden', color1: '#FDB515', color2: '#EC008C', color3: '#6A00F4', color4: '#000000', weight0: 40, weight1: 26, weight2: 13, weight3: 10, weight4: 12, recommendedFor: ['glow', 'plane', 'waves'],
+  { name: 'Golden', color1: '#FDB515', color2: '#EC008C', color3: '#6A00F4', color4: '#000000', color5: null, weight0: 40, weight1: 26, weight2: 13, weight3: 10, weight4: 12, weight5: 0, recommendedFor: ['glow', 'plane', 'waves'],
     fullPreset: {
       type: 'plane', planeSpread: 90, planeWave: 12, uStrength: 0.3, uFrequency: 1,
       planeOffsetX: -45, planeOffsetY: -35, planeAngle: 45, grain: true, grainIntensity: 4,
     },
   },
-  { name: 'Neon', color1: '#EC008C', color2: '#6A00F4', color3: '#00C2FF', color4: '#000000', weight0: 30, weight1: 25, weight2: 22, weight3: 13, weight4: 10, recommendedFor: ['plane', 'sphere', 'conic'],
+  { name: 'Neon', color1: '#EC008C', color2: '#6A00F4', color3: '#00C2FF', color4: '#000000', color5: null, weight0: 30, weight1: 25, weight2: 22, weight3: 13, weight4: 10, weight5: 0, recommendedFor: ['plane', 'sphere', 'conic'],
     fullPreset: {
       type: 'plane', planeSpread: 90, planeWave: 10, uStrength: 0.3, uFrequency: 1,
       planeAngle: 135, grain: true, grainIntensity: 3,
       meshBlur: 90, meshNoiseScale: 0.3, meshStyle: 'center' as const, meshWarpStrength: 1.2,
     },
   },
-  { name: 'Electric', color1: '#00C2FF', color2: '#6A00F4', color3: '#EC008C', color4: '#FDB515', weight0: 30, weight1: 22, weight2: 19, weight3: 14, weight4: 15, recommendedFor: ['conic', 'plane', 'sphere'],
+  { name: 'Electric', color1: '#00C2FF', color2: '#6A00F4', color3: '#EC008C', color4: '#FDB515', color5: '#000000', weight0: 30, weight1: 18, weight2: 16, weight3: 12, weight4: 14, weight5: 10, recommendedFor: ['conic', 'plane', 'sphere'],
     fullPreset: {
       type: 'plane', planeSpread: 90, planeWave: 10, uStrength: 0.3, uFrequency: 1,
       grain: true, grainIntensity: 3,
@@ -116,7 +116,7 @@ const colorPresets: Array<{
     },
   },
   // === Warm / Analogous (colors melt into each other) ===
-  { name: 'Spotlight', color1: '#E8920D', color2: '#F06030', color3: '#EC008C', color4: null, weight0: 55, weight1: 20, weight2: 15, weight3: 10, weight4: 0, recommendedFor: ['glow'],
+  { name: 'Spotlight', color1: '#E8920D', color2: '#F06030', color3: '#EC008C', color4: null, color5: null, weight0: 55, weight1: 20, weight2: 15, weight3: 10, weight4: 0, weight5: 0, recommendedFor: ['glow'],
     fullPreset: {
       type: 'glow', glowOrbSize: 75, glowShadowDensity: 0, glowStyle: 'clustered',
       glowSpread: 70, glowOffsetX: -15, glowOffsetY: 0, glowDistortion: 50,
@@ -124,19 +124,19 @@ const colorPresets: Array<{
       animate: false, speed: 0.2, frozenTime: 5.50, grain: false, grainIntensity: 5,
     },
   },
-  { name: 'Sunset', color1: '#FF6B6B', color2: '#FDB515', color3: '#6A00F4', color4: null, weight0: 35, weight1: 30, weight2: 25, weight3: 10, weight4: 0, recommendedFor: ['plane', 'waves'],
+  { name: 'Sunset', color1: '#FF6B6B', color2: '#FDB515', color3: '#6A00F4', color4: null, color5: null, weight0: 35, weight1: 30, weight2: 25, weight3: 10, weight4: 0, weight5: 0, recommendedFor: ['plane', 'waves'],
     fullPreset: {
       type: 'plane', planeAngle: 90, planeRadial: false,
       planeSpread: 60, planeWave: 0,
       animate: false, frozenTime: 3.0, grain: false,
     },
   },
-  { name: 'Ember', color1: '#F2665F', color2: '#EC008C', color3: '#FDB515', color4: '#6A00F4', weight0: 35, weight1: 25, weight2: 20, weight3: 12, weight4: 8, recommendedFor: ['glow', 'waves', 'sphere'] },
-  { name: 'Coral', color1: '#F2665F', color2: '#FDB515', color3: '#6A00F4', color4: null, weight0: 35, weight1: 30, weight2: 22, weight3: 13, weight4: 0, recommendedFor: ['waterPlane', 'sphere', 'plane'] },
+  { name: 'Ember', color1: '#F2665F', color2: '#EC008C', color3: '#FDB515', color4: '#6A00F4', color5: null, weight0: 35, weight1: 25, weight2: 20, weight3: 12, weight4: 8, weight5: 0, recommendedFor: ['glow', 'waves', 'sphere'] },
+  { name: 'Coral', color1: '#F2665F', color2: '#FDB515', color3: '#6A00F4', color4: null, color5: null, weight0: 35, weight1: 30, weight2: 22, weight3: 13, weight4: 0, weight5: 0, recommendedFor: ['waterPlane', 'sphere', 'plane'] },
   // === Cool / Atmospheric (deep, lots of black) ===
-  { name: 'Ocean', color1: '#00C2FF', color2: '#6A00F4', color3: '#EC008C', color4: null, weight0: 40, weight1: 28, weight2: 20, weight3: 12, weight4: 0, recommendedFor: ['waterPlane', 'waves', 'plane'] },
-  { name: 'Royal', color1: '#6A00F4', color2: '#EC008C', color3: '#00C2FF', color4: null, weight0: 35, weight1: 30, weight2: 20, weight3: 15, weight4: 0, recommendedFor: ['waves', 'plane', 'conic'] },
-  { name: 'Dusk', color1: '#6A00F4', color2: '#EC008C', color3: '#F2665F', color4: null, weight0: 50, weight1: 22, weight2: 16, weight3: 12, weight4: 0, recommendedFor: ['waves', 'glow', 'waterPlane', 'conic', 'plane'] },
+  { name: 'Ocean', color1: '#00C2FF', color2: '#6A00F4', color3: '#EC008C', color4: null, color5: null, weight0: 40, weight1: 28, weight2: 20, weight3: 12, weight4: 0, weight5: 0, recommendedFor: ['waterPlane', 'waves', 'plane'] },
+  { name: 'Royal', color1: '#6A00F4', color2: '#EC008C', color3: '#00C2FF', color4: null, color5: null, weight0: 35, weight1: 30, weight2: 20, weight3: 15, weight4: 0, weight5: 0, recommendedFor: ['waves', 'plane', 'conic'] },
+  { name: 'Dusk', color1: '#6A00F4', color2: '#EC008C', color3: '#F2665F', color4: null, color5: null, weight0: 50, weight1: 22, weight2: 16, weight3: 12, weight4: 0, weight5: 0, recommendedFor: ['waves', 'glow', 'waterPlane', 'conic', 'plane'] },
 ];
 // Complete effect presets for each gradient type - resets ALL relevant settings
 // BRANDING RULE: Color0 is FIXED at 30%. Color1-3 must sum to 70%.
@@ -319,37 +319,30 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
   // Handler for base color (Color0) weight changes - scales other colors proportionally
   const handleBaseWeightChange = (newWeight0: number) => {
     const hasColor4 = config.color4 !== null;
+    const hasColor5 = config.color5 !== null;
     const oldRemaining = 100 - config.colorWeight0;
     const targetRemaining = 100 - newWeight0;
 
-    // If targetRemaining = 0, all other colors become 0
     if (targetRemaining <= 0) {
       onConfigChange({
         colorWeight0: 100,
-        colorWeight1: 0,
-        colorWeight2: 0,
-        colorWeight3: 0,
-        colorWeight4: 0,
+        colorWeight1: 0, colorWeight2: 0, colorWeight3: 0, colorWeight4: 0, colorWeight5: 0,
       });
       return;
     }
 
-    // Safety: if oldRemaining is 0 (should only happen at 100%), just reset proportionally
     const safeOldRemaining = Math.max(1, oldRemaining);
     const scale = targetRemaining / safeOldRemaining;
 
-    // Scale as floats first
     const baseWeights = [
-      config.colorWeight1,
-      config.colorWeight2,
-      config.colorWeight3,
+      config.colorWeight1, config.colorWeight2, config.colorWeight3,
       hasColor4 ? config.colorWeight4 : 0,
+      hasColor5 ? config.colorWeight5 : 0,
     ];
 
-    const activeCount = hasColor4 ? 4 : 3;
+    const activeCount = hasColor5 ? 5 : hasColor4 ? 4 : 3;
     const scaled = baseWeights.slice(0, activeCount).map((w) => Math.max(0, w * scale));
 
-    // Integer rounding while preserving exact sum == targetRemaining
     const floors = scaled.map((v) => Math.floor(v));
     let sum = floors.reduce((a, b) => a + b, 0);
     let remainder = targetRemaining - sum;
@@ -363,7 +356,6 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
       ints[fracs[k % fracs.length].i] += 1;
     }
 
-    // If rounding overshoots (shouldn't), trim from smallest frac
     sum = ints.reduce((a, b) => a + b, 0);
     if (sum > targetRemaining) {
       let extra = sum - targetRemaining;
@@ -382,35 +374,27 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
       colorWeight2: ints[1] ?? 0,
       colorWeight3: ints[2] ?? 0,
       colorWeight4: hasColor4 ? (ints[3] ?? 0) : 0,
+      colorWeight5: hasColor5 ? (ints[4] ?? 0) : 0,
     });
   };
   
   const handleColorWeightChange = (colorIndex: number, newValue: number) => {
-    // colorIndex 1 = Color1, 2 = Color2, 3 = Color3, 4 = Color4
-    // Color0 is handled by handleBaseWeightChange
-    
-    if (colorIndex === 0) {
-      return;
-    }
+    if (colorIndex === 0) return;
     
     const hasColor4 = config.color4 !== null;
-    const remainingWeight = 100 - config.colorWeight0; // e.g., 70% when Color0 is 30%
+    const hasColor5 = config.color5 !== null;
+    const remainingWeight = 100 - config.colorWeight0;
     
-    // Current weights for Color1-4
     const weights = [
-      config.colorWeight1, 
-      config.colorWeight2, 
-      config.colorWeight3,
-      hasColor4 ? config.colorWeight4 : 0
+      config.colorWeight1, config.colorWeight2, config.colorWeight3,
+      hasColor4 ? config.colorWeight4 : 0,
+      hasColor5 ? config.colorWeight5 : 0,
     ];
     
-    const activeCount = hasColor4 ? 4 : 3; // Only Color1-3 or Color1-4
-    const weightIndex = colorIndex - 1; // Convert to 0-indexed for weights array
+    const activeCount = hasColor5 ? 5 : hasColor4 ? 4 : 3;
+    const weightIndex = colorIndex - 1;
     
     const oldValue = weights[weightIndex];
-    const diff = newValue - oldValue;
-    
-    // Ensure new value doesn't exceed remaining weight minus minimums for other colors
     const minOtherWeight = 5;
     const maxForThisColor = remainingWeight - (minOtherWeight * (activeCount - 1));
     newValue = Math.min(newValue, maxForThisColor);
@@ -426,7 +410,6 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
       return Math.max(minOtherWeight, w - adjustment);
     });
     
-    // Normalize to ensure sum = remainingWeight (e.g., 70%)
     const total = newWeights.slice(0, activeCount).reduce((a, b) => a + b, 0);
     if (Math.abs(total - remainingWeight) > 0.5) {
       const correction = (remainingWeight - total) / activeCount;
@@ -435,15 +418,12 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
       }
     }
     
-    // Final adjustment to hit exact target
     const finalTotal = newWeights.slice(0, activeCount).reduce((a, b) => a + b, 0);
     if (finalTotal !== remainingWeight) {
-      // Adjust the changed color to absorb rounding
       const needed = remainingWeight - finalTotal;
       if (newWeights[weightIndex] + needed >= minOtherWeight) {
         newWeights[weightIndex] += needed;
       } else {
-        // Find another color that can absorb
         for (let i = 0; i < activeCount; i++) {
           if (newWeights[i] + needed >= minOtherWeight) {
             newWeights[i] += needed;
@@ -457,42 +437,73 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
       colorWeight1: Math.round(newWeights[0]),
       colorWeight2: Math.round(newWeights[1]),
       colorWeight3: Math.round(newWeights[2]),
-      colorWeight4: Math.round(newWeights[3] || 0)
+      colorWeight4: Math.round(newWeights[3] || 0),
+      colorWeight5: Math.round(newWeights[4] || 0),
     });
   };
 
   // Add 4th color
   const handleAddColor4 = () => {
-    // Redistribute weights among Color1-4, keeping Color0 fixed
-    const remainingWeight = 100 - config.colorWeight0; // e.g., 70%
-    const currentTotal = config.colorWeight1 + config.colorWeight2 + config.colorWeight3;
-    const newWeight4 = Math.round(remainingWeight * 0.2); // Give color4 ~20% of remaining
+    const remainingWeight = 100 - config.colorWeight0;
+    const currentTotal = config.colorWeight1 + config.colorWeight2 + config.colorWeight3 + (config.color5 !== null ? config.colorWeight5 : 0);
+    const newWeight4 = Math.round(remainingWeight * 0.15);
     const scale = (remainingWeight - newWeight4) / currentTotal;
     
     onConfigChange({
-      color4: '#6A00F4', // Default to Deep Violet
-      // Color0 stays fixed
+      color4: '#6A00F4',
       colorWeight1: Math.round(config.colorWeight1 * scale),
       colorWeight2: Math.round(config.colorWeight2 * scale),
       colorWeight3: Math.round(config.colorWeight3 * scale),
-      colorWeight4: newWeight4
+      colorWeight4: newWeight4,
+      ...(config.color5 !== null ? { colorWeight5: Math.round(config.colorWeight5 * scale) } : {}),
     });
   };
 
-  // Remove 4th color
+  // Remove 4th color (also removes 5th if present)
   const handleRemoveColor4 = () => {
-    // Redistribute color4's weight among Color1-3, keeping Color0 fixed
-    const remainingWeight = 100 - config.colorWeight0; // e.g., 70%
+    const remainingWeight = 100 - config.colorWeight0;
     const currentTotal = config.colorWeight1 + config.colorWeight2 + config.colorWeight3;
     const scale = remainingWeight / currentTotal;
     
     onConfigChange({
-      color4: null,
-      // Color0 stays fixed
+      color4: null, color5: null,
       colorWeight1: Math.round(config.colorWeight1 * scale),
       colorWeight2: Math.round(config.colorWeight2 * scale),
       colorWeight3: Math.round(config.colorWeight3 * scale),
-      colorWeight4: 0
+      colorWeight4: 0, colorWeight5: 0,
+    });
+  };
+
+  // Add 5th color
+  const handleAddColor5 = () => {
+    const remainingWeight = 100 - config.colorWeight0;
+    const currentTotal = config.colorWeight1 + config.colorWeight2 + config.colorWeight3 + config.colorWeight4;
+    const newWeight5 = Math.round(remainingWeight * 0.12);
+    const scale = (remainingWeight - newWeight5) / currentTotal;
+    
+    onConfigChange({
+      color5: '#000000',
+      colorWeight1: Math.round(config.colorWeight1 * scale),
+      colorWeight2: Math.round(config.colorWeight2 * scale),
+      colorWeight3: Math.round(config.colorWeight3 * scale),
+      colorWeight4: Math.round(config.colorWeight4 * scale),
+      colorWeight5: newWeight5,
+    });
+  };
+
+  // Remove 5th color
+  const handleRemoveColor5 = () => {
+    const remainingWeight = 100 - config.colorWeight0;
+    const currentTotal = config.colorWeight1 + config.colorWeight2 + config.colorWeight3 + config.colorWeight4;
+    const scale = remainingWeight / currentTotal;
+    
+    onConfigChange({
+      color5: null,
+      colorWeight1: Math.round(config.colorWeight1 * scale),
+      colorWeight2: Math.round(config.colorWeight2 * scale),
+      colorWeight3: Math.round(config.colorWeight3 * scale),
+      colorWeight4: Math.round(config.colorWeight4 * scale),
+      colorWeight5: 0,
     });
   };
 
@@ -527,7 +538,7 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
       // Save current weights so we can restore
       setPresetWeightsBeforeTextSafe([
         config.colorWeight0, config.colorWeight1, config.colorWeight2, 
-        config.colorWeight3, config.colorWeight4
+        config.colorWeight3, config.colorWeight4, config.colorWeight5
       ]);
       // Force base to 65%, redistribute remaining 35% proportionally
       handleBaseWeightChange(65);
@@ -539,6 +550,7 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
         colorWeight2: presetWeightsBeforeTextSafe[2],
         colorWeight3: presetWeightsBeforeTextSafe[3],
         colorWeight4: presetWeightsBeforeTextSafe[4],
+        colorWeight5: presetWeightsBeforeTextSafe[5] ?? 0,
       });
       setPresetWeightsBeforeTextSafe(null);
     }
@@ -1365,11 +1377,13 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                             color2: preset.color2, 
                             color3: preset.color3,
                             color4: preset.color4,
+                            color5: preset.color5,
                             colorWeight0: preset.weight0,
                             colorWeight1: preset.weight1,
                             colorWeight2: preset.weight2,
                             colorWeight3: preset.weight3,
                             colorWeight4: preset.weight4,
+                            colorWeight5: preset.weight5,
                             ...(preset.fullPreset || {}),
                           });
                           setIsTextSafe(false);
@@ -1493,6 +1507,7 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                 { key: 'color2', weightKey: 'colorWeight2', label: 'Color 2', weight: config.colorWeight2, color: isButtonRatio(config.aspectRatio) && config.buttonPreviewState === 'hover' ? config.hoverColor2 : config.color2 },
                 { key: 'color3', weightKey: 'colorWeight3', label: 'Color 3', weight: config.colorWeight3, color: isButtonRatio(config.aspectRatio) && config.buttonPreviewState === 'hover' ? config.hoverColor3 : config.color3 },
                 ...(config.color4 !== null ? [{ key: 'color4', weightKey: 'colorWeight4', label: 'Color 4', weight: config.colorWeight4, color: config.color4 }] : []),
+                ...(config.color5 !== null ? [{ key: 'color5', weightKey: 'colorWeight5', label: 'Color 5', weight: config.colorWeight5, color: config.color5 }] : []),
               ].map(({ key, weightKey, label, weight, color }, index) => (
                 <div key={key} className="space-y-2 py-2 px-3 rounded-xl bg-secondary/20">
                   <div className="flex items-center gap-3">
@@ -1548,17 +1563,26 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                     value={[weight]}
                     onValueChange={([value]) => handleColorWeightChange(index + 1, value)}
                     min={5}
-                    max={100 - config.colorWeight0 - 5 * (config.color4 !== null ? 3 : 2)}
+                    max={100 - config.colorWeight0 - 5 * (config.color5 !== null ? 4 : config.color4 !== null ? 3 : 2)}
                     step={1}
                     className="w-full"
                   />
-                  {/* Remove button for Color 4 */}
-                  {key === 'color4' && (
+                  {/* Remove button for Color 4 (only if no color5) */}
+                  {key === 'color4' && config.color5 === null && (
                     <button
                       onClick={handleRemoveColor4}
                       className="text-xs text-muted-foreground hover:text-destructive flex items-center gap-1 transition-colors"
                     >
                       <Minus className="w-3 h-3" /> Remove Color 4
+                    </button>
+                  )}
+                  {/* Remove button for Color 5 */}
+                  {key === 'color5' && (
+                    <button
+                      onClick={handleRemoveColor5}
+                      className="text-xs text-muted-foreground hover:text-destructive flex items-center gap-1 transition-colors"
+                    >
+                      <Minus className="w-3 h-3" /> Remove Color 5
                     </button>
                   )}
                 </div>
@@ -1572,6 +1596,16 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                 >
                   <Plus className="w-4 h-4" />
                   Add 4th Color
+                </button>
+              )}
+              {/* Add Color 5 button */}
+              {config.color4 !== null && config.color5 === null && !isButtonRatio(config.aspectRatio) && (
+                <button
+                  onClick={handleAddColor5}
+                  className="w-full py-2 rounded-xl text-sm font-medium bg-secondary/50 text-muted-foreground hover:bg-secondary/80 hover:text-foreground transition-colors flex items-center justify-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add 5th Color
                 </button>
               )}
             </div>

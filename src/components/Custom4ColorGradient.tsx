@@ -95,12 +95,15 @@ uniform vec3 uColor1;
 uniform vec3 uColor2;
 uniform vec3 uColor3;
 uniform vec3 uColor4;
+uniform vec3 uColor5;
 uniform float uWeight0;
 uniform float uWeight1;
 uniform float uWeight2;
 uniform float uWeight3;
 uniform float uWeight4;
+uniform float uWeight5;
 uniform bool uHasColor4;
+uniform bool uHasColor5;
 uniform float uTime;
 uniform float uNoiseScale;
 uniform float uBlur;
@@ -395,17 +398,19 @@ void main() {
   float blurFactor = uBlur * 0.5;
   
   // Calculate cumulative thresholds for colors (4 or 5 depending on uHasColor4)
-  float w0 = uWeight0 / 100.0;
-  float w1 = uWeight1 / 100.0;
-  float w2 = uWeight2 / 100.0;
-  float w3 = uWeight3 / 100.0;
-  float w4 = uWeight4 / 100.0;
-  
-  // Color0 occupies [0, w0] of noise range (true 30%-100% segment)
-  float threshold0 = w0;
-  float threshold1 = w0 + w1;
-  float threshold2 = w0 + w1 + w2;
-  float threshold3 = w0 + w1 + w2 + w3;
+    float w0 = uWeight0 / 100.0;
+    float w1 = uWeight1 / 100.0;
+    float w2 = uWeight2 / 100.0;
+    float w3 = uWeight3 / 100.0;
+    float w4 = uWeight4 / 100.0;
+    float w5 = uWeight5 / 100.0;
+    
+    // Color0 occupies [0, w0] of noise range (true 30%-100% segment)
+    float threshold0 = w0;
+    float threshold1 = w0 + w1;
+    float threshold2 = w0 + w1 + w2;
+    float threshold3 = w0 + w1 + w2 + w3;
+    float threshold4 = w0 + w1 + w2 + w3 + w4;
   
   vec3 finalColor;
   
@@ -427,6 +432,7 @@ void main() {
     vec3 sColor2 = linearToSrgb(uColor2);
     vec3 sColor3 = linearToSrgb(uColor3);
     vec3 sColor4 = linearToSrgb(uColor4);
+    vec3 sColor5 = linearToSrgb(uColor5);
     
     float t = uTime * 0.15;
     vec2 sampleUv = rotatedUv;
@@ -450,7 +456,7 @@ void main() {
     float softness = mix(0.18, 0.65, uBlur);
     
     // Animated center positions for each color source
-    vec2 c1, c2, c3, c4;
+    vec2 c1, c2, c3, c4, c5;
     
     if (uMeshStyle == 1) {
       // Flow: colors aligned along flow angle
@@ -460,6 +466,7 @@ void main() {
       c2 = vec2(0.5) - flowDir * 0.28 + perpDir * 0.08 * cos(t * 0.6);
       c3 = vec2(0.5) + perpDir * 0.22 + flowDir * 0.06 * sin(t * 0.5);
       c4 = vec2(0.5) - perpDir * 0.22 + flowDir * 0.06 * cos(t * 0.4);
+      c5 = vec2(0.5) + flowDir * 0.12 + perpDir * 0.18 * sin(t * 0.3);
     } else if (uMeshStyle == 2) {
       if (uMeshCenterInward) {
         // Colors cluster toward center
@@ -467,12 +474,14 @@ void main() {
         c2 = vec2(0.5 + cos(t * 0.6) * 0.16, 0.5 + sin(t * 0.4) * 0.16);
         c3 = vec2(0.5 + sin(t * 0.8) * 0.12, 0.5 + cos(t * 0.5) * 0.12);
         c4 = vec2(0.5 + cos(t * 0.3) * 0.15, 0.5 + sin(t * 0.9) * 0.15);
+        c5 = vec2(0.5 + sin(t * 0.6) * 0.13, 0.5 + cos(t * 0.4) * 0.13);
       } else {
         // Colors at corners
         c1 = vec2(0.2 + sin(t * 0.5) * 0.06, 0.2 + cos(t * 0.7) * 0.06);
         c2 = vec2(0.8 + cos(t * 0.6) * 0.06, 0.2 + sin(t * 0.4) * 0.06);
         c3 = vec2(0.8 + sin(t * 0.8) * 0.06, 0.8 + cos(t * 0.5) * 0.06);
         c4 = vec2(0.2 + cos(t * 0.3) * 0.06, 0.8 + sin(t * 0.9) * 0.06);
+        c5 = vec2(0.5 + sin(t * 0.4) * 0.06, 0.5 + cos(t * 0.6) * 0.06);
       }
     } else {
       // Organic: well-spread positions with gentle animation
@@ -492,6 +501,10 @@ void main() {
         0.28 + cos(t * 0.5) * 0.08,
         0.48 + sin(t * 0.7) * 0.1
       );
+      c5 = vec2(
+        0.62 + sin(t * 0.6) * 0.09,
+        0.58 + cos(t * 0.4) * 0.08
+      );
     }
     
     // Domain Warping: feed noise into noise coordinates for fluid/silk shapes
@@ -506,18 +519,21 @@ void main() {
     float distort2 = snoise(vec3(warpedUv * distortScale + 50.0,    t * 0.25))         * 0.12;
     float distort3 = snoise(vec3(warpedUv * distortScale + 100.0,   t * 0.2))          * 0.12;
     float distort4 = snoise(vec3(warpedUv * distortScale + 150.0,   t * 0.35))         * 0.12;
+    float distort5 = snoise(vec3(warpedUv * distortScale + 200.0,   t * 0.28))         * 0.12;
     
     // Noise-distorted distances from each color center
     float d1 = length(sampleUv - c1) + distort1;
     float d2 = length(sampleUv - c2) + distort2;
     float d3 = length(sampleUv - c3) + distort3;
     float d4 = length(sampleUv - c4) + distort4;
+    float d5 = length(sampleUv - c5) + distort5;
     
     // Gaussian radii: proportional to weight and softness
     float r1 = softness * (0.3 + w1 * 0.4);
     float r2 = softness * (0.3 + w2 * 0.4);
     float r3 = softness * (0.3 + w3 * 0.4);
     float r4 = softness * (0.3 + w4 * 0.4);
+    float r5 = softness * (0.3 + w5 * 0.4);
     
     // Gaussian falloff: exp(-d²/r²), boosted so colors are vivid at centers
     // Soft weight floor: colors stay at least 50% bright even at low weight,
@@ -527,27 +543,33 @@ void main() {
     float wFactor2 = mix(0.5, 1.0, clamp(w2 * 3.0, 0.0, 1.0));
     float wFactor3 = mix(0.5, 1.0, clamp(w3 * 3.0, 0.0, 1.0));
     float wFactor4 = mix(0.5, 1.0, clamp(w4 * 3.0, 0.0, 1.0));
+    float wFactor5 = mix(0.5, 1.0, clamp(w5 * 3.0, 0.0, 1.0));
     float g1 = exp(-d1 * d1 / (r1 * r1)) * glowBoost * wFactor1;
     float g2 = exp(-d2 * d2 / (r2 * r2)) * glowBoost * wFactor2;
     float g3 = exp(-d3 * d3 / (r3 * r3)) * glowBoost * wFactor3;
     float g4 = uHasColor4 ? exp(-d4 * d4 / (r4 * r4)) * glowBoost * wFactor4 : 0.0;
+    float g5 = uHasColor5 ? exp(-d5 * d5 / (r5 * r5)) * glowBoost * wFactor5 : 0.0;
     
     // Black's constant baseline - fills all gaps between color blobs
     // Boosted slightly so darkness dominates where no light reaches
     float darkBase = w0 * 1.8;
     
     // Normalize: all contributions sum to 1.0
-    float total = darkBase + g1 + g2 + g3 + g4;
+    float total = darkBase + g1 + g2 + g3 + g4 + g5;
     float a0 = darkBase / total;
     float a1 = g1 / total;
     float a2 = g2 / total;
     float a3 = g3 / total;
     float a4 = g4 / total;
+    float a5 = g5 / total;
     
     // Weighted color blend in sRGB space (order-independent)
     finalColor = sColor0 * a0 + sColor1 * a1 + sColor2 * a2 + sColor3 * a3;
     if (uHasColor4) {
       finalColor += sColor4 * a4;
+    }
+    if (uHasColor5) {
+      finalColor += sColor5 * a5;
     }
     
     // Subtle edge fade
@@ -567,6 +589,7 @@ void main() {
     vec3 sColor2 = linearToSrgb(uColor2);
     vec3 sColor3 = linearToSrgb(uColor3);
     vec3 sColor4 = linearToSrgb(uColor4);
+    vec3 sColor5 = linearToSrgb(uColor5);
     
     float t = uTime * 0.12;
     vec2 st = rotatedUv;
@@ -641,6 +664,7 @@ void main() {
     float dist2Noise = snoise(vec3(st * 3.0 + 50.0, t * 0.25)) * distortAmount;
     float dist3Noise = snoise(vec3(st * 3.0 + 100.0, t * 0.2)) * distortAmount;
     float dist4Noise = snoise(vec3(st * 3.0 + 150.0, t * 0.35)) * distortAmount;
+    float dist5Noise = snoise(vec3(st * 3.0 + 200.0, t * 0.28)) * distortAmount;
     
     // Gaussian glow with distortion
     float d1 = length(st - p1) + dist1Noise;
@@ -657,6 +681,12 @@ void main() {
       float d4 = length(st - p4) + dist4Noise;
       orb4 = exp(-d4 * d4 / (orbSize * orbSize * (0.4 + w4 * 0.6)));
     }
+    float orb5 = 0.0;
+    if (uHasColor5) {
+      vec2 p5 = vec2(0.5 + sin(t * 0.6) * spread * 0.8, 0.5 + cos(t * 0.4) * spread * 0.8);
+      float d5g = length(st - p5) + dist5Noise;
+      orb5 = exp(-d5g * d5g / (orbSize * orbSize * (0.4 + w5 * 0.6)));
+    }
     
     // Weight modulates orb intensity: full weight = full glow, low weight = dimmer orb.
     float glowIntensity = 3.0 + uStrength;
@@ -664,6 +694,7 @@ void main() {
     orb2 *= w2 * glowIntensity;
     orb3 *= w3 * glowIntensity;
     orb4 *= w4 * glowIntensity;
+    orb5 *= w5 * glowIntensity;
     
     // Detect light vs dark background for blending strategy
     float bgLuma = luma(sColor0);
@@ -679,6 +710,9 @@ void main() {
       if (uHasColor4) {
         finalColor *= mix(vec3(1.0), sColor4, clamp(orb4, 0.0, 1.0));
       }
+      if (uHasColor5) {
+        finalColor *= mix(vec3(1.0), sColor5, clamp(orb5, 0.0, 1.0));
+      }
       
       // Contrast: invert the exponent logic for light bg (lower exp = more contrast on whites)
       float contrastExp = 1.0 / (1.0 + uGlowShadowDensity * 1.5);
@@ -692,6 +726,9 @@ void main() {
       finalColor += sColor3 * orb3;
       if (uHasColor4) {
         finalColor += sColor4 * orb4;
+      }
+      if (uHasColor5) {
+        finalColor += sColor5 * orb5;
       }
       
       // Contrast boost via pow() — pushes darks deeper, keeps brights vivid
@@ -716,6 +753,7 @@ void main() {
     vec3 sColor2 = linearToSrgb(uColor2);
     vec3 sColor3 = linearToSrgb(uColor3);
     vec3 sColor4 = linearToSrgb(uColor4);
+    vec3 sColor5 = linearToSrgb(uColor5);
 
     float spreadMult = mix(0.05, 0.18, uPlaneSpread);
     float transitionWidth = spreadMult + blurFactor * 0.22;
@@ -725,6 +763,7 @@ void main() {
     float blend12 = smootherstep(threshold1 - transitionWidth, threshold1 + transitionWidth, noise);
     float blend23 = smootherstep(threshold2 - transitionWidth, threshold2 + transitionWidth, noise);
     float blend34 = smootherstep(threshold3 - transitionWidth, threshold3 + transitionWidth, noise);
+    float blend45 = smootherstep(threshold4 - transitionWidth, threshold4 + transitionWidth, noise);
     
     finalColor = sColor0;
     finalColor = mix(finalColor, sColor1, blend01);
@@ -732,6 +771,9 @@ void main() {
     finalColor = mix(finalColor, sColor3, blend23);
     if (uHasColor4) {
       finalColor = mix(finalColor, sColor4, blend34);
+    }
+    if (uHasColor5) {
+      finalColor = mix(finalColor, sColor5, blend45);
     }
     
   } else {
@@ -744,6 +786,7 @@ void main() {
     vec3 sColor2 = linearToSrgb(uColor2);
     vec3 sColor3 = linearToSrgb(uColor3);
     vec3 sColor4 = linearToSrgb(uColor4);
+    vec3 sColor5 = linearToSrgb(uColor5);
     
     float baseTrans = 0.10;
     float transitionWidth = baseTrans + blurFactor * 0.20;
@@ -756,6 +799,7 @@ void main() {
     float blend12 = smootherstep(threshold1 - transitionWidth * 0.5, threshold1 + transitionWidth, noise);
     float blend23 = smootherstep(threshold2 - transitionWidth * 0.5, threshold2 + transitionWidth, noise);
     float blend34 = smootherstep(threshold3 - transitionWidth * 0.5, threshold3 + transitionWidth, noise);
+    float blend45 = smootherstep(threshold4 - transitionWidth * 0.5, threshold4 + transitionWidth, noise);
     
     finalColor = sColor0;
     finalColor = mix(finalColor, sColor1, blend01);
@@ -763,6 +807,9 @@ void main() {
     finalColor = mix(finalColor, sColor3, blend23);
     if (uHasColor4) {
       finalColor = mix(finalColor, sColor4, blend34);
+    }
+    if (uHasColor5) {
+      finalColor = mix(finalColor, sColor5, blend45);
     }
   }
   
@@ -803,6 +850,7 @@ export const Custom4ColorGradient = forwardRef<THREE.Mesh, Custom4ColorGradientP
   const gradientType = config.wireframe ? 'mesh' : config.type;
   
   const hasColor4 = config.color4 !== null;
+  const hasColor5 = config.color5 !== null;
   
   const uniforms = useMemo(() => ({
     uColor0: { value: new THREE.Color(config.color0) },
@@ -810,12 +858,15 @@ export const Custom4ColorGradient = forwardRef<THREE.Mesh, Custom4ColorGradientP
     uColor2: { value: new THREE.Color(config.color2) },
     uColor3: { value: new THREE.Color(config.color3) },
     uColor4: { value: new THREE.Color(config.color4 || '#000000') },
+    uColor5: { value: new THREE.Color(config.color5 || '#000000') },
     uWeight0: { value: config.colorWeight0 },
     uWeight1: { value: config.colorWeight1 },
     uWeight2: { value: config.colorWeight2 },
     uWeight3: { value: config.colorWeight3 },
     uWeight4: { value: config.colorWeight4 ?? 0 },
+    uWeight5: { value: config.colorWeight5 ?? 0 },
     uHasColor4: { value: config.color4 !== null },
+    uHasColor5: { value: config.color5 !== null },
     uTime: { value: 0 },
     uNoiseScale: { value: config.meshNoiseScale ?? 1.0 },
     uBlur: { value: (config.meshBlur ?? 50) / 100 },
@@ -865,12 +916,17 @@ export const Custom4ColorGradient = forwardRef<THREE.Mesh, Custom4ColorGradientP
     if (config.color4) {
       mat.uniforms.uColor4.value.set(config.color4);
     }
+    if (config.color5) {
+      mat.uniforms.uColor5.value.set(config.color5);
+    }
     mat.uniforms.uWeight0.value = config.colorWeight0;
     mat.uniforms.uWeight1.value = config.colorWeight1;
     mat.uniforms.uWeight2.value = config.colorWeight2;
     mat.uniforms.uWeight3.value = config.colorWeight3;
     mat.uniforms.uWeight4.value = config.colorWeight4 ?? 0;
+    mat.uniforms.uWeight5.value = config.colorWeight5 ?? 0;
     mat.uniforms.uHasColor4.value = config.color4 !== null;
+    mat.uniforms.uHasColor5.value = config.color5 !== null;
     mat.uniforms.uNoiseScale.value = config.meshNoiseScale ?? 1.0;
     mat.uniforms.uBlur.value = (config.meshBlur ?? 50) / 100;
     mat.uniforms.uStrength.value = config.uStrength;
