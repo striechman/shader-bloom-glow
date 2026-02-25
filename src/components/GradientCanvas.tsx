@@ -15,6 +15,8 @@ export const GradientCanvas = ({ config, onConfigChange }: GradientCanvasProps) 
   const [showDebug, setShowDebug] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
+  // Tracks which named handle is being dragged ('center' | 'direction' | 'conicAngle' | null)
+  const activeHandle = useRef<string | null>(null);
   
   // Check if dragging is supported (Plane, Glow, Conic modes – not wireframe/button)
   const isPlaneMode = config.type === 'plane' && !config.wireframe;
@@ -153,6 +155,61 @@ export const GradientCanvas = ({ config, onConfigChange }: GradientCanvasProps) 
   };
   
   const grainOpacity = config.grain ? (config.grainIntensity ?? 10) / 10 : 0;
+
+  // ── Control-handle helpers ──────────────────────────────────────────────────
+  // Returns the center-handle position as a fraction (0-1) of the container.
+  // These are the exact inverses of the drag formulas used in handlePointerMove.
+  const getHandleCenter = (): { cx: number; cy: number } => {
+    if (isGlowMode) {
+      return {
+        cx: (config.glowOffsetX ?? 0) / 100 + 0.5,
+        cy: (config.glowOffsetY ?? 0) / 100 + 0.5,
+      };
+    }
+    if (isConicMode) {
+      return {
+        cx: (config.conicOffsetX ?? 0) / 100 + 0.5,
+        cy: 0.5 - (config.conicOffsetY ?? 0) / 100,
+      };
+    }
+    if (config.planeRadial) {
+      return {
+        cx: (config.planeOffsetX ?? 0) / 100 + 0.5,
+        cy: 0.5 - (config.planeOffsetY ?? 0) / 100,
+      };
+    }
+    // Linear plane
+    return {
+      cx: 0.5 - (config.planeOffsetX ?? 0) / 100,
+      cy: (config.planeOffsetY ?? 0) / 100 + 0.5,
+    };
+  };
+
+  // Applies a center-drag offset (same logic as the full-canvas drag handler).
+  const applyCenterDrag = useCallback((nx: number, ny: number) => {
+    const scaleFactor = Math.max(1, (config.planeScale ?? 100) / 100);
+    if (isGlowMode) {
+      onConfigChange?.({
+        glowOffsetX: Math.max(-50, Math.min(50, Math.round(nx * 100))),
+        glowOffsetY: Math.max(-50, Math.min(50, Math.round(ny * 100))),
+      });
+    } else if (isConicMode) {
+      onConfigChange?.({
+        conicOffsetX: Math.max(-50, Math.min(50, Math.round(nx * 100))),
+        conicOffsetY: Math.max(-50, Math.min(50, Math.round(-ny * 100))),
+      });
+    } else if (config.planeRadial) {
+      onConfigChange?.({
+        planeOffsetX: Math.max(-100, Math.min(100, Math.round(nx * 100 * scaleFactor))),
+        planeOffsetY: Math.max(-100, Math.min(100, Math.round(-ny * 100 * scaleFactor))),
+      });
+    } else {
+      onConfigChange?.({
+        planeOffsetX: Math.max(-100, Math.min(100, Math.round(-nx * 100 * scaleFactor))),
+        planeOffsetY: Math.max(-100, Math.min(100, Math.round(ny * 100 * scaleFactor))),
+      });
+    }
+  }, [isGlowMode, isConicMode, config.planeRadial, config.planeScale, onConfigChange]);
   
   // Create config with current colors for the 4-color gradient
   const gradientConfig = useMemo(() => ({
@@ -173,7 +230,7 @@ export const GradientCanvas = ({ config, onConfigChange }: GradientCanvasProps) 
         style={getContainerStyle()}
         className="relative flex items-center justify-center"
       >
-        {/* Drag overlay – sits above all overlays to capture pointer events */}
+        {/* Drag overlay – full-canvas coarse positioning (below the handles) */}
         {canDrag && (
           <div
             className="absolute inset-0 z-[35] cursor-crosshair active:cursor-grabbing"
@@ -183,6 +240,130 @@ export const GradientCanvas = ({ config, onConfigChange }: GradientCanvasProps) 
             onPointerLeave={handlePointerUp}
           />
         )}
+
+        {/* ── Control handles ── */}
+        {canDrag && !isButton && (() => {
+          const { cx, cy } = getHandleCenter();
+          // Clamp so the handle dot stays fully inside the canvas
+          const hx = Math.max(0.03, Math.min(0.97, cx));
+          const hy = Math.max(0.03, Math.min(0.97, cy));
+
+          // Direction handle: available for linear Plane and Conic modes.
+          const HDist = 0.22; // handle arm length as fraction of canvas
+          const showDirHandle  = isPlaneMode && !config.planeRadial;
+          const showConicHandle = isConicMode;
+          const planeAngleRad  = (config.planeAngle    ?? 45) * Math.PI / 180;
+          const conicAngleRad  = (config.conicStartAngle ?? 0) * Math.PI / 180;
+          const dirX  = hx + Math.cos(planeAngleRad) * HDist;
+          const dirY  = hy - Math.sin(planeAngleRad) * HDist; // screen-Y is flipped
+          const conicX = hx + Math.cos(conicAngleRad) * HDist;
+          const conicY = hy - Math.sin(conicAngleRad) * HDist;
+
+          return (
+            <>
+              {/* SVG lines – decorative, pointer-events off */}
+              <svg
+                className="absolute inset-0 pointer-events-none z-[36]"
+                width="100%" height="100%"
+                style={{ overflow: 'visible' }}
+              >
+                {showDirHandle && (
+                  <line
+                    x1={`${hx * 100}%`} y1={`${hy * 100}%`}
+                    x2={`${dirX * 100}%`} y2={`${dirY * 100}%`}
+                    stroke="rgba(255,255,255,0.55)" strokeWidth="1.5" strokeDasharray="4 3"
+                  />
+                )}
+                {showConicHandle && (
+                  <line
+                    x1={`${hx * 100}%`} y1={`${hy * 100}%`}
+                    x2={`${conicX * 100}%`} y2={`${conicY * 100}%`}
+                    stroke="rgba(255,255,255,0.55)" strokeWidth="1.5" strokeDasharray="4 3"
+                  />
+                )}
+              </svg>
+
+              {/* ── Center handle – drag to move the gradient ── */}
+              <div
+                className="absolute z-[37] select-none touch-none"
+                style={{ left: `${hx * 100}%`, top: `${hy * 100}%`, transform: 'translate(-50%,-50%)' }}
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  activeHandle.current = 'center';
+                  (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+                }}
+                onPointerMove={(e) => {
+                  if (activeHandle.current !== 'center' || !containerRef.current) return;
+                  const r = containerRef.current.getBoundingClientRect();
+                  applyCenterDrag(
+                    (e.clientX - r.left) / r.width - 0.5,
+                    (e.clientY - r.top) / r.height - 0.5,
+                  );
+                }}
+                onPointerUp={() => { activeHandle.current = null; }}
+                onPointerLeave={() => { activeHandle.current = null; }}
+              >
+                {/* Outer ring + inner dot */}
+                <div className="w-[22px] h-[22px] rounded-full border-[2.5px] border-white/90 bg-white/10 backdrop-blur-sm shadow-[0_2px_10px_rgba(0,0,0,0.45)] cursor-move flex items-center justify-center">
+                  <div className="w-[6px] h-[6px] rounded-full bg-white/90" />
+                </div>
+              </div>
+
+              {/* ── Direction handle – drag to rotate a linear-plane gradient ── */}
+              {showDirHandle && (
+                <div
+                  className="absolute z-[37] select-none touch-none"
+                  style={{ left: `${dirX * 100}%`, top: `${dirY * 100}%`, transform: 'translate(-50%,-50%)' }}
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    activeHandle.current = 'direction';
+                    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+                  }}
+                  onPointerMove={(e) => {
+                    if (activeHandle.current !== 'direction' || !containerRef.current) return;
+                    const r   = containerRef.current.getBoundingClientRect();
+                    const csx = r.left + hx * r.width;
+                    const csy = r.top  + hy * r.height;
+                    const deg = Math.atan2(-(e.clientY - csy), e.clientX - csx) * 180 / Math.PI;
+                    onConfigChange?.({
+                      planeAngle: ((Math.round(deg) % 360) + 360) % 360,
+                      planeRadial: false,
+                    });
+                  }}
+                  onPointerUp={() => { activeHandle.current = null; }}
+                  onPointerLeave={() => { activeHandle.current = null; }}
+                >
+                  <div className="w-[16px] h-[16px] rounded-full border-2 border-white/90 bg-primary/75 shadow-[0_2px_8px_rgba(0,0,0,0.4)] cursor-alias" />
+                </div>
+              )}
+
+              {/* ── Conic angle handle – drag to rotate the conic sweep ── */}
+              {showConicHandle && (
+                <div
+                  className="absolute z-[37] select-none touch-none"
+                  style={{ left: `${conicX * 100}%`, top: `${conicY * 100}%`, transform: 'translate(-50%,-50%)' }}
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    activeHandle.current = 'conicAngle';
+                    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+                  }}
+                  onPointerMove={(e) => {
+                    if (activeHandle.current !== 'conicAngle' || !containerRef.current) return;
+                    const r   = containerRef.current.getBoundingClientRect();
+                    const csx = r.left + hx * r.width;
+                    const csy = r.top  + hy * r.height;
+                    const deg = Math.atan2(-(e.clientY - csy), e.clientX - csx) * 180 / Math.PI;
+                    onConfigChange?.({ conicStartAngle: ((Math.round(deg) % 360) + 360) % 360 });
+                  }}
+                  onPointerUp={() => { activeHandle.current = null; }}
+                  onPointerLeave={() => { activeHandle.current = null; }}
+                >
+                  <div className="w-[16px] h-[16px] rounded-full border-2 border-white/90 bg-primary/75 shadow-[0_2px_8px_rgba(0,0,0,0.4)] cursor-alias" />
+                </div>
+              )}
+            </>
+          );
+        })()}
         
         {use4ColorMode ? (
           /* 4-color gradient for Mesh and Plane modes */
