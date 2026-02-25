@@ -259,15 +259,25 @@ void main() {
     
     if (uPlaneRadial) {
       // Radial gradient: offset shifts center, scale zooms
-      vec2 radialCenter = warpedUv - uPlaneOffset;
+      vec2 radialCenter = warpedUv - uPlaneOffset * 0.5;
       baseNoise = length(radialCenter) / (0.707 * scale);
     } else {
-      // Linear gradient: compute normalized value at ORIGINAL coords first,
-      // then apply scale (zoom) and offset (pan) as a viewport transform.
+      // Linear gradient with viewport pan & zoom.
+      // Offset shifts the UV sampling point so the gradient pattern physically moves.
+      // Scale zooms in/out from the center of the shifted view.
       vec2 direction = vec2(cos(uPlaneAngle), sin(uPlaneAngle));
       
-      // Step 1: Normalize dot product to 0-1 at original scale (no offset)
-      float rawDot = dot(warpedUv, direction);
+      // Shift UV by offset (scaled down so full slider range = ~50% shift)
+      vec2 shiftedUv = warpedUv - uPlaneOffset * 0.5;
+      
+      // Apply scale as zoom around the shifted center
+      vec2 scaledUv = shiftedUv / scale;
+      
+      // Compute dot product of the scaled+shifted UV
+      float rawDot = dot(scaledUv, direction);
+      
+      // Normalize using corners at scale=1, offset=0 (fixed reference frame)
+      // This ensures zoom clips colors and offset moves the pattern
       vec2 cr1 = vec2(-0.5, -0.5);
       vec2 cr2 = vec2( 0.5, -0.5);
       vec2 cr3 = vec2(-0.5,  0.5);
@@ -278,12 +288,7 @@ void main() {
       float dp4 = dot(cr4, direction);
       float minDP = min(min(dp1, dp2), min(dp3, dp4));
       float maxDP = max(max(dp1, dp2), max(dp3, dp4));
-      float baseDotNorm = (rawDot - minDP) / (maxDP - minDP); // 0-1 across screen
-      
-      // Step 2: Apply scale as zoom (>1 = zoom in, <1 = zoom out)
-      // and offset as pan in gradient space
-      float offsetInGradSpace = dot(uPlaneOffset, direction) / (maxDP - minDP);
-      baseNoise = (baseDotNorm - 0.5) / scale + 0.5 + offsetInGradSpace;
+      baseNoise = (rawDot - minDP) / (maxDP - minDP);
     }
     
     // Add wave distortion (only when enabled)
