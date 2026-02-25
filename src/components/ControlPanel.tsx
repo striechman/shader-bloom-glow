@@ -567,18 +567,6 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
 
   return (
     <>
-      {/* Backdrop overlay - closes panel on click */}
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onToggle}
-            className="fixed inset-0 z-30 bg-black/20"
-          />
-        )}
-      </AnimatePresence>
       
       {/* Panel - slides from right on all devices */}
       <motion.div
