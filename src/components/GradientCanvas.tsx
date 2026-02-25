@@ -16,29 +16,69 @@ export const GradientCanvas = ({ config, onConfigChange }: GradientCanvasProps) 
   const containerRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
   
-  // Check if dragging is supported (Plane mode only, non-button)
+  // Check if dragging is supported (Plane, Glow, Conic modes – not wireframe/button)
   const isPlaneMode = config.type === 'plane' && !config.wireframe;
-  const canDrag = isPlaneMode && !!onConfigChange;
-  
+  const isGlowMode = config.type === 'glow';
+  const isConicMode = config.type === 'conic';
+  const canDrag = (isPlaneMode || isGlowMode || isConicMode) && !!onConfigChange;
+
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if (!canDrag) return;
     isDragging.current = true;
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
   }, [canDrag]);
-  
+
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!isDragging.current || !canDrag || !containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
-    // Convert mouse position to offset range, scaled by planeScale
+    // nx/ny: -0.5 (left/top) to +0.5 (right/bottom) in screen space
+    const nx = (e.clientX - rect.left) / rect.width - 0.5;
+    const ny = (e.clientY - rect.top) / rect.height - 0.5;
     const scaleFactor = Math.max(1, (config.planeScale ?? 100) / 100);
-    const range = 100; // full range
-    const x = Math.round(((e.clientX - rect.left) / rect.width - 0.5) * -range * 2 * scaleFactor);
-    const y = Math.round(((e.clientY - rect.top) / rect.height - 0.5) * -range * 2 * scaleFactor);
-    const clampedX = Math.max(-range, Math.min(range, x));
-    const clampedY = Math.max(-range, Math.min(range, y));
-    onConfigChange?.({ planeOffsetX: clampedX, planeOffsetY: clampedY });
-  }, [canDrag, onConfigChange]);
-  
+
+    if (isGlowMode) {
+      // Glow: shift orb cluster so its UV-space center follows the cursor.
+      // uGlowOffset = (glowOffsetX/100, -glowOffsetY/100) in the shader,
+      // so glowOffsetX = nx*100, glowOffsetY = ny*100 keeps st=0.5 at click.
+      const gx = Math.round(nx * 100);
+      const gy = Math.round(ny * 100);
+      onConfigChange?.({
+        glowOffsetX: Math.max(-50, Math.min(50, gx)),
+        glowOffsetY: Math.max(-50, Math.min(50, gy)),
+      });
+    } else if (isConicMode) {
+      // Conic: move angular center to click position.
+      // centeredUv at click = (nx, -ny) [UV Y is flipped vs screen Y].
+      // uConicOffset = centeredUv → conicOffsetX = nx*100, conicOffsetY = -ny*100.
+      const cx = Math.round(nx * 100);
+      const cy = Math.round(-ny * 100);
+      onConfigChange?.({
+        conicOffsetX: Math.max(-50, Math.min(50, cx)),
+        conicOffsetY: Math.max(-50, Math.min(50, cy)),
+      });
+    } else if (config.planeRadial) {
+      // Radial plane: place the radial center exactly at the click position.
+      // radialCenter = centeredUv - uPlaneOffset; want 0 at click →
+      // uPlaneOffset = centeredUv at click = (nx, -ny).
+      const rx = Math.round(nx * 100 * scaleFactor);
+      const ry = Math.round(-ny * 100 * scaleFactor);
+      onConfigChange?.({
+        planeOffsetX: Math.max(-100, Math.min(100, rx)),
+        planeOffsetY: Math.max(-100, Math.min(100, ry)),
+      });
+    } else {
+      // Linear plane: pan the gradient so the midpoint follows the cursor.
+      // baseNoise = (baseDotNorm - 0.5)/scale + 0.5 + offset;
+      // for midpoint (noise=0.5) at cursor: offset = -(nx for X, ny for Y).
+      const lx = Math.round(-nx * 100 * scaleFactor);
+      const ly = Math.round(ny * 100 * scaleFactor);
+      onConfigChange?.({
+        planeOffsetX: Math.max(-100, Math.min(100, lx)),
+        planeOffsetY: Math.max(-100, Math.min(100, ly)),
+      });
+    }
+  }, [canDrag, onConfigChange, isGlowMode, isConicMode, config.planeRadial, config.planeScale]);
+
   const handlePointerUp = useCallback(() => {
     isDragging.current = false;
   }, []);
@@ -133,10 +173,10 @@ export const GradientCanvas = ({ config, onConfigChange }: GradientCanvasProps) 
         style={getContainerStyle()}
         className="relative flex items-center justify-center"
       >
-        {/* Drag overlay for Plane mode - sits above Canvas to capture pointer events */}
+        {/* Drag overlay – sits above all overlays to capture pointer events */}
         {canDrag && (
           <div
-            className="absolute inset-0 z-[5] cursor-grab active:cursor-grabbing"
+            className="absolute inset-0 z-[35] cursor-crosshair active:cursor-grabbing"
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
