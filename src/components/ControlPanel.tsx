@@ -623,37 +623,67 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
             />
           </div>
 
-          {/* ========== 0. OUTPUT FORMAT ========== */}
+          {/* ========== 0. FORMAT ========== */}
           <div className="rounded-xl bg-secondary/10 p-4 space-y-3">
-            <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-muted-foreground">Output Format</h3>
-            <div className="flex flex-wrap gap-1.5">
-              {aspectRatioOptions.map((option) => (
-                <button
-                  key={option.value}
-                  onClick={() => onConfigChange({ aspectRatio: option.value })}
-                  className={`py-2 px-3 rounded-lg text-sm font-medium transition-all ${
-                    config.aspectRatio === option.value
-                      ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))}
-              {onOpenButtonsPanel && (
-                <button
-                  onClick={onOpenButtonsPanel}
-                  className="py-1.5 px-2.5 rounded-lg text-xs font-medium transition-all bg-accent text-accent-foreground hover:bg-accent/80"
-                >
-                  Buttons
-                </button>
-              )}
+            <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-muted-foreground">Format</h3>
+
+            {/* Standard ratios */}
+            <div className="space-y-1.5">
+              <p className="text-[9px] font-semibold text-muted-foreground/50 uppercase tracking-widest px-0.5">Canvas</p>
+              <div className="flex flex-wrap gap-1.5">
+                {aspectRatioOptions.filter(o => !o.category).map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => onConfigChange({ aspectRatio: option.value })}
+                    className={`py-1.5 px-3 rounded-lg text-xs font-semibold transition-all ${
+                      config.aspectRatio === option.value
+                        ? 'bg-primary text-primary-foreground shadow-sm ring-2 ring-primary/30'
+                        : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
             </div>
+
+            {/* Web / Banner ratios */}
+            <div className="space-y-1.5">
+              <p className="text-[9px] font-semibold text-muted-foreground/50 uppercase tracking-widest px-0.5">Web & Banners</p>
+              <div className="flex flex-wrap gap-1.5">
+                {aspectRatioOptions.filter(o => o.category === 'web').map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => onConfigChange({ aspectRatio: option.value })}
+                    className={`py-1.5 px-3 rounded-lg text-xs font-semibold transition-all ${
+                      config.aspectRatio === option.value
+                        ? 'bg-primary text-primary-foreground shadow-sm ring-2 ring-primary/30'
+                        : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+                {onOpenButtonsPanel && (
+                  <button
+                    onClick={onOpenButtonsPanel}
+                    className={`py-1.5 px-3 rounded-lg text-xs font-semibold transition-all ${
+                      isButtonRatio(config.aspectRatio)
+                        ? 'bg-primary text-primary-foreground shadow-sm ring-2 ring-primary/30'
+                        : 'bg-accent text-accent-foreground hover:bg-accent/80'
+                    }`}
+                  >
+                    Buttons
+                  </button>
+                )}
+              </div>
+            </div>
+
             {isHeroBannerRatio(config.aspectRatio) && (
-              <div className="space-y-2">
+              <div className="space-y-1.5 pt-1">
                 <div className="flex items-center justify-between">
                   <Label className="text-muted-foreground text-xs">Black Fade</Label>
-                  <span className="text-xs text-muted-foreground">{config.bannerBlackFade}%</span>
+                  <span className="text-[10px] tabular-nums text-muted-foreground">{config.bannerBlackFade}%</span>
                 </div>
                 <Slider
                   value={[config.bannerBlackFade]}
@@ -667,76 +697,84 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
             )}
           </div>
 
-          {/* ========== 1. SHAPE & STYLE ========== */}
+          {/* ========== 1. STYLE ========== */}
           <div className="rounded-xl bg-secondary/10 p-4 space-y-4">
-            <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-muted-foreground">Shape & Style</h3>
-            
-            {/* Shape Selection Grid */}
-            <div className="space-y-2">
-              <div className="grid grid-cols-4 gap-2">
-                {shapeOptions.filter(s => !s.isPremium).map((shape) => {
-                  const isActive = activePremiumStyle === null && (
-                    shape.label === 'Aura' 
-                      ? config.type === 'plane' && config.wireframe && config.meshCenterInward === true
-                      : shape.label === 'Mesh'
-                        ? config.type === 'plane' && config.wireframe && !config.meshCenterInward
-                        : config.type === shape.value && config.wireframe === shape.wireframe
-                  );
-                  
-                  const handleShapeClick = () => {
-                    setActivePremiumStyle(null);
-                    const effectSettings = effectPresets[shape.presetKey] || {};
-                    onConfigChange({ 
-                      type: shape.value, 
-                      wireframe: shape.wireframe,
-                      ...effectSettings
-                    });
-                  };
-                  
-                  return (
-                    <button
-                      key={shape.label}
-                      onClick={handleShapeClick}
-                      className={`py-2 px-2 rounded-lg text-sm font-medium transition-all ${
-                        isActive
-                          ? 'bg-primary text-primary-foreground shadow-sm'
-                          : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                      }`}
-                    >
-                      {shape.label}
-                    </button>
-                  );
-                })}
+            <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-muted-foreground">Style</h3>
+
+            {/* Shape Selection */}
+            <div className="space-y-3">
+              {/* Base row */}
+              <div className="space-y-1.5">
+                <p className="text-[9px] font-semibold text-muted-foreground/50 uppercase tracking-widest px-0.5">Base</p>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {shapeOptions.filter(s => !s.isPremium).map((shape) => {
+                    const isActive = activePremiumStyle === null && (
+                      shape.label === 'Aura'
+                        ? config.type === 'plane' && config.wireframe && config.meshCenterInward === true
+                        : shape.label === 'Mesh'
+                          ? config.type === 'plane' && config.wireframe && !config.meshCenterInward
+                          : config.type === shape.value && config.wireframe === shape.wireframe
+                    );
+
+                    const handleShapeClick = () => {
+                      setActivePremiumStyle(null);
+                      const effectSettings = effectPresets[shape.presetKey] || {};
+                      onConfigChange({
+                        type: shape.value,
+                        wireframe: shape.wireframe,
+                        ...effectSettings
+                      });
+                    };
+
+                    return (
+                      <button
+                        key={shape.label}
+                        onClick={handleShapeClick}
+                        className={`py-2 px-1 rounded-lg text-sm font-semibold transition-all ${
+                          isActive
+                            ? 'bg-primary text-primary-foreground shadow-sm ring-2 ring-primary/30'
+                            : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                        }`}
+                      >
+                        {shape.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-              {/* Premium Styles */}
-              <div className="grid grid-cols-4 gap-2">
-                {shapeOptions.filter(s => s.isPremium).map((shape) => {
-                  const isActive = activePremiumStyle === shape.presetKey;
-                  
-                  const handleShapeClick = () => {
-                    setActivePremiumStyle(shape.presetKey);
-                    const effectSettings = effectPresets[shape.presetKey] || {};
-                    onConfigChange({ 
-                      type: shape.value, 
-                      wireframe: shape.wireframe,
-                      ...effectSettings
-                    });
-                  };
-                  
-                  return (
-                    <button
-                      key={shape.label}
-                      onClick={handleShapeClick}
-                      className={`py-2 px-2 rounded-lg text-xs font-medium transition-all ${
-                        isActive
-                          ? 'bg-primary text-primary-foreground shadow-sm'
-                          : 'bg-accent text-accent-foreground hover:bg-accent/80'
-                      }`}
-                    >
-                      {shape.label}
-                    </button>
-                  );
-                })}
+
+              {/* Looks row */}
+              <div className="space-y-1.5">
+                <p className="text-[9px] font-semibold text-muted-foreground/50 uppercase tracking-widest px-0.5">Looks</p>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {shapeOptions.filter(s => s.isPremium).map((shape) => {
+                    const isActive = activePremiumStyle === shape.presetKey;
+
+                    const handleShapeClick = () => {
+                      setActivePremiumStyle(shape.presetKey);
+                      const effectSettings = effectPresets[shape.presetKey] || {};
+                      onConfigChange({
+                        type: shape.value,
+                        wireframe: shape.wireframe,
+                        ...effectSettings
+                      });
+                    };
+
+                    return (
+                      <button
+                        key={shape.label}
+                        onClick={handleShapeClick}
+                        className={`py-2 px-1 rounded-lg text-sm font-semibold transition-all ${
+                          isActive
+                            ? 'bg-primary text-primary-foreground shadow-sm ring-2 ring-primary/30'
+                            : 'bg-accent text-accent-foreground hover:bg-accent/80'
+                        }`}
+                      >
+                        {shape.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
@@ -744,8 +782,13 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
 
             {/* Mesh Controls */}
             {isWireframeMode && (
-              <div className="rounded-lg bg-secondary/20 p-2.5 space-y-2.5">
-                <h4 className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Mesh Settings</h4>
+              <div className="rounded-lg bg-secondary/20 p-3 space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-3.5 rounded-full bg-primary/70" />
+                  <h4 className="text-[10px] font-bold text-foreground/60 uppercase tracking-widest">
+                    {activePremiumStyle === 'fluidSilk' ? 'Silk' : config.meshCenterInward ? 'Aura' : 'Mesh'} Settings
+                  </h4>
+                </div>
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <Label className="text-muted-foreground text-xs">Blob Size</Label>
@@ -844,8 +887,13 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
 
             {/* Plane Direction Controls */}
             {config.type === 'plane' && !config.wireframe && (
-              <div className="rounded-lg bg-secondary/20 p-2.5 space-y-2.5">
-                <h4 className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Direction</h4>
+              <div className="rounded-lg bg-secondary/20 p-3 space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-3.5 rounded-full bg-primary/70" />
+                  <h4 className="text-[10px] font-bold text-foreground/60 uppercase tracking-widest">
+                    {activePremiumStyle === 'prismaticGlass' ? 'Prism' : 'Plane'} Settings
+                  </h4>
+                </div>
                 <div className="flex gap-1.5">
                   {planeDirectionPresets.map((preset) => {
                     const Icon = preset.icon;
@@ -1000,8 +1048,11 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
 
             {/* Conic Controls */}
             {isConicMode && (
-              <div className="rounded-lg bg-secondary/20 p-2.5 space-y-2.5">
-                <h4 className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Conic Settings</h4>
+              <div className="rounded-lg bg-secondary/20 p-3 space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-3.5 rounded-full bg-primary/70" />
+                  <h4 className="text-[10px] font-bold text-foreground/60 uppercase tracking-widest">Conic Settings</h4>
+                </div>
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <Label className="text-muted-foreground text-xs flex items-center gap-1.5">
@@ -1089,8 +1140,13 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
 
             {/* Glow Controls */}
             {isGlowMode && (
-              <div className="rounded-lg bg-secondary/20 p-2.5 space-y-2.5">
-                <h4 className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Glow Settings</h4>
+              <div className="rounded-lg bg-secondary/20 p-3 space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-3.5 rounded-full bg-primary/70" />
+                  <h4 className="text-[10px] font-bold text-foreground/60 uppercase tracking-widest">
+                    {activePremiumStyle === 'ambientEdge' ? 'Edge' : 'Glow'} Settings
+                  </h4>
+                </div>
                 <div className="space-y-1.5">
                   <Label className="text-muted-foreground text-xs">Style</Label>
                   <div className="grid grid-cols-4 gap-1.5">
@@ -1229,8 +1285,11 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
 
             {/* Waves Controls */}
             {isWavesMode && (
-              <div className="rounded-lg bg-secondary/20 p-2.5 space-y-2.5">
-                <h4 className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Wave Settings</h4>
+              <div className="rounded-lg bg-secondary/20 p-3 space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-3.5 rounded-full bg-primary/70" />
+                  <h4 className="text-[10px] font-bold text-foreground/60 uppercase tracking-widest">Wave Settings</h4>
+                </div>
                 <div className="flex gap-1.5">
                   {planeDirectionPresets.filter(p => !p.isRadial).map((preset) => {
                     const Icon = preset.icon;
@@ -1311,13 +1370,28 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
             )}
 
             {/* Rotation */}
-            <div className="space-y-1.5">
+            <div className="rounded-lg bg-secondary/20 p-3 space-y-2.5">
               <div className="flex items-center justify-between">
-                <Label className="text-muted-foreground text-xs flex items-center gap-1.5">
-                  <RotateCw className="w-3.5 h-3.5" />
-                  Rotation
-                </Label>
-                <span className="text-[10px] text-muted-foreground">{config.gradientRotation ?? 0}°</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-3.5 rounded-full bg-primary/40" />
+                  <Label className="text-[10px] font-bold text-foreground/60 uppercase tracking-widest">Rotation</Label>
+                </div>
+                <span className="text-[10px] tabular-nums text-muted-foreground">{config.gradientRotation ?? 0}°</span>
+              </div>
+              <div className="flex gap-1">
+                {[0, 45, 90, 135, 180, 270].map((angle) => (
+                  <button
+                    key={angle}
+                    onClick={() => onConfigChange({ gradientRotation: angle })}
+                    className={`flex-1 py-1.5 rounded-md text-[10px] font-semibold transition-all ${
+                      (config.gradientRotation ?? 0) === angle
+                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                    }`}
+                  >
+                    {angle}°
+                  </button>
+                ))}
               </div>
               <Slider
                 value={[config.gradientRotation ?? 0]}
@@ -1327,32 +1401,22 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                 step={5}
                 className="w-full"
               />
-              <div className="flex gap-1 mt-0.5">
-                {[0, 45, 90, 135, 180, 270].map((angle) => (
-                  <button
-                    key={angle}
-                    onClick={() => onConfigChange({ gradientRotation: angle })}
-                    className={`flex-1 py-1 px-0.5 rounded text-[10px] font-medium transition-all ${
-                      (config.gradientRotation ?? 0) === angle
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                    }`}
-                  >
-                    {angle}°
-                  </button>
-                ))}
-              </div>
             </div>
           </div>
 
           {/* ========== 2. COLORS ========== */}
           <div className="rounded-xl bg-secondary/10 p-4 space-y-4">
-            <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              {isButtonRatio(config.aspectRatio) 
-                ? (config.buttonPreviewState === 'hover' ? 'Hover Colors' : 'Default Colors')
-                : 'Colors'
-              }
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {isButtonRatio(config.aspectRatio)
+                  ? (config.buttonPreviewState === 'hover' ? 'Hover Colors' : 'Default Colors')
+                  : 'Colors'
+                }
+              </h3>
+              {!isButtonRatio(config.aspectRatio) && (
+                <span className="text-[9px] text-muted-foreground/40 font-medium uppercase tracking-widest">Palettes</span>
+              )}
+            </div>
             {!isButtonRatio(config.aspectRatio) && (
               <>
                 <div className="grid grid-cols-3 gap-2.5">
@@ -1483,6 +1547,7 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
               </>
             )}
             <div className="space-y-3">
+              <p className="text-[9px] font-semibold text-muted-foreground/50 uppercase tracking-widest px-0.5">Mix</p>
               {/* Base Color Weight with Text Safe toggle */}
               <div className="space-y-2 py-3 px-3 rounded-xl bg-secondary/30">
                 <div className="flex items-center justify-between">
@@ -1632,89 +1697,88 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
           </div>
 
           {/* ========== 3. ANIMATION ========== */}
-          <div className="rounded-xl bg-secondary/10 p-4 space-y-4">
+          <div className="rounded-xl bg-secondary/10 p-4 space-y-3">
             <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-muted-foreground">Animation</h3>
-            <div className="space-y-2.5">
-              <div className="flex gap-1.5">
-                <button
-                  onClick={handleFreezeFrame}
-                  className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1.5 ${
-                    config.frozenTime === null
-                      ? 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                      : 'bg-primary text-primary-foreground'
-                  }`}
-                >
-                  {config.frozenTime === null ? (
-                    <>
-                      <Pause className="w-3.5 h-3.5" />
-                      Pause
-                    </>
-                  ) : (
-                    <>
-                      <Play className="w-3.5 h-3.5" />
-                      Play
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={handleCaptureFrame}
-                  className="py-1.5 px-2 rounded-lg text-xs font-medium transition-all bg-secondary text-secondary-foreground hover:bg-secondary/80 flex items-center gap-1.5"
-                  title="Capture current frame"
-                >
-                  <Camera className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={handleResetAnimation}
-                  className="py-1.5 px-2 rounded-lg text-xs font-medium transition-all bg-secondary text-secondary-foreground hover:bg-secondary/80 flex items-center gap-1.5"
-                  title="Reset animation"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                </button>
-              </div>
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label className="text-muted-foreground text-xs">Timeline</Label>
-                  <span className="text-[10px] text-muted-foreground">
-                    {(config.frozenTime ?? internalTime).toFixed(1)}s
-                  </span>
-                </div>
-                <Slider
-                  value={[config.frozenTime ?? internalTime]}
-                  onValueChange={([value]) => handleTimelineChange(value)}
-                  min={0}
-                  max={10}
-                  step={0.1}
-                  className="w-full"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label className="text-muted-foreground text-xs">Speed</Label>
-                  <span className="text-[10px] text-muted-foreground">{config.speed.toFixed(1)}</span>
-                </div>
-                <Slider
-                  value={[config.speed]}
-                  onValueChange={([value]) => onConfigChange({ speed: value })}
-                  min={0}
-                  max={2}
-                  step={0.1}
-                  className="w-full"
-                />
-              </div>
+
+            {/* Primary controls row */}
+            <div className="flex gap-2">
+              <button
+                onClick={handleFreezeFrame}
+                className={`flex-1 py-2 px-3 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-2 ${
+                  config.frozenTime === null
+                    ? 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                    : 'bg-primary text-primary-foreground ring-2 ring-primary/30 shadow-sm'
+                }`}
+              >
+                {config.frozenTime === null ? (
+                  <><Pause className="w-3.5 h-3.5" /> Pause</>
+                ) : (
+                  <><Play className="w-3.5 h-3.5" /> Resume</>
+                )}
+              </button>
+              <button
+                onClick={handleCaptureFrame}
+                className="py-2 px-2.5 rounded-lg text-xs font-medium transition-all bg-secondary text-secondary-foreground hover:bg-secondary/80 flex items-center gap-1.5"
+                title="Capture current frame"
+              >
+                <Camera className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={handleResetAnimation}
+                className="py-2 px-2.5 rounded-lg text-xs font-medium transition-all bg-secondary text-secondary-foreground hover:bg-secondary/80 flex items-center gap-1.5"
+                title="Reset animation"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+              </button>
             </div>
-                </div>
-          {/* ========== 4. FINE TUNE (collapsible) ========== */}
+
+            {/* Speed */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-muted-foreground text-xs">Speed</Label>
+                <span className="text-[10px] tabular-nums text-muted-foreground">{config.speed.toFixed(1)}×</span>
+              </div>
+              <Slider
+                value={[config.speed]}
+                onValueChange={([value]) => onConfigChange({ speed: value })}
+                min={0}
+                max={2}
+                step={0.1}
+                className="w-full"
+              />
+            </div>
+
+            {/* Timeline (scrub) — secondary */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-muted-foreground text-xs">Scrub</Label>
+                <span className="text-[10px] tabular-nums text-muted-foreground">
+                  {(config.frozenTime ?? internalTime).toFixed(1)}s
+                </span>
+              </div>
+              <Slider
+                value={[config.frozenTime ?? internalTime]}
+                onValueChange={([value]) => handleTimelineChange(value)}
+                min={0}
+                max={10}
+                step={0.1}
+                className="w-full"
+              />
+            </div>
+          </div>
+          {/* ========== 4. ADVANCED (collapsible) ========== */}
           <div className="rounded-xl bg-secondary/10 p-4">
             <Collapsible>
               <CollapsibleTrigger className="flex items-center justify-between w-full group">
-                <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-muted-foreground">Fine Tune</h3>
+                <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-muted-foreground">Advanced</h3>
                 <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
               </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-2.5 pt-3">
-                {/* Grain */}
-                <div className="space-y-1.5">
+              <CollapsibleContent className="space-y-3 pt-4">
+
+                {/* Grain / Film */}
+                <div className="rounded-lg bg-secondary/20 p-2.5 space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground text-xs">Grain</Label>
+                    <Label className="text-muted-foreground text-xs font-medium">Film Grain</Label>
                     <Switch
                       checked={config.grain}
                       onCheckedChange={(checked) => onConfigChange({ grain: checked })}
@@ -1723,8 +1787,8 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                   {config.grain && (
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <Label className="text-muted-foreground text-[10px]">Intensity</Label>
-                        <span className="text-[10px] text-muted-foreground">{config.grainIntensity ?? 10}%</span>
+                        <span className="text-[10px] text-muted-foreground/70">Amount</span>
+                        <span className="text-[10px] tabular-nums text-muted-foreground">{config.grainIntensity ?? 10}</span>
                       </div>
                       <Slider
                         value={[config.grainIntensity ?? 10]}
@@ -1738,53 +1802,56 @@ export const ControlPanel = ({ config, onConfigChange, isOpen, onToggle, onOpenB
                   )}
                 </div>
 
-                {/* Strength */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground text-xs">Strength</Label>
-                    <span className="text-[10px] text-muted-foreground">{config.uStrength.toFixed(1)}</span>
+                {/* Noise controls group */}
+                <div className="rounded-lg bg-secondary/20 p-2.5 space-y-2.5">
+                  <p className="text-[9px] font-semibold text-muted-foreground/50 uppercase tracking-widest">Noise Engine</p>
+
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs text-muted-foreground">Complexity</Label>
+                      <span className="text-[10px] tabular-nums text-muted-foreground">{config.uStrength.toFixed(1)}</span>
+                    </div>
+                    <Slider
+                      value={[config.uStrength]}
+                      onValueChange={([value]) => onConfigChange({ uStrength: value })}
+                      min={0}
+                      max={5}
+                      step={0.1}
+                      className="w-full"
+                    />
                   </div>
-                  <Slider
-                    value={[config.uStrength]}
-                    onValueChange={([value]) => onConfigChange({ uStrength: value })}
-                    min={0}
-                    max={5}
-                    step={0.1}
-                    className="w-full"
-                  />
+
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs text-muted-foreground">Fill</Label>
+                      <span className="text-[10px] tabular-nums text-muted-foreground">{config.uDensity.toFixed(1)}</span>
+                    </div>
+                    <Slider
+                      value={[config.uDensity]}
+                      onValueChange={([value]) => onConfigChange({ uDensity: value })}
+                      min={0}
+                      max={3}
+                      step={0.1}
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs text-muted-foreground">Detail</Label>
+                      <span className="text-[10px] tabular-nums text-muted-foreground">{config.uFrequency.toFixed(1)}</span>
+                    </div>
+                    <Slider
+                      value={[config.uFrequency]}
+                      onValueChange={([value]) => onConfigChange({ uFrequency: value })}
+                      min={0}
+                      max={10}
+                      step={0.1}
+                      className="w-full"
+                    />
+                  </div>
                 </div>
 
-                {/* Density */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground text-xs">Density</Label>
-                    <span className="text-[10px] text-muted-foreground">{config.uDensity.toFixed(1)}</span>
-                  </div>
-                  <Slider
-                    value={[config.uDensity]}
-                    onValueChange={([value]) => onConfigChange({ uDensity: value })}
-                    min={0}
-                    max={3}
-                    step={0.1}
-                    className="w-full"
-                  />
-                </div>
-
-                {/* Frequency */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground text-xs">Frequency</Label>
-                    <span className="text-[10px] text-muted-foreground">{config.uFrequency.toFixed(1)}</span>
-                  </div>
-                  <Slider
-                    value={[config.uFrequency]}
-                    onValueChange={([value]) => onConfigChange({ uFrequency: value })}
-                    min={0}
-                    max={10}
-                    step={0.1}
-                    className="w-full"
-                  />
-                </div>
               </CollapsibleContent>
             </Collapsible>
           </div>

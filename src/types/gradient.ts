@@ -1,6 +1,6 @@
 export interface GradientConfig {
   // Shape - gradient types
-  type: 'sphere' | 'plane' | 'waterPlane' | 'conic' | 'glow' | 'waves';
+  type: 'sphere' | 'plane' | 'waterPlane' | 'conic' | 'glow' | 'waves' | 'noise' | 'iridescent';
   wireframe: boolean;
   
   // Colors (Default state) - color0 is always theme-based (black/white)
@@ -83,6 +83,17 @@ export interface GradientConfig {
   wavesAmplitude: number; // 0-100 wave height
   wavesAngle: number; // 0-360 degrees - wave direction
   
+  // Noise gradient settings (fBm-based grainy gradient)
+  noiseOctaves: number; // 1-6 fBm octaves (complexity/detail)
+  noiseGraininess: number; // 0-100 stipple/grain in transitions
+
+  // Iridescent / Holographic settings
+  iridescentIntensity: number; // 0-100 rainbow overlay strength
+  iridescentScale: number; // 10-200 pattern scale
+
+  // Perceptual color blending (OKLAB color space)
+  useOklch: boolean; // true = blend in OKLAB for cleaner midtones
+
   // Global rotation (applies to all effects)
   gradientRotation: number; // 0-360 degrees
 }
