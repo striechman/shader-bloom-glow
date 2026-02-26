@@ -83,6 +83,15 @@ export interface GradientConfig {
   wavesAmplitude: number; // 0-100 wave height
   wavesAngle: number; // 0-360 degrees - wave direction
   
+  // Per-color orb positions for Mesh / Glow modes.
+  // null  = shader auto-computes the position (default)
+  // {x,y} = user-pinned position in normalised canvas space (0-1)
+  color1Pos: { x: number; y: number } | null;
+  color2Pos: { x: number; y: number } | null;
+  color3Pos: { x: number; y: number } | null;
+  color4Pos: { x: number; y: number } | null;
+  color5Pos: { x: number; y: number } | null;
+
   // Noise gradient settings (fBm-based grainy gradient)
   noiseOctaves: number; // 1-6 fBm octaves (complexity/detail)
   noiseGraininess: number; // 0-100 stipple/grain in transitions
@@ -141,6 +150,12 @@ export const defaultGradientConfig: GradientConfig = {
   planeOffsetX: 0,
   planeOffsetY: 0,
   planeScale: 100, // Full size by default
+  // Per-color positions (null = auto)
+  color1Pos: null,
+  color2Pos: null,
+  color3Pos: null,
+  color4Pos: null,
+  color5Pos: null,
   // Conic defaults
   conicStartAngle: 0,
   conicSpiral: 0,
