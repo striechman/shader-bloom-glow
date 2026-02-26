@@ -18,11 +18,12 @@ export const GradientCanvas = ({ config, onConfigChange }: GradientCanvasProps) 
   // Tracks which named handle is being dragged ('center' | 'direction' | 'conicAngle' | null)
   const activeHandle = useRef<string | null>(null);
   
-  // Check if dragging is supported (Plane, Glow, Conic modes – not wireframe/button)
+  // Check if dragging is supported
   const isPlaneMode = config.type === 'plane' && !config.wireframe;
-  const isGlowMode = config.type === 'glow';
+  const isGlowMode  = config.type === 'glow';
   const isConicMode = config.type === 'conic';
-  const canDrag = (isPlaneMode || isGlowMode || isConicMode) && !!onConfigChange;
+  const isMeshMode  = config.wireframe; // Mesh, Aura, Silk
+  const canDrag = (isPlaneMode || isGlowMode || isConicMode || isMeshMode) && !!onConfigChange;
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if (!canDrag) return;
@@ -38,7 +39,13 @@ export const GradientCanvas = ({ config, onConfigChange }: GradientCanvasProps) 
     const ny = (e.clientY - rect.top) / rect.height - 0.5;
     const scaleFactor = Math.max(1, (config.planeScale ?? 100) / 100);
 
-    if (isGlowMode) {
+    if (isMeshMode) {
+      // Mesh: pan the whole gradient canvas via uPlaneOffset
+      onConfigChange?.({
+        planeOffsetX: Math.max(-50, Math.min(50, Math.round(nx * 100))),
+        planeOffsetY: Math.max(-50, Math.min(50, Math.round(ny * 100))),
+      });
+    } else if (isGlowMode) {
       // Glow: shift orb cluster so its UV-space center follows the cursor.
       // uGlowOffset = (glowOffsetX/100, -glowOffsetY/100) in the shader,
       // so glowOffsetX = nx*100, glowOffsetY = ny*100 keeps st=0.5 at click.
@@ -79,7 +86,7 @@ export const GradientCanvas = ({ config, onConfigChange }: GradientCanvasProps) 
         planeOffsetY: Math.max(-100, Math.min(100, ly)),
       });
     }
-  }, [canDrag, onConfigChange, isGlowMode, isConicMode, config.planeRadial, config.planeScale]);
+  }, [canDrag, onConfigChange, isMeshMode, isGlowMode, isConicMode, config.planeRadial, config.planeScale]);
 
   const handlePointerUp = useCallback(() => {
     isDragging.current = false;
@@ -90,7 +97,7 @@ export const GradientCanvas = ({ config, onConfigChange }: GradientCanvasProps) 
   const isHeroBanner = isHeroBannerRatio(config.aspectRatio);
   
   // Check if we should use 4-color mode (all custom shader types including water)
-  const use4ColorMode = config.type === 'plane' || config.type === 'conic' || config.type === 'glow' || config.type === 'waves' || config.type === 'waterPlane' || config.wireframe;
+  const use4ColorMode = config.type === 'plane' || config.type === 'conic' || config.type === 'glow' || config.type === 'waves' || config.type === 'waterPlane' || config.type === 'noise' || config.type === 'iridescent' || config.wireframe;
   
   // Get current colors based on button preview state
   const currentColors = useMemo(() => {
@@ -160,6 +167,12 @@ export const GradientCanvas = ({ config, onConfigChange }: GradientCanvasProps) 
   // Returns the center-handle position as a fraction (0-1) of the container.
   // These are the exact inverses of the drag formulas used in handlePointerMove.
   const getHandleCenter = (): { cx: number; cy: number } => {
+    if (isMeshMode) {
+      return {
+        cx: (config.planeOffsetX ?? 0) / 100 + 0.5,
+        cy: (config.planeOffsetY ?? 0) / 100 + 0.5,
+      };
+    }
     if (isGlowMode) {
       return {
         cx: (config.glowOffsetX ?? 0) / 100 + 0.5,
@@ -188,7 +201,12 @@ export const GradientCanvas = ({ config, onConfigChange }: GradientCanvasProps) 
   // Applies a center-drag offset (same logic as the full-canvas drag handler).
   const applyCenterDrag = useCallback((nx: number, ny: number) => {
     const scaleFactor = Math.max(1, (config.planeScale ?? 100) / 100);
-    if (isGlowMode) {
+    if (isMeshMode) {
+      onConfigChange?.({
+        planeOffsetX: Math.max(-50, Math.min(50, Math.round(nx * 100))),
+        planeOffsetY: Math.max(-50, Math.min(50, Math.round(ny * 100))),
+      });
+    } else if (isGlowMode) {
       onConfigChange?.({
         glowOffsetX: Math.max(-50, Math.min(50, Math.round(nx * 100))),
         glowOffsetY: Math.max(-50, Math.min(50, Math.round(ny * 100))),
@@ -209,7 +227,7 @@ export const GradientCanvas = ({ config, onConfigChange }: GradientCanvasProps) 
         planeOffsetY: Math.max(-100, Math.min(100, Math.round(ny * 100 * scaleFactor))),
       });
     }
-  }, [isGlowMode, isConicMode, config.planeRadial, config.planeScale, onConfigChange]);
+  }, [isMeshMode, isGlowMode, isConicMode, config.planeRadial, config.planeScale, onConfigChange]);
   
   // Create config with current colors for the 4-color gradient
   const gradientConfig = useMemo(() => ({
@@ -244,24 +262,90 @@ export const GradientCanvas = ({ config, onConfigChange }: GradientCanvasProps) 
         {/* ── Control handles ── */}
         {canDrag && !isButton && (() => {
           const { cx, cy } = getHandleCenter();
-          // Clamp so the handle dot stays fully inside the canvas
           const hx = Math.max(0.03, Math.min(0.97, cx));
           const hy = Math.max(0.03, Math.min(0.97, cy));
 
-          // Direction handle: available for linear Plane and Conic modes.
-          const HDist = 0.22; // handle arm length as fraction of canvas
-          const showDirHandle  = isPlaneMode && !config.planeRadial;
+          // Direction / conic handles (linear-plane and conic modes only)
+          const HDist = 0.22;
+          const showDirHandle   = isPlaneMode && !config.planeRadial;
           const showConicHandle = isConicMode;
-          const planeAngleRad  = (config.planeAngle    ?? 45) * Math.PI / 180;
-          const conicAngleRad  = (config.conicStartAngle ?? 0) * Math.PI / 180;
-          const dirX  = hx + Math.cos(planeAngleRad) * HDist;
-          const dirY  = hy - Math.sin(planeAngleRad) * HDist; // screen-Y is flipped
+          const planeAngleRad   = (config.planeAngle     ?? 45) * Math.PI / 180;
+          const conicAngleRad   = (config.conicStartAngle ?? 0) * Math.PI / 180;
+          const dirX   = hx + Math.cos(planeAngleRad) * HDist;
+          const dirY   = hy - Math.sin(planeAngleRad) * HDist;
           const conicX = hx + Math.cos(conicAngleRad) * HDist;
           const conicY = hy - Math.sin(conicAngleRad) * HDist;
 
+          // ── Per-color orb handles (Mesh + Glow modes) ──────────────────
+          // Mirrors the shader's auto-position logic (t=0 snapshot) so handles
+          // appear at the actual blob centres before the user pins them.
+          const getMeshAutoPositions = (): { x: number; y: number }[] => {
+            const style = config.meshStyle ?? 'organic';
+            const inward = config.meshCenterInward ?? true;
+            if (style === 'flow') {
+              const ang = (config.meshFlowAngle ?? 45) * Math.PI / 180;
+              const fx = Math.cos(ang); const fy = Math.sin(ang);
+              const px = -fy;           const py = fx;
+              return [
+                { x: 0.5 + fx * 0.28, y: 0.5 + fy * 0.28 },
+                { x: 0.5 - fx * 0.28, y: 0.5 - fy * 0.28 },
+                { x: 0.5 + px * 0.22, y: 0.5 + py * 0.22 },
+                { x: 0.5 - px * 0.22, y: 0.5 - py * 0.22 },
+                { x: 0.5 + fx * 0.12, y: 0.5 + fy * 0.12 },
+              ];
+            }
+            if (style === 'center') {
+              if (inward) {
+                const r = 0.22; const step = 2.39996;
+                return [1,2,3,4,5].map(i => ({
+                  x: 0.5 + Math.cos(step * i) * r * (1 - (i - 1) * 0.05),
+                  y: 0.5 + Math.sin(step * i) * r * (1 - (i - 1) * 0.05),
+                }));
+              }
+              return [
+                { x: 0.2, y: 0.2 }, { x: 0.8, y: 0.2 },
+                { x: 0.8, y: 0.8 }, { x: 0.2, y: 0.8 },
+                { x: 0.5, y: 0.5 },
+              ];
+            }
+            // organic
+            return [
+              { x: 0.25, y: 0.72 }, { x: 0.78, y: 0.30 },
+              { x: 0.45, y: 0.18 }, { x: 0.28, y: 0.48 },
+              { x: 0.62, y: 0.58 },
+            ];
+          };
+
+          // Colors and their pinned positions (index 0 = color1)
+          const colorEntries: { color: string; posKey: keyof typeof config; idx: number }[] = [
+            { color: config.color1, posKey: 'color1Pos', idx: 1 },
+            { color: config.color2, posKey: 'color2Pos', idx: 2 },
+            { color: config.color3, posKey: 'color3Pos', idx: 3 },
+            ...(config.color4 ? [{ color: config.color4, posKey: 'color4Pos' as keyof typeof config, idx: 4 }] : []),
+            ...(config.color5 ? [{ color: config.color5, posKey: 'color5Pos' as keyof typeof config, idx: 5 }] : []),
+          ];
+          const autoPositions = isMeshMode ? getMeshAutoPositions() : [];
+
+          const makeColorHandlePointers = (idx: number, posKey: keyof typeof config) => ({
+            onPointerDown: (e: React.PointerEvent) => {
+              e.stopPropagation();
+              activeHandle.current = `color${idx}`;
+              (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+            },
+            onPointerMove: (e: React.PointerEvent) => {
+              if (activeHandle.current !== `color${idx}` || !containerRef.current) return;
+              const r = containerRef.current.getBoundingClientRect();
+              const x = Math.max(0.01, Math.min(0.99, (e.clientX - r.left) / r.width));
+              const y = Math.max(0.01, Math.min(0.99, (e.clientY - r.top) / r.height));
+              onConfigChange?.({ [posKey]: { x, y } });
+            },
+            onPointerUp: () => { activeHandle.current = null; },
+            onPointerLeave: () => { activeHandle.current = null; },
+          });
+
           return (
             <>
-              {/* SVG lines – decorative, pointer-events off */}
+              {/* SVG connector lines (decorative, no pointer events) */}
               <svg
                 className="absolute inset-0 pointer-events-none z-[36]"
                 width="100%" height="100%"
@@ -281,11 +365,24 @@ export const GradientCanvas = ({ config, onConfigChange }: GradientCanvasProps) 
                     stroke="rgba(255,255,255,0.55)" strokeWidth="1.5" strokeDasharray="4 3"
                   />
                 )}
+                {/* Lines from center → each color orb (mesh/glow modes) */}
+                {(isMeshMode || isGlowMode) && colorEntries.map(({ idx, posKey }, i) => {
+                  const pinned = config[posKey] as { x: number; y: number } | null;
+                  const pos = pinned ?? autoPositions[i];
+                  if (!pos) return null;
+                  return (
+                    <line key={`line-${idx}`}
+                      x1={`${hx * 100}%`} y1={`${hy * 100}%`}
+                      x2={`${pos.x * 100}%`} y2={`${pos.y * 100}%`}
+                      stroke="rgba(255,255,255,0.25)" strokeWidth="1" strokeDasharray="3 4"
+                    />
+                  );
+                })}
               </svg>
 
-              {/* ── Center handle – drag to move the gradient ── */}
+              {/* ── Center handle – pan the whole gradient ── */}
               <div
-                className="absolute z-[37] select-none touch-none"
+                className="absolute z-[38] select-none touch-none"
                 style={{ left: `${hx * 100}%`, top: `${hy * 100}%`, transform: 'translate(-50%,-50%)' }}
                 onPointerDown={(e) => {
                   e.stopPropagation();
@@ -303,16 +400,15 @@ export const GradientCanvas = ({ config, onConfigChange }: GradientCanvasProps) 
                 onPointerUp={() => { activeHandle.current = null; }}
                 onPointerLeave={() => { activeHandle.current = null; }}
               >
-                {/* Outer ring + inner dot */}
-                <div className="w-[22px] h-[22px] rounded-full border-[2.5px] border-white/90 bg-white/10 backdrop-blur-sm shadow-[0_2px_10px_rgba(0,0,0,0.45)] cursor-move flex items-center justify-center">
-                  <div className="w-[6px] h-[6px] rounded-full bg-white/90" />
+                <div className="w-[24px] h-[24px] rounded-full border-2 border-white/90 bg-white/15 backdrop-blur-sm shadow-[0_2px_12px_rgba(0,0,0,0.5)] cursor-move flex items-center justify-center">
+                  <div className="w-[7px] h-[7px] rounded-full bg-white/95 shadow-sm" />
                 </div>
               </div>
 
-              {/* ── Direction handle – drag to rotate a linear-plane gradient ── */}
+              {/* ── Direction handle – rotate linear-plane gradient ── */}
               {showDirHandle && (
                 <div
-                  className="absolute z-[37] select-none touch-none"
+                  className="absolute z-[38] select-none touch-none"
                   style={{ left: `${dirX * 100}%`, top: `${dirY * 100}%`, transform: 'translate(-50%,-50%)' }}
                   onPointerDown={(e) => {
                     e.stopPropagation();
@@ -325,22 +421,19 @@ export const GradientCanvas = ({ config, onConfigChange }: GradientCanvasProps) 
                     const csx = r.left + hx * r.width;
                     const csy = r.top  + hy * r.height;
                     const deg = Math.atan2(-(e.clientY - csy), e.clientX - csx) * 180 / Math.PI;
-                    onConfigChange?.({
-                      planeAngle: ((Math.round(deg) % 360) + 360) % 360,
-                      planeRadial: false,
-                    });
+                    onConfigChange?.({ planeAngle: ((Math.round(deg) % 360) + 360) % 360, planeRadial: false });
                   }}
                   onPointerUp={() => { activeHandle.current = null; }}
                   onPointerLeave={() => { activeHandle.current = null; }}
                 >
-                  <div className="w-[16px] h-[16px] rounded-full border-2 border-white/90 bg-primary/75 shadow-[0_2px_8px_rgba(0,0,0,0.4)] cursor-alias" />
+                  <div className="w-[16px] h-[16px] rounded-full border-2 border-white/90 bg-primary/80 shadow-[0_2px_8px_rgba(0,0,0,0.4)] cursor-alias" />
                 </div>
               )}
 
-              {/* ── Conic angle handle – drag to rotate the conic sweep ── */}
+              {/* ── Conic angle handle ── */}
               {showConicHandle && (
                 <div
-                  className="absolute z-[37] select-none touch-none"
+                  className="absolute z-[38] select-none touch-none"
                   style={{ left: `${conicX * 100}%`, top: `${conicY * 100}%`, transform: 'translate(-50%,-50%)' }}
                   onPointerDown={(e) => {
                     e.stopPropagation();
@@ -358,9 +451,45 @@ export const GradientCanvas = ({ config, onConfigChange }: GradientCanvasProps) 
                   onPointerUp={() => { activeHandle.current = null; }}
                   onPointerLeave={() => { activeHandle.current = null; }}
                 >
-                  <div className="w-[16px] h-[16px] rounded-full border-2 border-white/90 bg-primary/75 shadow-[0_2px_8px_rgba(0,0,0,0.4)] cursor-alias" />
+                  <div className="w-[16px] h-[16px] rounded-full border-2 border-white/90 bg-primary/80 shadow-[0_2px_8px_rgba(0,0,0,0.4)] cursor-alias" />
                 </div>
               )}
+
+              {/* ── Per-color orb handles (Mesh + Glow modes) ── */}
+              {(isMeshMode || isGlowMode) && colorEntries.map(({ color, posKey, idx }, i) => {
+                const pinned = config[posKey] as { x: number; y: number } | null;
+                const pos    = pinned ?? autoPositions[i];
+                if (!pos) return null;
+                const px = Math.max(0.02, Math.min(0.98, pos.x));
+                const py = Math.max(0.02, Math.min(0.98, pos.y));
+                const isPinned = pinned !== null;
+                return (
+                  <div
+                    key={`color-handle-${idx}`}
+                    className="absolute z-[37] select-none touch-none group"
+                    style={{ left: `${px * 100}%`, top: `${py * 100}%`, transform: 'translate(-50%,-50%)' }}
+                    {...makeColorHandlePointers(idx, posKey)}
+                  >
+                    {/* Colored filled dot */}
+                    <div
+                      className={`w-[18px] h-[18px] rounded-full border-2 shadow-[0_2px_8px_rgba(0,0,0,0.5)] cursor-move transition-transform group-hover:scale-125 ${
+                        isPinned ? 'border-white/90' : 'border-white/50'
+                      }`}
+                      style={{ backgroundColor: color, opacity: isPinned ? 1 : 0.65 }}
+                    />
+                    {/* Reset-to-auto button: double-click the handle */}
+                    {isPinned && (
+                      <div
+                        className="absolute inset-0 rounded-full"
+                        onDoubleClick={(e) => {
+                          e.stopPropagation();
+                          onConfigChange?.({ [posKey]: null });
+                        }}
+                      />
+                    )}
+                  </div>
+                );
+              })}
             </>
           );
         })()}
@@ -372,6 +501,7 @@ export const GradientCanvas = ({ config, onConfigChange }: GradientCanvasProps) 
               width: '100%',
               height: '100%',
               position: 'absolute',
+              pointerEvents: 'none', // handles + overlay sit above; canvas must not steal events
               borderRadius: isButton ? '9999px' : undefined,
             }}
             camera={{ position: [0, 0, 5], fov: 50 }}
@@ -386,6 +516,7 @@ export const GradientCanvas = ({ config, onConfigChange }: GradientCanvasProps) 
               width: '100%',
               height: '100%',
               position: 'absolute',
+              pointerEvents: 'none',
               borderRadius: isButton ? '9999px' : undefined,
             }}
           >

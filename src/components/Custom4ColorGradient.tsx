@@ -140,6 +140,12 @@ uniform float uWavesAmplitude;
 uniform float uWarpStrength;
 // Global rotation
 uniform float uRotation;
+// Per-color orb positions (vec2(-1) = auto-computed by shader)
+uniform vec2 uColorPos1;
+uniform vec2 uColorPos2;
+uniform vec2 uColorPos3;
+uniform vec2 uColorPos4;
+uniform vec2 uColorPos5;
 
 varying vec2 vUv;
 varying vec3 vPosition;
@@ -465,7 +471,10 @@ void main() {
     }
     
     float noiseScale = max(0.5, uNoiseScale) * 0.8;
-    
+
+    // Apply canvas-pan offset (center handle in Mesh mode)
+    sampleUv -= uPlaneOffset;
+
     // ---------------------------------------------------------------
     // GAUSSIAN RADIAL GLOW
     // Each color is a positioned light source with Gaussian falloff.
@@ -531,6 +540,13 @@ void main() {
       );
     }
     
+    // User-pinned positions override auto-computed ones (vec2(-1) = auto)
+    if (uColorPos1.x >= 0.0) c1 = uColorPos1;
+    if (uColorPos2.x >= 0.0) c2 = uColorPos2;
+    if (uColorPos3.x >= 0.0) c3 = uColorPos3;
+    if (uHasColor4 && uColorPos4.x >= 0.0) c4 = uColorPos4;
+    if (uHasColor5 && uColorPos5.x >= 0.0) c5 = uColorPos5;
+
     // Domain Warping: feed noise into noise coordinates for fluid/silk shapes
     vec2 warpOffset;
     warpOffset.x = snoise(vec3(sampleUv * noiseScale * 0.7, t * 0.2));
@@ -926,6 +942,12 @@ export const Custom4ColorGradient = forwardRef<THREE.Mesh, Custom4ColorGradientP
     uWavesAmplitude: { value: (config.wavesAmplitude ?? 50) / 100 },
     uRotation: { value: (config.gradientRotation ?? 0) * Math.PI / 180 },
     uWarpStrength: { value: config.meshWarpStrength ?? 1.2 },
+    // Per-color orb positions (-1 = auto)
+    uColorPos1: { value: new THREE.Vector2(-1, -1) },
+    uColorPos2: { value: new THREE.Vector2(-1, -1) },
+    uColorPos3: { value: new THREE.Vector2(-1, -1) },
+    uColorPos4: { value: new THREE.Vector2(-1, -1) },
+    uColorPos5: { value: new THREE.Vector2(-1, -1) },
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), []);
   
@@ -1000,7 +1022,16 @@ export const Custom4ColorGradient = forwardRef<THREE.Mesh, Custom4ColorGradientP
     mat.uniforms.uWavesAmplitude.value = (config.wavesAmplitude ?? 50) / 100;
     mat.uniforms.uRotation.value = (config.gradientRotation ?? 0) * Math.PI / 180;
     mat.uniforms.uWarpStrength.value = config.meshWarpStrength ?? 1.2;
-    
+
+    // Per-color orb positions (-1 sentinel = auto-computed by shader)
+    const p = (pos: { x: number; y: number } | null | undefined): [number, number] =>
+      pos ? [pos.x, pos.y] : [-1, -1];
+    mat.uniforms.uColorPos1.value.set(...p(config.color1Pos));
+    mat.uniforms.uColorPos2.value.set(...p(config.color2Pos));
+    mat.uniforms.uColorPos3.value.set(...p(config.color3Pos));
+    mat.uniforms.uColorPos4.value.set(...p(config.color4Pos));
+    mat.uniforms.uColorPos5.value.set(...p(config.color5Pos));
+
     const isFrozen = config.frozenTime !== null;
     const shouldAnimate = config.animate && !isFrozen;
     
