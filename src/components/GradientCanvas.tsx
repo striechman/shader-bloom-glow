@@ -3,7 +3,7 @@ import { ShaderGradientCanvas, ShaderGradient } from '@shadergradient/react';
 import { GradientConfig, aspectRatioValues, isHeroBannerRatio, isButtonRatio } from '@/types/gradient';
 import { Custom4ColorGradient } from './Custom4ColorGradient';
 import { GradientDebugOverlay } from './GradientDebugOverlay';
-import { useMemo, useState, useCallback, useRef } from 'react';
+import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 
 interface GradientCanvasProps {
@@ -25,30 +25,27 @@ export const GradientCanvas = ({ config, onConfigChange }: GradientCanvasProps) 
   const isMeshMode  = config.wireframe; // Mesh, Aura, Silk
   const canDrag = (isPlaneMode || isGlowMode || isConicMode || isMeshMode) && !!onConfigChange;
 
-  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+  // Overlay drag: only starts if no handle is active
+  const handleOverlayPointerDown = useCallback((e: React.PointerEvent) => {
     if (!canDrag) return;
+    if (activeHandle.current) return; // a handle is being dragged — don't interfere
     isDragging.current = true;
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
   }, [canDrag]);
 
-  const handlePointerMove = useCallback((e: React.PointerEvent) => {
-    if (!isDragging.current || !canDrag || !containerRef.current) return;
+  // Shared move logic used by both overlay and window listener
+  const applyDragMove = useCallback((clientX: number, clientY: number) => {
+    if (!containerRef.current || !canDrag) return;
     const rect = containerRef.current.getBoundingClientRect();
-    // nx/ny: -0.5 (left/top) to +0.5 (right/bottom) in screen space
-    const nx = (e.clientX - rect.left) / rect.width - 0.5;
-    const ny = (e.clientY - rect.top) / rect.height - 0.5;
+    const nx = (clientX - rect.left) / rect.width - 0.5;
+    const ny = (clientY - rect.top) / rect.height - 0.5;
     const scaleFactor = Math.max(1, (config.planeScale ?? 100) / 100);
 
     if (isMeshMode) {
-      // Mesh: pan the whole gradient canvas via uPlaneOffset
       onConfigChange?.({
         planeOffsetX: Math.max(-50, Math.min(50, Math.round(nx * 100))),
         planeOffsetY: Math.max(-50, Math.min(50, Math.round(ny * 100))),
       });
     } else if (isGlowMode) {
-      // Glow: shift orb cluster so its UV-space center follows the cursor.
-      // uGlowOffset = (glowOffsetX/100, -glowOffsetY/100) in the shader,
-      // so glowOffsetX = nx*100, glowOffsetY = ny*100 keeps st=0.5 at click.
       const gx = Math.round(nx * 100);
       const gy = Math.round(ny * 100);
       onConfigChange?.({
@@ -56,9 +53,6 @@ export const GradientCanvas = ({ config, onConfigChange }: GradientCanvasProps) 
         glowOffsetY: Math.max(-50, Math.min(50, gy)),
       });
     } else if (isConicMode) {
-      // Conic: move angular center to click position.
-      // centeredUv at click = (nx, -ny) [UV Y is flipped vs screen Y].
-      // uConicOffset = centeredUv → conicOffsetX = nx*100, conicOffsetY = -ny*100.
       const cx = Math.round(nx * 100);
       const cy = Math.round(-ny * 100);
       onConfigChange?.({
@@ -66,9 +60,6 @@ export const GradientCanvas = ({ config, onConfigChange }: GradientCanvasProps) 
         conicOffsetY: Math.max(-50, Math.min(50, cy)),
       });
     } else if (config.planeRadial) {
-      // Radial plane: place the radial center exactly at the click position.
-      // radialCenter = centeredUv - uPlaneOffset; want 0 at click →
-      // uPlaneOffset = centeredUv at click = (nx, -ny).
       const rx = Math.round(nx * 100 * scaleFactor);
       const ry = Math.round(-ny * 100 * scaleFactor);
       onConfigChange?.({
@@ -76,9 +67,6 @@ export const GradientCanvas = ({ config, onConfigChange }: GradientCanvasProps) 
         planeOffsetY: Math.max(-100, Math.min(100, ry)),
       });
     } else {
-      // Linear plane: pan the gradient so the midpoint follows the cursor.
-      // baseNoise = (baseDotNorm - 0.5)/scale + 0.5 + offset;
-      // for midpoint (noise=0.5) at cursor: offset = -(nx for X, ny for Y).
       const lx = Math.round(-nx * 100 * scaleFactor);
       const ly = Math.round(ny * 100 * scaleFactor);
       onConfigChange?.({
@@ -88,9 +76,36 @@ export const GradientCanvas = ({ config, onConfigChange }: GradientCanvasProps) 
     }
   }, [canDrag, onConfigChange, isMeshMode, isGlowMode, isConicMode, config.planeRadial, config.planeScale]);
 
-  const handlePointerUp = useCallback(() => {
+  const handleOverlayPointerMove = useCallback((e: React.PointerEvent) => {
+    if (!isDragging.current) return;
+    applyDragMove(e.clientX, e.clientY);
+  }, [applyDragMove]);
+
+  const handleOverlayPointerUp = useCallback(() => {
     isDragging.current = false;
   }, []);
+
+  // Ref to hold per-handle move callback so window listener can dispatch
+  const handleMoveRef = useRef<((e: PointerEvent) => void) | null>(null);
+
+  // Window-level listeners so drags that leave elements still complete
+  useEffect(() => {
+    const onMove = (e: PointerEvent) => {
+      if (isDragging.current) applyDragMove(e.clientX, e.clientY);
+      if (activeHandle.current && handleMoveRef.current) handleMoveRef.current(e);
+    };
+    const onUp = () => {
+      isDragging.current = false;
+      activeHandle.current = null;
+      handleMoveRef.current = null;
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+  }, [applyDragMove]);
   const isButton = isButtonRatio(config.aspectRatio);
   const isFrozen = config.frozenTime !== null;
   const isStaticMode = isButton ? true : (!config.animate || isFrozen);
@@ -252,10 +267,10 @@ export const GradientCanvas = ({ config, onConfigChange }: GradientCanvasProps) 
         {canDrag && (
           <div
             className="absolute inset-0 z-[35] cursor-crosshair active:cursor-grabbing"
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-            onPointerLeave={handlePointerUp}
+            onPointerDown={handleOverlayPointerDown}
+            onPointerMove={handleOverlayPointerMove}
+            onPointerUp={handleOverlayPointerUp}
+            onPointerLeave={handleOverlayPointerUp}
           />
         )}
 
@@ -330,17 +345,14 @@ export const GradientCanvas = ({ config, onConfigChange }: GradientCanvasProps) 
             onPointerDown: (e: React.PointerEvent) => {
               e.stopPropagation();
               activeHandle.current = `color${idx}`;
-              (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+              handleMoveRef.current = (ev: PointerEvent) => {
+                if (!containerRef.current) return;
+                const r = containerRef.current.getBoundingClientRect();
+                const x = Math.max(0.01, Math.min(0.99, (ev.clientX - r.left) / r.width));
+                const y = Math.max(0.01, Math.min(0.99, (ev.clientY - r.top) / r.height));
+                onConfigChange?.({ [posKey]: { x, y } });
+              };
             },
-            onPointerMove: (e: React.PointerEvent) => {
-              if (activeHandle.current !== `color${idx}` || !containerRef.current) return;
-              const r = containerRef.current.getBoundingClientRect();
-              const x = Math.max(0.01, Math.min(0.99, (e.clientX - r.left) / r.width));
-              const y = Math.max(0.01, Math.min(0.99, (e.clientY - r.top) / r.height));
-              onConfigChange?.({ [posKey]: { x, y } });
-            },
-            onPointerUp: () => { activeHandle.current = null; },
-            onPointerLeave: () => { activeHandle.current = null; },
           });
 
           return (
@@ -383,22 +395,19 @@ export const GradientCanvas = ({ config, onConfigChange }: GradientCanvasProps) 
               {/* ── Center handle – pan the whole gradient ── */}
               <div
                 className="absolute z-[38] select-none touch-none"
-                style={{ left: `${hx * 100}%`, top: `${hy * 100}%`, transform: 'translate(-50%,-50%)' }}
+                style={{ left: `${hx * 100}%`, top: `${hy * 100}%`, transform: 'translate(-50%,-50%)', pointerEvents: 'auto' }}
                 onPointerDown={(e) => {
                   e.stopPropagation();
                   activeHandle.current = 'center';
-                  (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+                  handleMoveRef.current = (ev: PointerEvent) => {
+                    if (!containerRef.current) return;
+                    const r = containerRef.current.getBoundingClientRect();
+                    applyCenterDrag(
+                      (ev.clientX - r.left) / r.width - 0.5,
+                      (ev.clientY - r.top) / r.height - 0.5,
+                    );
+                  };
                 }}
-                onPointerMove={(e) => {
-                  if (activeHandle.current !== 'center' || !containerRef.current) return;
-                  const r = containerRef.current.getBoundingClientRect();
-                  applyCenterDrag(
-                    (e.clientX - r.left) / r.width - 0.5,
-                    (e.clientY - r.top) / r.height - 0.5,
-                  );
-                }}
-                onPointerUp={() => { activeHandle.current = null; }}
-                onPointerLeave={() => { activeHandle.current = null; }}
               >
                 <div className="w-[24px] h-[24px] rounded-full border-2 border-white/90 bg-white/15 backdrop-blur-sm shadow-[0_2px_12px_rgba(0,0,0,0.5)] cursor-move flex items-center justify-center">
                   <div className="w-[7px] h-[7px] rounded-full bg-white/95 shadow-sm" />
@@ -409,22 +418,19 @@ export const GradientCanvas = ({ config, onConfigChange }: GradientCanvasProps) 
               {showDirHandle && (
                 <div
                   className="absolute z-[38] select-none touch-none"
-                  style={{ left: `${dirX * 100}%`, top: `${dirY * 100}%`, transform: 'translate(-50%,-50%)' }}
+                  style={{ left: `${dirX * 100}%`, top: `${dirY * 100}%`, transform: 'translate(-50%,-50%)', pointerEvents: 'auto' }}
                   onPointerDown={(e) => {
                     e.stopPropagation();
                     activeHandle.current = 'direction';
-                    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+                    handleMoveRef.current = (ev: PointerEvent) => {
+                      if (!containerRef.current) return;
+                      const r = containerRef.current.getBoundingClientRect();
+                      const csx = r.left + hx * r.width;
+                      const csy = r.top + hy * r.height;
+                      const deg = Math.atan2(-(ev.clientY - csy), ev.clientX - csx) * 180 / Math.PI;
+                      onConfigChange?.({ planeAngle: ((Math.round(deg) % 360) + 360) % 360, planeRadial: false });
+                    };
                   }}
-                  onPointerMove={(e) => {
-                    if (activeHandle.current !== 'direction' || !containerRef.current) return;
-                    const r   = containerRef.current.getBoundingClientRect();
-                    const csx = r.left + hx * r.width;
-                    const csy = r.top  + hy * r.height;
-                    const deg = Math.atan2(-(e.clientY - csy), e.clientX - csx) * 180 / Math.PI;
-                    onConfigChange?.({ planeAngle: ((Math.round(deg) % 360) + 360) % 360, planeRadial: false });
-                  }}
-                  onPointerUp={() => { activeHandle.current = null; }}
-                  onPointerLeave={() => { activeHandle.current = null; }}
                 >
                   <div className="w-[16px] h-[16px] rounded-full border-2 border-white/90 bg-primary/80 shadow-[0_2px_8px_rgba(0,0,0,0.4)] cursor-alias" />
                 </div>
@@ -434,22 +440,19 @@ export const GradientCanvas = ({ config, onConfigChange }: GradientCanvasProps) 
               {showConicHandle && (
                 <div
                   className="absolute z-[38] select-none touch-none"
-                  style={{ left: `${conicX * 100}%`, top: `${conicY * 100}%`, transform: 'translate(-50%,-50%)' }}
+                  style={{ left: `${conicX * 100}%`, top: `${conicY * 100}%`, transform: 'translate(-50%,-50%)', pointerEvents: 'auto' }}
                   onPointerDown={(e) => {
                     e.stopPropagation();
                     activeHandle.current = 'conicAngle';
-                    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+                    handleMoveRef.current = (ev: PointerEvent) => {
+                      if (!containerRef.current) return;
+                      const r = containerRef.current.getBoundingClientRect();
+                      const csx = r.left + hx * r.width;
+                      const csy = r.top + hy * r.height;
+                      const deg = Math.atan2(-(ev.clientY - csy), ev.clientX - csx) * 180 / Math.PI;
+                      onConfigChange?.({ conicStartAngle: ((Math.round(deg) % 360) + 360) % 360 });
+                    };
                   }}
-                  onPointerMove={(e) => {
-                    if (activeHandle.current !== 'conicAngle' || !containerRef.current) return;
-                    const r   = containerRef.current.getBoundingClientRect();
-                    const csx = r.left + hx * r.width;
-                    const csy = r.top  + hy * r.height;
-                    const deg = Math.atan2(-(e.clientY - csy), e.clientX - csx) * 180 / Math.PI;
-                    onConfigChange?.({ conicStartAngle: ((Math.round(deg) % 360) + 360) % 360 });
-                  }}
-                  onPointerUp={() => { activeHandle.current = null; }}
-                  onPointerLeave={() => { activeHandle.current = null; }}
                 >
                   <div className="w-[16px] h-[16px] rounded-full border-2 border-white/90 bg-primary/80 shadow-[0_2px_8px_rgba(0,0,0,0.4)] cursor-alias" />
                 </div>
@@ -467,7 +470,7 @@ export const GradientCanvas = ({ config, onConfigChange }: GradientCanvasProps) 
                   <div
                     key={`color-handle-${idx}`}
                     className="absolute z-[37] select-none touch-none group"
-                    style={{ left: `${px * 100}%`, top: `${py * 100}%`, transform: 'translate(-50%,-50%)' }}
+                    style={{ left: `${px * 100}%`, top: `${py * 100}%`, transform: 'translate(-50%,-50%)', pointerEvents: 'auto' }}
                     {...makeColorHandlePointers(idx, posKey)}
                   >
                     {/* Colored filled dot */}

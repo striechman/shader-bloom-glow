@@ -175,6 +175,14 @@ export const defaultGradientConfig: GradientConfig = {
   wavesAngle: 0, // Horizontal waves by default
   // Global rotation
   gradientRotation: 0,
+  // Noise gradient defaults
+  noiseOctaves: 4,
+  noiseGraininess: 30,
+  // Iridescent defaults
+  iridescentIntensity: 50,
+  iridescentScale: 100,
+  // Perceptual blending
+  useOklch: false,
 };
 
 // Get theme-based color0 (black for dark mode, white for light mode)
