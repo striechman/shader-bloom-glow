@@ -1,84 +1,50 @@
 
 
-# Scale & Position - כלי עיצוב מקצועי ופשוט
+# תיקון שגיאת Build + תיקון נקודות הבקרה (Handles)
 
-## הבעיה הנוכחית
+## 1. תיקון שגיאת Build — חסרות תכונות ב-`defaultGradientConfig`
 
-המערכת הנוכחית מגבילה את חופש הפעולה:
-- **Scale** מוגבל ל-10%-100% — אפשר רק לכווץ, לא לזום פנימה
-- **Position** מוגבל ל-50% בכל כיוון — לא מספיק חופש תנועה
-- **הנורמליזציה האחרונה** (התיקון לשחור) גורמת לכך שהזזת הגרדיינט מחלקת מחדש את הצבעים על הקנבס במקום באמת להזיז את הדפוס
-- **רק Plane** יש לו Position & Scale — למצבים אחרים (Glow, Mesh, Conic) יש מערכות offset נפרדות
-- **גרירה בעכבר** עובדת רק ב-Plane
+**קובץ:** `src/types/gradient.ts`
 
-## הפתרון
+הוספת 5 תכונות חסרות ל-`defaultGradientConfig`:
+- `noiseOctaves: 4`
+- `noiseGraininess: 30`
+- `iridescentIntensity: 50`
+- `iridescentScale: 100`
+- `useOklch: false`
 
-### 1. Scale מורחב — מ-"כיווץ בלבד" ל-"זום חופשי"
+## 2. תיקון נקודות הבקרה — הנקודות לא מגיבות ללחיצה/גרירה
 
-- שינוי הטווח מ-10-100% ל-**10-300%**
-- מתחת ל-100%: כל הצבעים נראים (מכווץ)
-- מעל 100%: זום פנימה — רואים חלק מהגרדיינט בגודל מוגדל
-- ברירת מחדל נשארת 100%
+**בעיה:** שכבת הגרירה (drag overlay) בגובה z-[35] תופסת pointer capture על כל הקנבס דרך `setPointerCapture`. ברגע שהמשתמש לוחץ על הנקודה, אם האצבע/עכבר נוגע קודם באזור ה-overlay (שמכסה את כל הקנבס), ה-capture נלקח ע"י ה-overlay והנקודה לא מקבלת אירועים.
 
-### 2. Position חופשי — טווח תנועה מלא
+**פתרון בקובץ:** `src/components/GradientCanvas.tsx`
 
-- הרחבת הטווח מ-50% ל-**100%** בכל כיוון
-- מאפשר להזיז את הגרדיינט הרבה מעבר למרכז
-- במיוחד שימושי כשעושים זום פנימה — צריך יותר מקום לגרור
-
-### 3. תיקון הלוגיקה בשיידר — הזזה אמיתית
-
-הבעיה המרכזית: הנורמליזציה הנוכחית מחשבת min/max על פינות הקנבס, מה שגורם לכך שהגרדיינט תמיד "מתמלא" על כל הקנבס. במקום זה:
-
-- **Scale מתחת ל-100%**: נשאר כמו היום — כל הצבעים נראים
-- **Scale מעל 100%**: הנורמליזציה תהיה יחסית לגודל הגרדיינט המלא (לא לקנבס), כך שחלק מהצבעים "ייחתכו" מחוץ למסך
-- **Position**: יזיז את מרכז הגרדיינט באמת — צבעים ייעלמו מצד אחד ויופיעו בצד השני
-
-### 4. גרירה בעכבר משופרת
-
-- הרחבת טווח הגרירה בהתאם ל-Scale (כש-Scale גדול, גרירה צריכה להיות רחבה יותר)
-- עדכון ה-clamp ב-`handlePointerMove` לתמוך ב-100% במקום 50%
-
-### 5. UI מעודכן בפאנל הבקרה
-
-- **Scale slider**: טווח 10-300% עם סימון ב-100% כנקודת ייחוס
-- **Position sliders**: טווח -100 עד 100
-- **כפתור Reset**: כפתור קטן ליד Position & Scale שמחזיר ל-100% ומרכז (0,0)
+1. **הסרת `setPointerCapture` מה-overlay** — במקום, נשתמש ב-`window` event listeners כדי לתפוס תנועות גם מחוץ לקנבס, בלי לחטוף אירועים מהנקודות
+2. **הוספת `pointer-events-auto`** מפורש על הנקודות כדי לוודא שהן מקבלות אירועים
+3. **שינוי הלוגיקה:** ב-`handlePointerDown` של ה-overlay, בדיקה שה-`activeHandle` לא פעיל לפני תחילת גרירה
 
 ## פרטים טכניים
 
-### קבצים שישתנו:
+### שינויים ב-`GradientCanvas.tsx`:
 
-1. **`src/types/gradient.ts`**
-   - `planeScale`: שינוי תיעוד ל-10-300
-   - `planeOffsetX/Y`: שינוי תיעוד ל-100-
-
-2. **`src/components/Custom4ColorGradient.tsx`** (השיידר)
-   - שינוי הנורמליזציה ב-Plane mode: כשה-scale מעל 1.0, לא לנרמל ל-0-1 על כל הקנבס, אלא לתת לערכים "לזלוג" מחוץ ל-0-1 ולקצץ אותם ב-clamp — כך צבעים באמת נעלמים מהמסך
-   - עדכון הלוגיקה של `uPlaneScale` לתמוך בערכים מעל 1.0
-
-3. **`src/components/GradientCanvas.tsx`**
-   - עדכון `handlePointerMove` עם clamp ל-100- במקום 50-
-   - התאמת הסקייל של הגרירה ל-planeScale הנוכחי
-
-4. **`src/components/ControlPanel.tsx`**
-   - Scale slider: min=10, max=300, step=5
-   - Position sliders: min=-100, max=100
-   - הוספת כפתור Reset קומפקטי
-
-### לוגיקת השיידר החדשה (Plane mode):
-
-```text
-if scale <= 1.0:
-  // כמו היום - כל הצבעים נראים, נורמליזציה מלאה
-  normalize baseNoise to 0-1 across canvas corners
-
-if scale > 1.0:
-  // זום פנימה - נורמליזציה קבועה
-  // maxDot מחושב לפי scale=1.0 (הגרדיינט המלא)
-  // כך שחלק מהערכים ייחתכו ב-clamp
-  normalize based on full gradient size, not visible area
+1. ב-`handlePointerDown` של ה-overlay: הסרת `setPointerCapture` והוספת guard:
+```typescript
+if (activeHandle.current) return; // handle is being dragged, don't interfere
+isDragging.current = true;
 ```
 
-זה מבטיח שכש-Scale=200% ו-Position ימינה, צד שמאל של המסך יהיה צבע אחד "טהור" וצד ימין ייחתך.
+2. הוספת `window` level pointermove/pointerup listeners ב-useEffect כדי לתפוס גרירה גם מחוץ לגבולות הקנבס
+
+3. על כל ה-handle divs: הוספת style `pointerEvents: 'auto'` מפורש
+
+### שינויים ב-`gradient.ts`:
+
+הוספת השדות החסרים אחרי `gradientRotation: 0`:
+```typescript
+noiseOctaves: 4,
+noiseGraininess: 30,
+iridescentIntensity: 50,
+iridescentScale: 100,
+useOklch: false,
+```
 
